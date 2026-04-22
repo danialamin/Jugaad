@@ -1,4 +1,4 @@
-import engine.Player;
+import entity.Player;
 import database.GameStateDao;
 import database.DatabaseConnection;
 import java.sql.SQLException;
