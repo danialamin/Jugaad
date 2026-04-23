@@ -6,11 +6,11 @@ echo ========================================
 echo.
 
 echo [Step 1] Updating Context Knowledge Graph...
-powershell.exe -ExecutionPolicy Bypass -File "%~dp0..\ContextAndPush\context\setup_graphify.ps1"
+powershell.exe -ExecutionPolicy Bypass -File "%~dp0..\Context\context\setup_graphify.ps1"
 
 echo.
 echo [Step 2] Pushing updates to GitHub...
-powershell.exe -ExecutionPolicy Bypass -File "%~dp0..\ContextAndPush\pushfromhere\push.ps1"
+powershell.exe -ExecutionPolicy Bypass -File "%~dp0..\Context\pushfromhere\push.ps1"
 
 echo.
 echo ========================================

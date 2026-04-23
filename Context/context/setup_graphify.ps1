@@ -9,11 +9,11 @@ python -m graphify update .
 
 # Move the output folder inside the context folder for cleanliness
 if (Test-Path -Path ".\graphify-out") {
-    if (Test-Path -Path ".\ContextAndPush\context\graphify-out") {
-        Remove-Item -Recurse -Force ".\ContextAndPush\context\graphify-out"
+    if (Test-Path -Path ".\Context\context\graphify-out") {
+        Remove-Item -Recurse -Force ".\Context\context\graphify-out"
     }
-    Move-Item -Path ".\graphify-out" -Destination ".\ContextAndPush\context\graphify-out" -Force
-    echo "Graphify output moved to ContextAndPush/context/graphify-out."
+    Move-Item -Path ".\graphify-out" -Destination ".\Context\context\graphify-out" -Force
+    echo "Graphify output moved to Context/context/graphify-out."
 }
 
 echo "Graphify generation complete! The context graph is ready."
