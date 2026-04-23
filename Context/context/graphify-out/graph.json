@@ -333,7 +333,7 @@
       "source_file": "C:\\Users\\dyssa\\Desktop\\University\\CS3004\\Final_Project\\entity\\Player.java",
       "source_location": "L145",
       "id": "player_player_getid",
-      "community": 3,
+      "community": 4,
       "norm_label": ".getid()"
     },
     {
@@ -387,7 +387,7 @@
       "source_file": "C:\\Users\\dyssa\\Desktop\\University\\CS3004\\Final_Project\\entity\\Player.java",
       "source_location": "L151",
       "id": "player_player_getstress",
-      "community": 4,
+      "community": 3,
       "norm_label": ".getstress()"
     },
     {
