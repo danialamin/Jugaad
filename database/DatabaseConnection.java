@@ -11,17 +11,17 @@ public class DatabaseConnection {
     private static DatabaseConnection instance;
     private Connection connection;
 
-    // Connection parameters (Placeholders)
+    // Connection parameters (Updated for SQL Server Authentication)
     private String url = "jdbc:sqlserver://localhost:1433;databaseName=campusFlexDb;encrypt=true;trustServerCertificate=true;";
-    private String user = "sa"; // Replace with your SQL Server username
-    private String password = "YourPassword123"; // Replace with your SQL Server password
+    private String user = "sa"; 
+    private String password = "YourPassword123"; // CHANGE THIS to the password you set in SSMS
 
     private DatabaseConnection() throws SQLException {
         try {
-            // Load the driver (Optional for newer JDBC)
+            // Load the driver
             Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
             this.connection = DriverManager.getConnection(url, user, password);
-            System.out.println("Connection established successfully.");
+            System.out.println("Connection established successfully using SQL Server Authentication.");
         } catch (ClassNotFoundException e) {
             throw new SQLException("SQL Server Driver not found.", e);
         }

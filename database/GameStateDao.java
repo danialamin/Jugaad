@@ -1,6 +1,6 @@
 package database;
 
-import engine.Player;
+import entity.Player;
 import java.sql.*;
 
 public class GameStateDao {
