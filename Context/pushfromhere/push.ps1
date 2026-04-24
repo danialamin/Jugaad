@@ -48,17 +48,21 @@ if ($user -eq "A" -or $user -eq "a") {
 git config user.name $name
 git config user.email $email
 
-# 4. Check for stuck rebase
-if ((Test-Path -Path ".git\rebase-merge") -or (Test-Path -Path ".git\rebase-apply")) {
+# 4. Check for stuck rebase or merge
+if ((Test-Path -Path ".git\rebase-merge") -or (Test-Path -Path ".git\rebase-apply") -or (Test-Path -Path ".git\MERGE_HEAD")) {
     Write-Host ""
-    Write-Host "================[ WARNING: Stuck in Rebase ]================" -ForegroundColor Yellow
-    Write-Host "You are stuck in a previous merge conflict!" -ForegroundColor Red
-    $abort = Read-Host "Do you want to cancel the old merge and start fresh? (Y/N)"
+    Write-Host "================[ WARNING: Stuck in Previous Merge/Rebase ]================" -ForegroundColor Yellow
+    Write-Host "You are stuck in an unresolved merge conflict from a previous run!" -ForegroundColor Red
+    $abort = Read-Host "Do you want to cancel the old merge/rebase and start fresh? (Y/N)"
     if ($abort -eq "Y" -or $abort -eq "y") {
-        git rebase --abort
-        Write-Host "Old rebase aborted. Proceeding..." -ForegroundColor Green
+        if (Test-Path -Path ".git\MERGE_HEAD") {
+            git merge --abort
+        } else {
+            git rebase --abort
+        }
+        Write-Host "Old state aborted. Proceeding..." -ForegroundColor Green
     } else {
-        Write-Host "Fix: Please resolve your merge conflict in your IDE, then run 'git rebase --continue'." -ForegroundColor Cyan
+        Write-Host "Fix: Please resolve your merge conflict in your IDE, then run 'git commit' or 'git rebase --continue'." -ForegroundColor Cyan
         Exit 1
     }
 }
@@ -82,18 +86,39 @@ if ([string]::IsNullOrWhiteSpace($gitStatus)) {
 }
 
 Write-Host "[3/4] Fetching and integrating teammates' updates..." -ForegroundColor Green
-$pullResult = git pull --rebase origin main 2>&1
+$pullResult = git pull --no-rebase origin main 2>&1
 if ($LASTEXITCODE -ne 0) {
     if ($pullResult -match "resolve" -or $pullResult -match "CONFLICT") {
         Write-Host ""
-        Write-Host "================[ ERROR: Merge Conflict! ]================" -ForegroundColor Red
+        Write-Host "======================[ ERROR: Merge Conflict! ]======================" -ForegroundColor Red
         Write-Host "Wait! Your teammate edited the EXACT SAME lines of code as you did." -ForegroundColor Yellow
-        Write-Host "Git paused the push so you don't accidentally delete their code." -ForegroundColor Yellow
+        Write-Host "Git paused the update so you don't accidentally delete their code." -ForegroundColor Yellow
+        Write-Host "======================================================================" -ForegroundColor Red
         Write-Host ""
-        Write-Host "Fix: Open your IDE, look for the highlighted conflict areas," -ForegroundColor Cyan
-        Write-Host "choose which code to keep, and then manually commit the results." -ForegroundColor Cyan
-        Write-Host "==========================================================" -ForegroundColor Red
-        Exit 1
+        Write-Host "How would you like to handle this?" -ForegroundColor Cyan
+        Write-Host "  1. Abort the update (Keep my local files as they are, don't pull right now)"
+        Write-Host "  2. Accept their changes (Overwrite my conflicting files with their latest updates)"
+        Write-Host "  3. Fix manually in IDE (Advanced)"
+        
+        $choice = Read-Host "Enter your choice (1, 2, or 3)"
+        
+        if ($choice -eq "1") {
+            git merge --abort
+            Write-Host "Update aborted. Your files are back to how they were before the pull." -ForegroundColor Green
+            Exit 1
+        } elseif ($choice -eq "2") {
+            Write-Host "Applying their changes to conflicting files..." -ForegroundColor Cyan
+            git checkout --theirs .
+            git add .
+            git commit -m "Merge teammates updates, accepting incoming changes for conflicts" | Out-Null
+            Write-Host "Conflicts resolved automatically! Proceeding to push..." -ForegroundColor Green
+        } else {
+            Write-Host ""
+            Write-Host "Fix: Open your IDE, look for the highlighted conflict areas," -ForegroundColor Cyan
+            Write-Host "choose which code to keep, and then manually commit the results." -ForegroundColor Cyan
+            Write-Host "After committing, you can run this script again to push." -ForegroundColor Cyan
+            Exit 1
+        }
     } else {
         Write-Host ""
         Write-Host "================[ ERROR: Network/Access Issue ]================" -ForegroundColor Red
