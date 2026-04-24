@@ -1,0 +1,53 @@
+Inside references/jokes: 
+
+types of zombies:  
+
+The GPA 4.0 Silent Guy 
+
+The Always-Repeating Senior 
+
+The Competitive Programming Addict 
+
+The Hostel Zombie 
+
+The Guy Who takes Part in Events but Never Studies 
+
+The TA Who cuts marks 
+
+The Gaming guy 
+
+The Chronically Online guy 
+
+The non-chalant guy 
+
+Using flex website always leads to crashes. 
+
+If players try to go to the rooftop, deny entry and display: “This is the famous top floor. FASTians meme about it, but real heroes breathe, pray, drink chai, and continue the semester” 
+
+ 
+
+ 
+
+About the game: 
+
+during normal mode, we have stats like: 
+
+gpa(increased by studying and group study with friends, higher gpa = easier questions) 
+
+energy(increased more by natural food and less by processed food like burger or coke, decreased by watching mobile for doom-scrolling or opening flex because it’s down, increased by watching mobile for purposeful use) 
+
+stress(directly proportional to the time he studies and all-nighters, and cheating in quiz also increase it, stress decreased by socialisation, going to mosque, increased by watching mobile for doom-scrolling or opening flex because it’s down) 
+
+Karma (cheating in quiz/skipping classes decrease it, going to mosque and helping classfellow increase it, karma can be used in zombie mode to get past some zombies) 
+
+gpa stat in zombie mode: higher gpa = easier questions 
+
+If player does something good during normal mode then it will have direct consequence during zombie mode, for eg  
+
+helping a classmate/socialising with him/group study with him/eating food with them during normal mode will lead to that classmate not haunting/forgiving you in zombie mode 
+
+cheating in quiz/skipping classes of a subject during normal mode would lead to tougher questions in that subject in zombie mode. 
+
+Story: 
+
+The goal of this game is for people to have an understanding of the “Fast experience”. You are the master of your own life in the campus, doing different activities from taking parts in events, studying, socialising. Each activity is a trade-off for getting certain stats. This game will teach you the art of balancing your life and teach you the what you do is what you get principle as each action in the normal mode has a consequence in the zombie mode. 
