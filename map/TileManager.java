@@ -11,10 +11,11 @@ public class TileManager {
     GamePanel gp;
     public Tile[] tile;
     public int mapTileNum[][];
+    public BufferedImage cafeCounterWide;
 
     public TileManager(GamePanel gp) {
         this.gp = gp;
-        tile = new Tile[10]; // Can hold up to 10 types of tiles right now
+        tile = new Tile[20]; // Increased capacity
         mapTileNum = new int[gp.maxScreenCol][gp.maxScreenRow];
         getTileImage();
         loadMap();
@@ -42,24 +43,90 @@ public class TileManager {
                     index++;
                 }
             }
+
+            // Load Custom Tiles with Transparency
+            tile[5] = new Tile();
+            tile[5].image = ImageIO.read(new File("assets/cafe floor aquatic.png"));
+
+            tile[6] = new Tile();
+            tile[6].image = ImageIO.read(new File("assets/cafe floor white.png"));
+
+            tile[11] = new Tile();
+            tile[11].image = makeTransparent(ImageIO.read(new File("assets/door.png")), java.awt.Color.BLACK);
+            // Door is NOT solid so player can walk into it to switch zones
+
+            cafeCounterWide = makeTransparent(ImageIO.read(new File("assets/Cafe counter.png")), java.awt.Color.BLACK);
+
+            tile[12] = new Tile();
+            tile[12].image = null; // Don't draw as repeating tile
+            tile[12].collision = true;
+
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
+    public BufferedImage makeTransparent(BufferedImage img, java.awt.Color color) {
+        if (img == null) return null;
+        BufferedImage dimg = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        int targetRGB = color.getRGB();
+        for (int i = 0; i < img.getHeight(); i++) {
+            for (int j = 0; j < img.getWidth(); j++) {
+                int pixelRGB = img.getRGB(j, i);
+                if (pixelRGB == targetRGB) {
+                    dimg.setRGB(j, i, 0x00000000);
+                } else {
+                    dimg.setRGB(j, i, pixelRGB);
+                }
+            }
+        }
+        return dimg;
+    }
+
     public void loadMap() {
-        // Just fill the screen with a mixture of tile 1 (Grass) for now to have a basic map
+        if (gp.currentZone == ZoneType.CAFETERIA) {
+            loadCafeteriaMap();
+        } else if (gp.currentZone == ZoneType.GROUND) {
+            loadGroundMap();
+        }
+    }
+
+    private void loadCafeteriaMap() {
+        int floorTileOrange = 5;
+        int floorTileWhite = 6;
+        int counterTile = 12;
+        int doorTile = 11;
+
+        // Fill with checkerboard floor
         for (int col = 0; col < gp.maxScreenCol; col++) {
             for (int row = 0; row < gp.maxScreenRow; row++) {
-                // E.g., index 1 is usually middle-top if it goes row by row (0-based)
-                // We'll just randomly scatter some for variety, mostly Grass (1) and some Sand (3)
-                int r = (int)(Math.random() * 10);
-                if (r < 8) {
-                    mapTileNum[col][row] = 1; // 1st row middle -> Grass
-                } else if (r == 8) {
-                    mapTileNum[col][row] = 3; // 2nd row left -> Sand
+                if ((col + row) % 2 == 0) {
+                    mapTileNum[col][row] = floorTileOrange;
                 } else {
-                    mapTileNum[col][row] = 0; // 1st row left -> Stone
+                    mapTileNum[col][row] = floorTileWhite;
+                }
+            }
+        }
+
+        // Place Counter at the top
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            mapTileNum[col][0] = counterTile;
+        }
+
+        // Place Single Door at bottom center
+        mapTileNum[gp.maxScreenCol/2][gp.maxScreenRow - 1] = doorTile;
+    }
+
+    private void loadGroundMap() {
+        int grassTile = 1;
+        int doorTile = 11;
+
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                if (row == 0 && (col == gp.maxScreenCol/2)) {
+                    mapTileNum[col][row] = doorTile;
+                } else {
+                    mapTileNum[col][row] = grassTile;
                 }
             }
         }
@@ -88,6 +155,11 @@ public class TileManager {
                 row++;
                 y += gp.tileSize;
             }
+        }
+
+        // Draw single wide cafe counter over the top row
+        if (gp.currentZone == ZoneType.CAFETERIA && cafeCounterWide != null) {
+            g2.drawImage(cafeCounterWide, 0, 0, gp.screenWidth, gp.tileSize, null);
         }
     }
 }
