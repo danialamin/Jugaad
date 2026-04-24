@@ -7,6 +7,7 @@ import java.awt.Graphics2D;
 import javax.swing.JPanel;
 import entity.Player;
 import map.TileManager;
+import ui.UI;
 
 public class GamePanel extends JPanel implements Runnable {
 
@@ -25,6 +26,7 @@ public class GamePanel extends JPanel implements Runnable {
     public KeyHandler keyH = new KeyHandler();
     Thread gameThread;
     public Player player = new Player(this, keyH);
+    public UI ui = new UI(this);
 
     public GamePanel() {
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
@@ -70,6 +72,7 @@ public class GamePanel extends JPanel implements Runnable {
         
         tileM.draw(g2);
         player.draw(g2);
+        ui.draw(g2);
         
         g2.dispose();
     }

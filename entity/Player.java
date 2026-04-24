@@ -22,6 +22,8 @@ public class Player {
     private int energy;
     private int stress;
     private int karma;
+    private int hp;
+    private int maxHp;
 
     public BufferedImage[][] walkFrames;
     public String direction;
@@ -53,6 +55,12 @@ public class Player {
         yLocation = 100;
         speed = 4;
         direction = "down";
+        maxHp = 100;
+        hp = maxHp;
+        energy = 100;
+        stress = 0;
+        gpa = 4.0;
+        karma = 50;
     }
 
     public void getPlayerImage() {
@@ -156,5 +164,9 @@ public class Player {
     public void setXLocation(int xLocation) { this.xLocation = xLocation; }
     public int getYLocation() { return yLocation; }
     public void setYLocation(int yLocation) { this.yLocation = yLocation; }
-
+    
+    public int getHp() { return hp; }
+    public void setHp(int hp) { this.hp = hp; }
+    public int getMaxHp() { return maxHp; }
+    public void setMaxHp(int maxHp) { this.maxHp = maxHp; }
 }
