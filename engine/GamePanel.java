@@ -25,9 +25,9 @@ public class GamePanel extends JPanel implements Runnable {
 
     int FPS = 60;
 
+    public ZoneType currentZone = ZoneType.LIBRARY;
     TileManager tileM = new TileManager(this);
     public KeyHandler keyH = new KeyHandler();
-    public ZoneType currentZone = ZoneType.CAFETERIA;
     public CollisionChecker cChecker = new CollisionChecker(this);
     public ObjectManager objM = new ObjectManager(this);
     Thread gameThread;
@@ -36,8 +36,11 @@ public class GamePanel extends JPanel implements Runnable {
 
     // GAME STATE
     public int gameState;
+    public final int titleState = 0;
     public final int playState = 1;
     public final int cafeMenuState = 2;
+    public final int pauseState = 3;
+    public final int optionsState = 4;
 
     public GamePanel() {
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
@@ -49,9 +52,11 @@ public class GamePanel extends JPanel implements Runnable {
         // Initial zone setup
         if (currentZone == ZoneType.CAFETERIA) {
             objM.loadCafeteriaObjects();
+        } else if (currentZone == ZoneType.LIBRARY) {
+            objM.loadLibraryObjects();
         }
 
-        gameState = playState;
+        gameState = titleState;
     }
 
     public void startGameThread() {
@@ -80,10 +85,21 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     public void update() {
-        if (gameState == playState) {
-            player.update();
-            checkZoneTransitions();
-            checkInteractions();
+        if (gameState == titleState) {
+            ui.updateTitleScreen();
+        } else if (gameState == playState) {
+            if (keyH.escapePressed) {
+                gameState = pauseState;
+                keyH.escapePressed = false;
+            } else {
+                player.update();
+                checkZoneTransitions();
+                checkInteractions();
+            }
+        } else if (gameState == pauseState) {
+            ui.updatePauseScreen();
+        } else if (gameState == optionsState) {
+            ui.updateOptionsScreen();
         } else if (gameState == cafeMenuState) {
             // Menu updates handled in UI or here
             ui.updateCafeMenu();
@@ -96,7 +112,7 @@ public class GamePanel extends JPanel implements Runnable {
         int playerRow = (player.yLocation + tileSize / 2) / tileSize;
 
         // Cafeteria to Ground (Bottom Door)
-        if (currentZone == ZoneType.CAFETERIA && playerRow == maxScreenRow - 1 && playerCol == doorCol) {
+        if (currentZone == ZoneType.CAFETERIA && playerRow >= maxScreenRow - 1 && playerCol == doorCol) {
             currentZone = ZoneType.GROUND;
             tileM.loadMap();
             objM.clearObjects();
@@ -104,12 +120,28 @@ public class GamePanel extends JPanel implements Runnable {
             player.xLocation = doorCol * tileSize;
         }
         // Ground to Cafeteria (Top Door)
-        else if (currentZone == ZoneType.GROUND && playerRow == 0 && playerCol == doorCol) {
+        else if (currentZone == ZoneType.GROUND && playerRow <= 0 && playerCol == doorCol) {
             currentZone = ZoneType.CAFETERIA;
             tileM.loadMap();
             objM.loadCafeteriaObjects();
             player.yLocation = (maxScreenRow - 2) * tileSize;
             player.xLocation = doorCol * tileSize;
+        }
+        // Ground to Library (Right Edge)
+        else if (currentZone == ZoneType.GROUND && playerCol >= maxScreenCol - 1) {
+            currentZone = ZoneType.LIBRARY;
+            tileM.loadMap();
+            objM.loadLibraryObjects();
+            player.yLocation = (maxScreenRow - 2) * tileSize; // Spawns near bottom
+            player.xLocation = doorCol * tileSize;
+        }
+        // Library to Ground (Bottom Edge)
+        else if (currentZone == ZoneType.LIBRARY && playerRow >= maxScreenRow - 1) {
+            currentZone = ZoneType.GROUND;
+            tileM.loadMap();
+            objM.clearObjects();
+            player.yLocation = (maxScreenRow / 2) * tileSize;
+            player.xLocation = (maxScreenCol - 2) * tileSize; // Back at right edge
         }
     }
 
@@ -131,10 +163,14 @@ public class GamePanel extends JPanel implements Runnable {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D)g;
         
-        tileM.draw(g2);
-        objM.draw(g2);
-        player.draw(g2);
-        ui.draw(g2);
+        if (gameState == titleState) {
+            ui.draw(g2);
+        } else {
+            tileM.draw(g2);
+            objM.draw(g2);
+            player.draw(g2);
+            ui.draw(g2);
+        }
         
         g2.dispose();
     }

@@ -15,7 +15,7 @@ public class TileManager {
 
     public TileManager(GamePanel gp) {
         this.gp = gp;
-        tile = new Tile[20]; // Increased capacity
+        tile = new Tile[30]; // Increased capacity for Library tiles
         mapTileNum = new int[gp.maxScreenCol][gp.maxScreenRow];
         getTileImage();
         loadMap();
@@ -61,6 +61,28 @@ public class TileManager {
             tile[12].image = null; // Don't draw as repeating tile
             tile[12].collision = true;
 
+            // Load Library Sprite Sheet
+            File libFile = new File("assets/LibraryCompeteSet.png");
+            if (libFile.exists()) {
+                BufferedImage libSheet = ImageIO.read(libFile);
+                
+                // 13: Library Floor (Dark Wood Floor) 
+                tile[13] = new Tile();
+                try { tile[13].image = ImageIO.read(new File("assets/dark_wood_floor2.png")); } catch (Exception e) { e.printStackTrace(); }
+
+                // 14: Library Wall (Blue Wallpaper) 
+                tile[14] = new Tile();
+                try { tile[14].image = libSheet.getSubimage(960, 50, 32, 32); } catch (Exception e) {}
+                tile[14].collision = true;
+
+                // 15: Library Carpet (Red Runner)
+                tile[15] = new Tile();
+                try { tile[15].image = libSheet.getSubimage(765, 80, 32, 32); } catch (Exception e) {}
+                
+            } else {
+                System.out.println("Warning: assets/LibraryCompeteSet.png not found.");
+            }
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -88,6 +110,8 @@ public class TileManager {
             loadCafeteriaMap();
         } else if (gp.currentZone == ZoneType.GROUND) {
             loadGroundMap();
+        } else if (gp.currentZone == ZoneType.LIBRARY) {
+            loadLibraryMap();
         }
     }
 
@@ -125,8 +149,46 @@ public class TileManager {
             for (int row = 0; row < gp.maxScreenRow; row++) {
                 if (row == 0 && (col == gp.maxScreenCol/2)) {
                     mapTileNum[col][row] = doorTile;
+                } else if (col == gp.maxScreenCol - 1) {
+                    mapTileNum[col][row] = doorTile; // Door to Library on the right edge
                 } else {
                     mapTileNum[col][row] = grassTile;
+                }
+            }
+        }
+    }
+
+    private void loadLibraryMap() {
+        int floorTile = 13;
+        int wallTile = 14;
+        int carpetTile = 15;
+        int doorTile = 11;
+
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                // Top row is wall
+                if (row == 0) {
+                    mapTileNum[col][row] = wallTile;
+                } 
+                // Bottom row is wall, with a door in the middle
+                else if (row == gp.maxScreenRow - 1) {
+                    if (col == gp.maxScreenCol / 2) {
+                        mapTileNum[col][row] = doorTile; // Exit to Ground
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } 
+                // Left and right edges are walls
+                else if (col == 0 || col == gp.maxScreenCol - 1) {
+                    mapTileNum[col][row] = wallTile;
+                } 
+                // Middle column used to be carpet runner, now it's just floor
+                else if (col >= (gp.maxScreenCol / 2) - 1 && col <= (gp.maxScreenCol / 2) + 1) {
+                    mapTileNum[col][row] = floorTile;
+                }
+                // Everything else is wooden floor
+                else {
+                    mapTileNum[col][row] = floorTile;
                 }
             }
         }

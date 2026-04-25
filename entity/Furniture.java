@@ -11,15 +11,19 @@ public class Furniture {
     public Rectangle solidArea;
 
     public Furniture(int x, int y, BufferedImage image) {
+        this(x, y, image, 1.0);
+    }
+
+    public Furniture(int x, int y, BufferedImage image, double scale) {
         this.x = x;
         this.y = y;
         this.image = image;
         if (image != null) {
-            this.width = image.getWidth();
-            this.height = image.getHeight();
+            this.width = (int)(image.getWidth() * scale);
+            this.height = (int)(image.getHeight() * scale);
         } else {
-            this.width = 32;
-            this.height = 32;
+            this.width = (int)(32 * scale);
+            this.height = (int)(32 * scale);
         }
         
         // Solid area for collision (matches the image size)

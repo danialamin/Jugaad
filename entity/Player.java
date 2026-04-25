@@ -53,8 +53,8 @@ public class Player {
     }
 
     public void setDefaultValues() {
-        xLocation = 50;
-        yLocation = 64; // Moved up to avoid spawning on tables
+        xLocation = 384; // Center of screen
+        yLocation = 350; // Safely below the bookshelves
         speed = 4;
         direction = "down";
         maxHp = 100;
@@ -172,7 +172,10 @@ public class Player {
         }
 
         if (image != null) {
-            g2.drawImage(image, xLocation, yLocation, gp.tileSize, gp.tileSize, null);
+            int drawSize = (int)(gp.tileSize * 3.0);
+            int drawX = xLocation - (drawSize - gp.tileSize) / 2;
+            int drawY = yLocation - (drawSize - gp.tileSize); // anchor at feet
+            g2.drawImage(image, drawX, drawY, drawSize, drawSize, null);
         } else {
             // Placeholder rect if image failed to load
             g2.setColor(java.awt.Color.magenta);
