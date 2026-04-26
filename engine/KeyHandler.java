@@ -6,6 +6,7 @@ import java.awt.event.KeyListener;
 public class KeyHandler implements KeyListener {
 
     public boolean upPressed, downPressed, leftPressed, rightPressed, ePressed, enterPressed, escapePressed;
+    public boolean mPressed, num1Pressed, num2Pressed, num3Pressed;
 
     @Override
     public void keyTyped(KeyEvent e) {
@@ -37,6 +38,18 @@ public class KeyHandler implements KeyListener {
         if(code == KeyEvent.VK_ESCAPE) {
             escapePressed = true;
         }
+        if(code == KeyEvent.VK_M) {
+            mPressed = true;
+        }
+        if(code == KeyEvent.VK_1) {
+            num1Pressed = true;
+        }
+        if(code == KeyEvent.VK_2) {
+            num2Pressed = true;
+        }
+        if(code == KeyEvent.VK_3) {
+            num3Pressed = true;
+        }
     }
 
     @Override
@@ -63,6 +76,18 @@ public class KeyHandler implements KeyListener {
         }
         if(code == KeyEvent.VK_ESCAPE) {
             escapePressed = false;
+        }
+        if(code == KeyEvent.VK_M) {
+            mPressed = false;
+        }
+        if(code == KeyEvent.VK_1) {
+            num1Pressed = false;
+        }
+        if(code == KeyEvent.VK_2) {
+            num2Pressed = false;
+        }
+        if(code == KeyEvent.VK_3) {
+            num3Pressed = false;
         }
     }
 }

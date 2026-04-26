@@ -91,6 +91,11 @@ public class UI {
             return;
         }
 
+        // Draw Live HUD
+        if (gp.gameState == gp.playState) {
+            drawLiveHUD(g2);
+        }
+
         // Pushing further right to minimize empty space
         int x = gp.screenWidth - 110; 
         int y = 15;
@@ -113,6 +118,8 @@ public class UI {
             drawPauseScreen(g2);
         } else if (gp.gameState == gp.optionsState) {
             drawOptionsScreen(g2);
+        } else if (gp.gameState == gp.mapState) {
+            drawMapScreen(g2);
         }
     }
 
@@ -508,5 +515,83 @@ public class UI {
         y += gp.tileSize * 2;
         g2.drawString(text, x, y);
         if (optionsCommandNum == 2) g2.drawString(">", x - gp.tileSize, y);
+    }
+
+    private void drawMapScreen(Graphics2D g2) {
+        g2.setColor(new Color(0, 0, 0, 210));
+        g2.fillRect(0, 0, gp.screenWidth, gp.screenHeight);
+
+        g2.setFont(titleFont);
+        g2.setColor(Color.white);
+        String text = "FAST TRAVEL";
+        int x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        int y = gp.tileSize * 3;
+        g2.drawString(text, x, y);
+
+        g2.setFont(titleOptionFont);
+
+        // Check if player is in C-Block (Ground, Cafe, Prayer, Corridor, Classrooms, AILab)
+        boolean inCBlock = (gp.currentZone == map.ZoneType.GROUND || 
+                            gp.currentZone == map.ZoneType.CAFETERIA || 
+                            gp.currentZone == map.ZoneType.PRAYER_AREA ||
+                            gp.currentZone == map.ZoneType.CORRIDOR ||
+                            gp.currentZone == map.ZoneType.CLASSROOM ||
+                            gp.currentZone == map.ZoneType.AI_LAB);
+
+        if (inCBlock) {
+            text = "[1] C-Block (Ground Floor)";
+            x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+            y += gp.tileSize * 3;
+            g2.drawString(text, x, y);
+
+            text = "[2] C-Block (First Floor)";
+            x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+            y += gp.tileSize * 2;
+            g2.drawString(text, x, y);
+            
+            g2.setFont(arial_20);
+            text = "Press 1 or 2 to warp floors. ESC to cancel.";
+            x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+            y += gp.tileSize * 3;
+            g2.drawString(text, x, y);
+        } else {
+            g2.setFont(arial_20);
+            text = "Fast Travel is unavailable in this Block.";
+            x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+            y += gp.tileSize * 3;
+            g2.drawString(text, x, y);
+            
+            text = "Press ESC to cancel.";
+            x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+            y += gp.tileSize * 2;
+            g2.drawString(text, x, y);
+        }
+    }
+
+    private void drawLiveHUD(Graphics2D g2) {
+        int x = 20;
+        int y = 20;
+        int width = 300;
+        int height = 80;
+
+        g2.setColor(new Color(0, 0, 0, 150));
+        g2.fillRoundRect(x, y, width, height, 10, 10);
+        g2.setColor(Color.white);
+        g2.setStroke(new java.awt.BasicStroke(2));
+        g2.drawRoundRect(x, y, width, height, 10, 10);
+
+        g2.setFont(arial_20);
+        map.Zone currentZone = gp.campusMap.getZone(gp.currentZone);
+        String zoneName = (currentZone != null) ? currentZone.getName() : gp.currentZone.toString();
+        g2.drawString("Location: " + zoneName, x + 15, y + 30);
+
+        g2.setFont(arial_14);
+        if (!gp.nearbyDoorName.isEmpty()) {
+            g2.setColor(new Color(0, 255, 127)); // Green
+            g2.drawString("Door nearby: Leads to " + gp.nearbyDoorName, x + 15, y + 60);
+        } else {
+            g2.setColor(Color.lightGray);
+            g2.drawString("Explore to find doors...", x + 15, y + 60);
+        }
     }
 }

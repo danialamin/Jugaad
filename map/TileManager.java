@@ -83,6 +83,10 @@ public class TileManager {
                 System.out.println("Warning: assets/LibraryCompeteSet.png not found.");
             }
 
+            // Load Prayer Area Floor
+            tile[16] = new Tile();
+            try { tile[16].image = ImageIO.read(new File("assets/PrayerRoom/floor.jpg")); } catch (Exception e) {}
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -112,6 +116,18 @@ public class TileManager {
             loadGroundMap();
         } else if (gp.currentZone == ZoneType.LIBRARY) {
             loadLibraryMap();
+        } else if (gp.currentZone == ZoneType.CORRIDOR) {
+            loadCorridorMap();
+        } else if (gp.currentZone == ZoneType.CLASSROOM) {
+            loadClassroomMap();
+        } else if (gp.currentZone == ZoneType.PRAYER_AREA) {
+            loadPrayerAreaMap();
+        } else if (gp.currentZone == ZoneType.SERVER_ROOM) {
+            loadServerRoomMap();
+        } else if (gp.currentZone == ZoneType.AI_LAB) {
+            loadAILabMap();
+        } else if (gp.currentZone == ZoneType.WALKWAY) {
+            loadWalkwayMap();
         }
     }
 
@@ -147,11 +163,15 @@ public class TileManager {
 
         for (int col = 0; col < gp.maxScreenCol; col++) {
             for (int row = 0; row < gp.maxScreenRow; row++) {
-                if (row == 0 && (col == gp.maxScreenCol/2)) {
+                // Top row: door to Cafe (center) and door to Prayer Area (center+5)
+                if (row == 0 && (col == gp.maxScreenCol / 2 || col == gp.maxScreenCol / 2 + 5)) {
                     mapTileNum[col][row] = doorTile;
-                } else if (col == gp.maxScreenCol - 1) {
-                    mapTileNum[col][row] = doorTile; // Door to Library on the right edge
-                } else {
+                }
+                // Left edge: door to Walkway at mid-height
+                else if (col == 0 && row == gp.maxScreenRow / 2) {
+                    mapTileNum[col][row] = doorTile;
+                }
+                else {
                     mapTileNum[col][row] = grassTile;
                 }
             }
@@ -161,7 +181,6 @@ public class TileManager {
     private void loadLibraryMap() {
         int floorTile = 13;
         int wallTile = 14;
-        int carpetTile = 15;
         int doorTile = 11;
 
         for (int col = 0; col < gp.maxScreenCol; col++) {
@@ -169,25 +188,81 @@ public class TileManager {
                 // Top row is wall
                 if (row == 0) {
                     mapTileNum[col][row] = wallTile;
-                } 
-                // Bottom row is wall, with a door in the middle
+                }
+                // Bottom row: door to Walkway at center
                 else if (row == gp.maxScreenRow - 1) {
                     if (col == gp.maxScreenCol / 2) {
-                        mapTileNum[col][row] = doorTile; // Exit to Ground
+                        mapTileNum[col][row] = doorTile; // Exit to Walkway
                     } else {
                         mapTileNum[col][row] = wallTile;
                     }
-                } 
-                // Left and right edges are walls
-                else if (col == 0 || col == gp.maxScreenCol - 1) {
+                }
+                // Left edge: door to Server Room at mid-height
+                else if (col == 0) {
+                    if (row == gp.maxScreenRow / 2) {
+                        mapTileNum[col][row] = doorTile; // Server Room
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                }
+                // Right edge is wall
+                else if (col == gp.maxScreenCol - 1) {
                     mapTileNum[col][row] = wallTile;
-                } 
-                // Middle column used to be carpet runner, now it's just floor
-                else if (col >= (gp.maxScreenCol / 2) - 1 && col <= (gp.maxScreenCol / 2) + 1) {
-                    mapTileNum[col][row] = floorTile;
                 }
                 // Everything else is wooden floor
                 else {
+                    mapTileNum[col][row] = floorTile;
+                }
+            }
+        }
+    }
+
+    private void loadCorridorMap() {
+        int floorTile = 13; // Dark wood floor 
+        int doorTile = 11;
+        int wallTile = 14;
+
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                if (row == 0 || row == gp.maxScreenRow - 1) {
+                    // Place doors at intervals for classrooms/AI labs
+                    if (col == 4 || col == 10 || col == 16 || col == 20) {
+                        mapTileNum[col][row] = doorTile;
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else if (col == 0) {
+                    // Left edge: door to Walkway at mid-height
+                    if (row == gp.maxScreenRow / 2) {
+                        mapTileNum[col][row] = doorTile; // Stairs to Walkway
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else if (col == gp.maxScreenCol - 1) {
+                    mapTileNum[col][row] = wallTile; // Right wall
+                } else {
+                    mapTileNum[col][row] = floorTile; 
+                }
+            }
+        }
+    }
+
+    private void loadClassroomMap() {
+        int floorTile = 2; // 3rd tile, 1st row from floor.png
+        int doorTile = 11;
+        int wallTile = 14;
+
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                if (row == 0 || col == 0 || col == gp.maxScreenCol - 1) {
+                    mapTileNum[col][row] = wallTile;
+                } else if (row == gp.maxScreenRow - 1) {
+                    if (col == gp.maxScreenCol / 2) {
+                        mapTileNum[col][row] = doorTile; // Exit to Corridor
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else {
                     mapTileNum[col][row] = floorTile;
                 }
             }
@@ -222,6 +297,93 @@ public class TileManager {
         // Draw single wide cafe counter over the top row
         if (gp.currentZone == ZoneType.CAFETERIA && cafeCounterWide != null) {
             g2.drawImage(cafeCounterWide, 0, 0, gp.screenWidth, gp.tileSize, null);
+        }
+    }
+
+    private void loadPrayerAreaMap() {
+        int floorTile = 16;
+        int wallTile = 14;
+        int doorTile = 11;
+        
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                if (row == 0 || col == 0 || col == gp.maxScreenCol - 1) {
+                    mapTileNum[col][row] = wallTile;
+                } else if (row == gp.maxScreenRow - 1) {
+                    if (col == gp.maxScreenCol / 2) {
+                        mapTileNum[col][row] = doorTile; 
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else {
+                    mapTileNum[col][row] = floorTile;
+                }
+            }
+        }
+    }
+
+    private void loadServerRoomMap() {
+        int floorTile = 2; // Classroom floor
+        int wallTile = 14;
+        int doorTile = 11;
+        
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                if (row == 0 || row == gp.maxScreenRow - 1 || col == 0 || col == gp.maxScreenCol - 1) {
+                    if (col == gp.maxScreenCol - 1 && row == gp.maxScreenRow / 2) {
+                        mapTileNum[col][row] = doorTile; // Door to Library (right wall)
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else {
+                    mapTileNum[col][row] = floorTile;
+                }
+            }
+        }
+    }
+
+    private void loadAILabMap() {
+        int floorTile = 2; // Classroom floor
+        int wallTile = 14;
+        int doorTile = 11;
+
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                if (row == 0 || col == 0 || col == gp.maxScreenCol - 1) {
+                    mapTileNum[col][row] = wallTile;
+                } else if (row == gp.maxScreenRow - 1) {
+                    if (col == gp.maxScreenCol / 2) {
+                        mapTileNum[col][row] = doorTile; // Exit to Corridor
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else {
+                    mapTileNum[col][row] = floorTile;
+                }
+            }
+        }
+    }
+
+    private void loadWalkwayMap() {
+        int floorTile = 13; // Dark wood floor / Dark tile theme
+        int wallTile = 14;
+        int doorTile = 11;
+
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                if (row == 0 || row == gp.maxScreenRow - 1 || col == 0 || col == gp.maxScreenCol - 1) {
+                    // Doors on Top, Bottom, and Right
+                    if ((col == gp.maxScreenCol / 2 && row == 0) || 
+                        (col == gp.maxScreenCol / 2 && row == gp.maxScreenRow - 1) || 
+                        (col == gp.maxScreenCol - 1 && row == gp.maxScreenRow / 2)) {
+                        mapTileNum[col][row] = doorTile;
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else {
+                    mapTileNum[col][row] = floorTile;
+                }
+            }
         }
     }
 }

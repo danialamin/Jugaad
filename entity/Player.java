@@ -172,7 +172,7 @@ public class Player {
         }
 
         if (image != null) {
-            int drawSize = (int)(gp.tileSize * 3.0);
+            int drawSize = (int)(gp.tileSize * 2.0);
             int drawX = xLocation - (drawSize - gp.tileSize) / 2;
             int drawY = yLocation - (drawSize - gp.tileSize); // anchor at feet
             g2.drawImage(image, drawX, drawY, drawSize, drawSize, null);

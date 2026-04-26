@@ -14,6 +14,15 @@ public class Furniture {
         this(x, y, image, 1.0);
     }
 
+    public Furniture(BufferedImage image, int x, int y, int width, int height) {
+        this.x = x;
+        this.y = y;
+        this.image = image;
+        this.width = width;
+        this.height = height;
+        this.solidArea = new Rectangle(x, y, width, height);
+    }
+
     public Furniture(int x, int y, BufferedImage image, double scale) {
         this.x = x;
         this.y = y;
