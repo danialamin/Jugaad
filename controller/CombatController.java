@@ -1,6 +1,8 @@
 package controller;
 
+import combat.CombatMove;
 import combat.CombatResult;
+import combat.CombatStrategyFactory;
 import entity.Enemy;
 import entity.Player;
 import interfaces.ICombatStrategy;
@@ -18,23 +20,24 @@ public class CombatController {
         this.strategy = s;
     }
 
-    public CombatResult executeCombatMove(combat.CombatMove move) {
-        if (strategy != null && currentEnemy != null && player != null) {
-            // Assume the strategy interprets the move (this is a placeholder implementation)
-            return strategy.execute(player, currentEnemy);
-        }
+    public CombatResult executeCombatMove(CombatMove move) {
+        // Gray-structure placeholder: wire strategy selection and combat flow here.
+        CombatStrategyFactory factory = new CombatStrategyFactory();
+        this.strategy = factory.createStrategy(move.name());
         return null;
     }
 
+    public CombatResult executeCombatMove() {
+        // Backward-compatible overload; prefer executeCombatMove(CombatMove).
+        return executeCombatMove(CombatMove.TERMINATE);
+    }
+
     public void applyResult(CombatResult result) {
-        if (result.isVictory()) {
-            System.out.println("Enemy defeated!");
-        } else {
-            System.out.println("Player was defeated.");
-        }
+        // Gray-structure placeholder: apply HP/karma and state transition effects here.
     }
 
     public boolean isPlayerAlive() {
-        return player.isAlive();
+        // Gray-structure placeholder: defensive checks + player state query.
+        return player != null && player.isAlive();
     }
 }
