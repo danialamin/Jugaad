@@ -45,6 +45,9 @@ public class GamePanel extends JPanel implements Runnable {
     // Live HUD Data
     public String nearbyDoorName = "";
 
+    // SOUND MANAGER
+    public SoundManager soundM = new SoundManager();
+
     // GAME STATE
     public int gameState;
     public final int titleState = 0;
@@ -73,6 +76,9 @@ public class GamePanel extends JPanel implements Runnable {
         } else if (currentZone == ZoneType.LIBRARY) {
             objM.loadLibraryObjects();
         }
+
+        // Play zone BGM Initially 
+        soundM.playZoneMusic(currentZone);
 
         gameState = titleState;
     }
@@ -104,8 +110,12 @@ public class GamePanel extends JPanel implements Runnable {
 
     public void update() {
         if (gameState == titleState) {
+            soundM.playCustomMusic("assets/sound/startMenu.wav");
             gameUI.updateTitleScreen();
         } else if (gameState == playState) {
+            // Restore proper Zone music if coming back from pause/title
+            soundM.playZoneMusic(currentZone);
+
             if (keyH.escapePressed) {
                 gameState = pauseState;
                 keyH.escapePressed = false;
@@ -119,8 +129,10 @@ public class GamePanel extends JPanel implements Runnable {
                 updateLiveLocation();
             }
         } else if (gameState == pauseState) {
+            soundM.playCustomMusic("assets/sound/pauseTheme.wav");
             gameUI.updatePauseScreen();
         } else if (gameState == optionsState) {
+            soundM.playCustomMusic("assets/sound/pauseTheme.wav"); // Keep pause theme rolling in options
             gameUI.updateOptionsScreen();
         } else if (gameState == cafeMenuState) {
             gameUI.updateCafeMenu();
@@ -240,9 +252,13 @@ public class GamePanel extends JPanel implements Runnable {
                         if (currentZone == ZoneType.SERVER_ROOM) objM.loadServerRoomObjects();
                         if (currentZone == ZoneType.AI_LAB) objM.loadAILabObjects();
                         
+                        // >>> START NEW CODE
                         session.getPlayer().xLocation = (int)loc.getTargetSpawnPosition().getX();
                         session.getPlayer().yLocation = (int)loc.getTargetSpawnPosition().getY();
                         session.getPlayer().setCurrentZoneId(currentZone.ordinal());
+                        
+                        // Start New Zone Background Music Undertale-style
+                        soundM.playZoneMusic(currentZone);
                         clearKeys();
                         return; // Transition handled
                     }

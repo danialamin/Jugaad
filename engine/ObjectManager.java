@@ -186,8 +186,8 @@ public class ObjectManager {
                 // Right Chair (Mirrored)
                 furnitureList.add(new Furniture(tableX + table.width + 5, tableY + 2, chairMirrorImg));
                 
-                // Top Chair (50% chance, standard)
-                if (Math.random() > 0.5) {
+                // Top Chair - DE-RANDOMIZED (Checkerboard pattern)
+                if ((row + col) % 2 == 0) {
                     furnitureList.add(new Furniture(tableX + (table.width / 2) - (chairW / 2), tableY - chairH - 5, chairImg));
                 }
             }
@@ -213,14 +213,14 @@ public class ObjectManager {
                     int shelf2Y = by + (int)(68 * scale);
                     int shelf3Y = by + (int)(103 * scale);
                     
-                    // Randomly place books
-                    if (Math.random() > 0.4 && bookStack1Img != null) {
+                    // DE-RANDOMIZED books (Fixed configuration per shelf)
+                    if (bookStack1Img != null && i % 2 == 0) {
                         furnitureList.add(new Furniture(bx + 5, shelf1Y - (int)(48 * scale), bookStack1Img, scale));
                     }
-                    if (Math.random() > 0.3 && bookStack2Img != null) {
+                    if (bookStack2Img != null && i % 3 != 0) {
                         furnitureList.add(new Furniture(bx + 15, shelf2Y - (int)(29 * scale), bookStack2Img, scale));
                     }
-                    if (Math.random() > 0.2 && bookRedImg != null) {
+                    if (bookRedImg != null && (i == 4 || i == 16)) {
                         furnitureList.add(new Furniture(bx + 30, shelf3Y - (int)(24 * scale), bookRedImg, scale));
                         if (bookBlueImg != null) {
                             furnitureList.add(new Furniture(bx + (int)(40 * scale), shelf3Y - (int)(24 * scale), bookBlueImg, scale));
@@ -292,8 +292,8 @@ public class ObjectManager {
                 int deskX = startX + (col * gapX);
                 int deskY = startY + (row * gapY);
                 
-                // Mix empty and full desks
-                BufferedImage deskImg = Math.random() > 0.3 ? studentDeskImg : emptyStudentDeskImg;
+                // DE-RANDOMIZED Mix empty and full desks (Pattern based)
+                BufferedImage deskImg = (row % 2 == 0 || col % 2 == 0) ? studentDeskImg : emptyStudentDeskImg;
                 
                 if (deskImg != null) {
                     double deskScale = 31.5 / deskImg.getWidth(); // Reduced by another 30% (from 45)
@@ -354,7 +354,8 @@ public class ObjectManager {
 
             for (int row = 0; row < 3; row++) {
                 for (int col = 0; col < 4; col++) {
-                    BufferedImage matToUse = (prayerMatPersonImg != null && Math.random() > 0.4) ? prayerMatPersonImg : prayerMatImg;
+                    // DE-RANDOMIZED (Checkerboard)
+                    BufferedImage matToUse = (prayerMatPersonImg != null && (row + col) % 2 != 0) ? prayerMatPersonImg : prayerMatImg;
                     int mx = startX + col * (matW + gapX);
                     int my = startY + row * (matH + gapY);
                     furnitureList.add(new Furniture(matToUse, mx, my, matW, matH));
@@ -391,7 +392,8 @@ public class ObjectManager {
 
             for (int row = 0; row < rows; row++) {
                 for (int col = 0; col < cols; col++) {
-                    BufferedImage deskToUse = (aiDeskPersonImg != null && Math.random() > 0.5) ? aiDeskPersonImg : aiDeskImg;
+                    // DE-RANDOMIZED (Top row full, bottom row alternating)
+                    BufferedImage deskToUse = (aiDeskPersonImg != null && (row == 0 || col % 2 == 0)) ? aiDeskPersonImg : aiDeskImg;
                     int dx = startX + col * (deskW + gapX);
                     int dy = startY + row * (deskH + gapY + ts);
                     furnitureList.add(new Furniture(deskToUse, dx, dy, deskW, deskH));
@@ -399,9 +401,10 @@ public class ObjectManager {
             }
         }
 
-        // Random crap wires scattered (small but visible, avoid door area)
+        // DE-RANDOMIZED crap wires scattered (Fixed positions with a seeded random for consistency)
         if (cableCrapImg != null) {
-            java.util.Random rng = new java.util.Random();
+            // Using a fixed seed so it always generates the exact same positions every time it loads!
+            java.util.Random rng = new java.util.Random(12345);
             for (int i = 0; i < 10; i++) {
                 int cableW = 30;
                 int cableH = 24;
@@ -431,7 +434,8 @@ public class ObjectManager {
 
             for (int row = 0; row < rows; row++) {
                 for (int col = 0; col < cols; col++) {
-                    BufferedImage deskToUse = (aiDeskPersonImg != null && Math.random() > 0.5) ? aiDeskPersonImg : aiDeskImg;
+                    // DE-RANDOMIZED (Checkerboard)
+                    BufferedImage deskToUse = (aiDeskPersonImg != null && (row + col) % 2 == 0) ? aiDeskPersonImg : aiDeskImg;
                     int dx = startX + col * (deskW + gapX);
                     int dy = startY + row * (deskH + gapY + ts);
                     furnitureList.add(new Furniture(deskToUse, dx, dy, deskW, deskH));

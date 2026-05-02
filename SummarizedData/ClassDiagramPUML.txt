@@ -500,6 +500,7 @@ GameStateRepository      ..|>       ISaveStrategy         : " implements >"
 StatModifierImpl         ..|>       IStatModifier         : " implements >"
 KarmaTracker        "1" *-- "0..*"  KarmaEvent            : " logs >"
 EndingResolver           ..>        KarmaTracker          : " analyzes >"
+GamePanel           "1" *-- "1"     SoundManager          : " utilizes >"
 
 ' ═══════════════════════════════════════════════════
 '  RELATIONSHIPS — BAND 2

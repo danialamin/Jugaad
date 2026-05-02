@@ -6,6 +6,7 @@ participant ":GameMode" as gameMode
 participant ":Player" as playerEntity
 participant ":CampusMap" as campusMap
 participant ":Zone" as zone
+participant ":SoundManager" as soundManager
 
 [-> gameSession: handleSystemEvent("exploreCampus")
 activate gameSession
@@ -19,45 +20,29 @@ deactivate playerEntity
 
 gameMode -> campusMap: getZone(player.getCurrentZoneId())
 activate campusMap
-campusMap --> gameMode: currentZone
+campusMap --> gameMode: currentZoneRef
 deactivate campusMap
 
-[-> gameSession: handleSystemEvent("reachZoneBoundary")
-gameSession -> gameMode: onPlayerMove(boundaryX, boundaryY, session)
-
-gameMode -> campusMap: isRouteBlocked(fromZoneId, toZoneId)
-activate campusMap
-campusMap -> zone: isBlocked()
-activate zone
-zone --> campusMap: blockedStatus
-deactivate zone
-campusMap --> gameMode: routeBlocked
-deactivate campusMap
-
-alt Zombie Mode AND route BLOCKED
-    gameMode -> campusMap: getZone(toZoneId)
-    activate campusMap
-    campusMap -> zone: getAlternateZone()
+alt Interaction overlaps Zone Boundary
+    gameMode -> zone: resolveBoundaryTransition()
     activate zone
-    zone --> campusMap: alternateZoneRef
+    zone --> gameMode: nextZoneRef
     deactivate zone
-    campusMap --> gameMode: alternateZone
-    deactivate campusMap
     
-else Route is OPEN
-    gameMode -> campusMap: getZone(toZoneId)
-    activate campusMap
-    campusMap --> gameMode: nextZone
-    deactivate campusMap
+    gameMode -> gameSession: updateZone(nextZoneRef)
     
-    alt Zone loads successfully
-        gameSession -> playerEntity: setCurrentZoneId(toZoneId)
-        activate playerEntity
-        playerEntity --> gameSession: zoneUpdated
-        deactivate playerEntity
-    end
+    gameSession -> soundManager: playZoneMusic(nextZoneRef.getZoneType())
+    activate soundManager
+    soundManager -> soundManager: stopMusic()
+    soundManager -> soundManager: load AudioStream
+    soundManager --> gameSession: musicPlaying
+    deactivate soundManager
+    
+    gameMode --> gameSession: transitionComplete
 end
 
+gameSession --> [: renderUpdatedMapAndMusic()
 deactivate gameMode
 deactivate gameSession
+
 @enduml
