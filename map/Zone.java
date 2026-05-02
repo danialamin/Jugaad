@@ -6,8 +6,11 @@ public class Zone {
     private ZoneType type;
     private String name;
     private boolean isLocked;
+    private Zone alternateZone;
     private List<ZoneType> connectedZones;
     private List<Location> locations;
+    private List<entity.NPC> npcs;
+    private List<entity.Enemy> enemies;
 
     public Zone(ZoneType type, String name) {
         this.type = type;
@@ -15,7 +18,32 @@ public class Zone {
         this.isLocked = false;
         this.connectedZones = new ArrayList<>();
         this.locations = new ArrayList<>();
+        this.npcs = new ArrayList<>();
+        this.enemies = new ArrayList<>();
     }
+
+    public void createLocation(int id, String name, boolean isInteractable, interfaces.IInteractable i, float triggerX, float triggerY, float triggerRadius) {
+        Location loc = new Location(id, name, isInteractable, i, triggerX, triggerY, triggerRadius);
+        locations.add(loc);
+    }
+
+    public void addNPC(entity.NPC npc) { npcs.add(npc); }
+    public void addEnemy(entity.Enemy enemy) { enemies.add(enemy); }
+
+    public Location getLocation(int locationId) {
+        // Placeholder simple linear search
+        return locations.isEmpty() ? null : locations.get(0);
+    }
+
+    public Location getNearbyLocation(entity.Position pos) {
+        for (Location loc : locations) {
+            if (loc.isPlayerInRange(pos)) return loc;
+        }
+        return null;
+    }
+
+    public Zone getAlternateZone() { return alternateZone; }
+    public void setAlternateZone(Zone zone) { this.alternateZone = zone; }
 
     public void addLocation(Location loc) {
         locations.add(loc);

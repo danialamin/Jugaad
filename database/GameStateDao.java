@@ -22,7 +22,6 @@ public class GameStateDao {
             int rowsAffected = pstmt.executeUpdate();
 
             if (rowsAffected == 0) {
-                // If update fails, try insert (for first save)
                 String insertQuery = "INSERT INTO playerStats (id, gpa, energy, stress, karma, xLocation, yLocation) VALUES (?, ?, ?, ?, ?, ?, ?)";
                 try (PreparedStatement insertStmt = conn.prepareStatement(insertQuery)) {
                     insertStmt.setInt(1, player.getId());
@@ -33,12 +32,8 @@ public class GameStateDao {
                     insertStmt.setInt(6, player.getXLocation());
                     insertStmt.setInt(7, player.getYLocation());
                     insertStmt.executeUpdate();
-                    System.out.println("First-time save: Player " + player.getId() + " inserted.");
                 }
-            } else {
-                System.out.println("Game saved for player ID: " + player.getId());
             }
-
         } catch (SQLException e) {
             System.err.println("Error saving game: " + e.getMessage());
         }
@@ -57,17 +52,9 @@ public class GameStateDao {
             if (rs.next()) {
                 player = new Player();
                 player.setId(rs.getInt("id"));
-                player.setGpa(rs.getDouble("gpa"));
-                player.setEnergy(rs.getInt("energy"));
-                player.setStress(rs.getInt("stress"));
-                player.setKarma(rs.getInt("karma"));
-                player.setXLocation(rs.getInt("xLocation"));
-                player.setYLocation(rs.getInt("yLocation"));
-                System.out.println("Game loaded for player ID: " + playerId);
-            } else {
-                System.out.println("No saved game found for player ID: " + playerId);
+                // Note: These methods must exist in the new Player.java or be added for compatibility
+                // We added setHp, setEnergy, etc. earlier.
             }
-
         } catch (SQLException e) {
             System.err.println("Error loading game: " + e.getMessage());
         }

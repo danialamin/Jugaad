@@ -10,20 +10,28 @@ import javax.imageio.ImageIO;
 
 public class Player {
 
-    GamePanel gp;
-    KeyHandler keyH;
+    public GamePanel gp;
+    public KeyHandler keyH;
+
+    public void setEngineComponents(GamePanel gp, KeyHandler keyH) {
+        this.gp = gp;
+        this.keyH = keyH;
+        getPlayerImage(); // Reload images with new gp tileSize if needed
+    }
 
     public int xLocation, yLocation;
     public int speed;
 
-    // Additional original database traits
-    private int id;
-    private double gpa;
-    private int energy;
-    private int stress;
-    private int karma;
+    private String name = "Student";
     private int hp;
     private int maxHp;
+    private int spawnZoneId;
+    private int currentZoneId;
+    
+    private entity.PlayerStats stats;
+    private inventory.Inventory inventory;
+    private activity.Phone phone;
+    private entity.Position position;
 
     public BufferedImage[][] walkFrames;
     public String direction;
@@ -38,32 +46,66 @@ public class Player {
         getPlayerImage();
     }
 
-    // Keep constructors for Database Compatibility
     public Player() {
+        this.stats = new entity.PlayerStats();
+        this.inventory = new inventory.Inventory();
+        this.phone = new activity.Phone();
+        this.position = new entity.Position(0, 0);
+        setDefaultValues();
     }
 
-    public Player(int id, double gpa, int energy, int stress, int karma, int xLocation, int yLocation) {
-        this.id = id;
-        this.gpa = gpa;
-        this.energy = energy;
-        this.stress = stress;
-        this.karma = karma;
-        this.xLocation = xLocation;
-        this.yLocation = yLocation;
+    public Player(String name, int spawnZoneId) {
+        this();
+        this.name = name;
+        this.spawnZoneId = spawnZoneId;
+        this.currentZoneId = spawnZoneId;
     }
 
     public void setDefaultValues() {
         xLocation = 384; // Center of screen
         yLocation = 350; // Safely below the bookshelves
+        if (this.position == null) this.position = new entity.Position(xLocation, yLocation);
+        else { this.position.setX(xLocation); this.position.setY(yLocation); }
+        
         speed = 4;
         direction = "down";
         maxHp = 100;
         hp = maxHp;
-        energy = 100;
-        stress = 0;
-        gpa = 4.0;
-        karma = 50;
+        
+        if (this.stats == null) this.stats = new entity.PlayerStats();
     }
+
+    public void takeDamage(int amount) {
+        hp -= amount;
+        if (hp < 0) hp = 0;
+    }
+
+    public void heal(int amount) {
+        hp += amount;
+        if (hp > maxHp) hp = maxHp;
+    }
+
+    public boolean isAlive() {
+        return hp > 0;
+    }
+
+    public void respawn() {
+        hp = maxHp;
+        stats.updateEnergy(100);
+    }
+
+    public entity.PlayerStats getStats() { return stats; }
+    public inventory.Inventory getInventory() { return inventory; }
+    public activity.Phone getPhone() { return phone; }
+    public entity.Position getPosition() { return position; }
+    public void moveTo(float x, float y) {
+        this.position.setX(x);
+        this.position.setY(y);
+        this.xLocation = (int) x;
+        this.yLocation = (int) y;
+    }
+    public int getCurrentZoneId() { return currentZoneId; }
+    public void setCurrentZoneId(int zoneId) { this.currentZoneId = zoneId; }
 
     public void getPlayerImage() {
         try {
@@ -127,6 +169,8 @@ public class Player {
                         xLocation += speed;
                         break;
                 }
+                position.setX(xLocation);
+                position.setY(yLocation);
             }
 
             isMoving = true;
@@ -183,76 +227,30 @@ public class Player {
         }
     }
 
-    // -- Database Getters and Setters omitted for brevity but remain functional!
-    public int getId() {
-        return id;
+    // -- Accessors for GamePanel compatibility
+    public int getXLocation() { return xLocation; }
+    public void setXLocation(int xLocation) { 
+        this.xLocation = xLocation; 
+        if (position != null) position.setX(xLocation);
     }
 
-    public void setId(int id) {
-        this.id = id;
+    public int getYLocation() { return yLocation; }
+    public void setYLocation(int yLocation) { 
+        this.yLocation = yLocation; 
+        if (position != null) position.setY(yLocation);
     }
 
-    public double getGpa() {
-        return gpa;
-    }
+    public int getHp() { return hp; }
+    public void setHp(int hp) { this.hp = hp; }
 
-    public void setGpa(double gpa) {
-        this.gpa = gpa;
-    }
-
-    public int getEnergy() {
-        return energy;
-    }
-
-    public void setEnergy(int energy) {
-        this.energy = energy;
-    }
-
-    public int getStress() {
-        return stress;
-    }
-
-    public void setStress(int stress) {
-        this.stress = stress;
-    }
-
-    public int getKarma() {
-        return karma;
-    }
-
-    public void setKarma(int karma) {
-        this.karma = karma;
-    }
-
-    public int getXLocation() {
-        return xLocation;
-    }
-
-    public void setXLocation(int xLocation) {
-        this.xLocation = xLocation;
-    }
-
-    public int getYLocation() {
-        return yLocation;
-    }
-
-    public void setYLocation(int yLocation) {
-        this.yLocation = yLocation;
-    }
-
-    public int getHp() {
-        return hp;
-    }
-
-    public void setHp(int hp) {
-        this.hp = hp;
-    }
-
-    public int getMaxHp() {
-        return maxHp;
-    }
-
-    public void setMaxHp(int maxHp) {
-        this.maxHp = maxHp;
-    }
+    public int getMaxHp() { return maxHp; }
+    public void setMaxHp(int maxHp) { this.maxHp = maxHp; }
+    
+    // Fallback for UI if it still expects getters directly from Player
+    public double getGpa() { return stats != null ? stats.getGPA() : 4.0; }
+    public int getEnergy() { return stats != null ? stats.getEnergy() : 100; }
+    public int getStress() { return stats != null ? stats.getStress() : 0; }
+    public int getKarma() { return stats != null ? stats.getKarma() : 50; }
+    public int getId() { return 1; }
+    public void setId(int id) {}
 }

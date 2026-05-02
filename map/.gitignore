@@ -5,3 +5,5 @@
 /CampusMap.class
 /Location.class
 /Zone.class
+/Obstacle.class
+/SavePoint.class

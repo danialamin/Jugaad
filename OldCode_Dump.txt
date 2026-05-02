@@ -1,0 +1,2676 @@
+=== OldCode\database\DatabaseConnection.java ===
+package database;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+/**
+ * Singleton pattern for Database Connection.
+ */
+public class DatabaseConnection {
+    private static DatabaseConnection instance;
+    private Connection connection;
+
+    // Connection parameters (Updated for SQL Server Authentication)
+    private String url = "jdbc:sqlserver://localhost:1433;databaseName=campusFlexDb;encrypt=true;trustServerCertificate=true;";
+    private String user = "sa"; 
+    private String password = "YourPassword123"; // CHANGE THIS to the password you set in SSMS
+
+    private DatabaseConnection() throws SQLException {
+        try {
+            // Load the driver
+            Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+            this.connection = DriverManager.getConnection(url, user, password);
+            System.out.println("Connection established successfully using SQL Server Authentication.");
+        } catch (ClassNotFoundException e) {
+            throw new SQLException("SQL Server Driver not found.", e);
+        }
+    }
+
+    public static DatabaseConnection getInstance() throws SQLException {
+        if (instance == null) {
+            synchronized (DatabaseConnection.class) {
+                if (instance == null) {
+                    instance = new DatabaseConnection();
+                }
+            }
+        } else if (instance.getConnection().isClosed()) {
+            instance = new DatabaseConnection();
+        }
+        return instance;
+    }
+
+    public Connection getConnection() {
+        return connection;
+    }
+}
+
+=== OldCode\database\GameStateDao.java ===
+package database;
+
+import entity.Player;
+import java.sql.*;
+
+public class GameStateDao {
+
+    public void saveCurrentGame(Player player) {
+        String query = "UPDATE playerStats SET gpa = ?, energy = ?, stress = ?, karma = ?, xLocation = ?, yLocation = ? WHERE id = ?";
+
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setDouble(1, player.getGpa());
+            pstmt.setInt(2, player.getEnergy());
+            pstmt.setInt(3, player.getStress());
+            pstmt.setInt(4, player.getKarma());
+            pstmt.setInt(5, player.getXLocation());
+            pstmt.setInt(6, player.getYLocation());
+            pstmt.setInt(7, player.getId());
+
+            int rowsAffected = pstmt.executeUpdate();
+
+            if (rowsAffected == 0) {
+                // If update fails, try insert (for first save)
+                String insertQuery = "INSERT INTO playerStats (id, gpa, energy, stress, karma, xLocation, yLocation) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                try (PreparedStatement insertStmt = conn.prepareStatement(insertQuery)) {
+                    insertStmt.setInt(1, player.getId());
+                    insertStmt.setDouble(2, player.getGpa());
+                    insertStmt.setInt(3, player.getEnergy());
+                    insertStmt.setInt(4, player.getStress());
+                    insertStmt.setInt(5, player.getKarma());
+                    insertStmt.setInt(6, player.getXLocation());
+                    insertStmt.setInt(7, player.getYLocation());
+                    insertStmt.executeUpdate();
+                    System.out.println("First-time save: Player " + player.getId() + " inserted.");
+                }
+            } else {
+                System.out.println("Game saved for player ID: " + player.getId());
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error saving game: " + e.getMessage());
+        }
+    }
+
+    public Player loadSavedGame(int playerId) {
+        String query = "SELECT * FROM playerStats WHERE id = ?";
+        Player player = null;
+
+        try (Connection conn = DatabaseConnection.getInstance().getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setInt(1, playerId);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                player = new Player();
+                player.setId(rs.getInt("id"));
+                player.setGpa(rs.getDouble("gpa"));
+                player.setEnergy(rs.getInt("energy"));
+                player.setStress(rs.getInt("stress"));
+                player.setKarma(rs.getInt("karma"));
+                player.setXLocation(rs.getInt("xLocation"));
+                player.setYLocation(rs.getInt("yLocation"));
+                System.out.println("Game loaded for player ID: " + playerId);
+            } else {
+                System.out.println("No saved game found for player ID: " + playerId);
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error loading game: " + e.getMessage());
+        }
+        return player;
+    }
+}
+
+=== OldCode\engine\CollisionChecker.java ===
+package engine;
+
+import entity.Player;
+
+public class CollisionChecker {
+
+    GamePanel gp;
+
+    public CollisionChecker(GamePanel gp) {
+        this.gp = gp;
+    }
+
+    public void checkTile(Player player) {
+        // Calculate player's hitbox corners in tile coordinates
+        // Using a slightly smaller hitbox for better gameplay feel
+        int playerLeftWorldX = player.xLocation + 8;
+        int playerRightWorldX = player.xLocation + gp.tileSize - 8;
+        int playerTopWorldY = player.yLocation + 16;
+        int playerBottomWorldY = player.yLocation + gp.tileSize;
+
+        int playerLeftCol = playerLeftWorldX / gp.tileSize;
+        int playerRightCol = playerRightWorldX / gp.tileSize;
+        int playerTopRow = playerTopWorldY / gp.tileSize;
+        int playerBottomRow = playerBottomWorldY / gp.tileSize;
+
+        int tileNum1, tileNum2;
+
+        switch(player.direction) {
+            case "up":
+                playerTopRow = (playerTopWorldY - player.speed) / gp.tileSize;
+                if (playerTopRow < 0) {
+                    player.collisionOn = true;
+                } else {
+                    tileNum1 = gp.tileM.mapTileNum[playerLeftCol][playerTopRow];
+                    tileNum2 = gp.tileM.mapTileNum[playerRightCol][playerTopRow];
+                    if (gp.tileM.tile[tileNum1].collision || gp.tileM.tile[tileNum2].collision) {
+                        player.collisionOn = true;
+                    }
+                }
+                break;
+            case "down":
+                playerBottomRow = (playerBottomWorldY + player.speed) / gp.tileSize;
+                if (playerBottomRow >= gp.maxScreenRow) {
+                    player.collisionOn = true;
+                } else {
+                    tileNum1 = gp.tileM.mapTileNum[playerLeftCol][playerBottomRow];
+                    tileNum2 = gp.tileM.mapTileNum[playerRightCol][playerBottomRow];
+                    if (gp.tileM.tile[tileNum1].collision || gp.tileM.tile[tileNum2].collision) {
+                        player.collisionOn = true;
+                    }
+                }
+                break;
+            case "left":
+                playerLeftCol = (playerLeftWorldX - player.speed) / gp.tileSize;
+                if (playerLeftCol < 0) {
+                    player.collisionOn = true;
+                } else {
+                    tileNum1 = gp.tileM.mapTileNum[playerLeftCol][playerTopRow];
+                    tileNum2 = gp.tileM.mapTileNum[playerLeftCol][playerBottomRow];
+                    if (gp.tileM.tile[tileNum1].collision || gp.tileM.tile[tileNum2].collision) {
+                        player.collisionOn = true;
+                    }
+                }
+                break;
+            case "right":
+                playerRightCol = (playerRightWorldX + player.speed) / gp.tileSize;
+                if (playerRightCol >= gp.maxScreenCol) {
+                    player.collisionOn = true;
+                } else {
+                    tileNum1 = gp.tileM.mapTileNum[playerRightCol][playerTopRow];
+                    tileNum2 = gp.tileM.mapTileNum[playerRightCol][playerBottomRow];
+                    if (gp.tileM.tile[tileNum1].collision || gp.tileM.tile[tileNum2].collision) {
+                        player.collisionOn = true;
+                    }
+                }
+                break;
+        }
+    }
+
+    public void checkObjectCollision(Player player) {
+        if (gp.objM == null) return;
+
+        // Player's predicted solid area
+        int nextX = player.xLocation;
+        int nextY = player.yLocation;
+
+        switch (player.direction) {
+            case "up": nextY -= player.speed; break;
+            case "down": nextY += player.speed; break;
+            case "left": nextX -= player.speed; break;
+            case "right": nextX += player.speed; break;
+        }
+
+        // Using +8 and +16 for a slightly smaller, more forgiving hitbox
+        java.awt.Rectangle playerBox = new java.awt.Rectangle(nextX + 8, nextY + 16, gp.tileSize - 16, gp.tileSize - 16);
+
+        for (entity.Furniture f : gp.objM.furnitureList) {
+            if (playerBox.intersects(f.solidArea)) {
+                player.collisionOn = true;
+                break;
+            }
+        }
+    }
+}
+
+=== OldCode\engine\GameEngine.java ===
+package engine;
+
+import javax.swing.JFrame;
+
+public class GameEngine {
+
+    public static void main(String[] args) {
+        JFrame window = new JFrame();
+        window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        window.setResizable(false);
+        window.setTitle("CampusFlex - 2D Engine");
+
+        GamePanel gamePanel = new GamePanel();
+        window.add(gamePanel);
+        
+        // Causes this Window to be sized to fit the preferred size and layouts of its subcomponents
+        window.pack();
+        
+        window.setLocationRelativeTo(null); // Center on screen
+        window.setVisible(true);
+        
+        // Start the game thread (the game loop)
+        gamePanel.startGameThread();
+    }
+}
+
+=== OldCode\engine\GamePanel.java ===
+package engine;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import javax.swing.JPanel;
+import entity.Player;
+import map.TileManager;
+import map.ZoneType;
+import ui.UI;
+import engine.CollisionChecker;
+import engine.ObjectManager;
+import map.CampusMap;
+import map.Location;
+import map.Zone;
+
+public class GamePanel extends JPanel implements Runnable {
+
+    // SCREEN SETTINGS
+    final int originalTileSize = 16;
+    final int scale = 2;
+    public final int tileSize = originalTileSize * scale; // 32x32
+    public final int maxScreenCol = 24; // 24 * 32 = 768 pixels
+    public final int maxScreenRow = 18; // 18 * 32 = 576 pixels
+    public final int screenWidth = tileSize * maxScreenCol; // 768 pixels
+    public final int screenHeight = tileSize * maxScreenRow; // 576 pixels
+
+    int FPS = 60;
+
+    public ZoneType currentZone = ZoneType.LIBRARY;
+    public int currentClassroomId = -1;
+    public int enteredFromDoorCol = -1;
+    public boolean enteredFromTopDoor = false;
+
+    TileManager tileM = new TileManager(this);
+    public KeyHandler keyH = new KeyHandler();
+    public CollisionChecker cChecker = new CollisionChecker(this);
+    public ObjectManager objM = new ObjectManager(this);
+    public CampusMap campusMap = new CampusMap();
+    Thread gameThread;
+    public Player player = new Player(this, keyH);
+    public UI ui = new UI(this);
+
+    // Live HUD Data
+    public String nearbyDoorName = "";
+
+    // GAME STATE
+    public int gameState;
+    public final int titleState = 0;
+    public final int playState = 1;
+    public final int cafeMenuState = 2;
+    public final int pauseState = 3;
+    public final int optionsState = 4;
+    public final int mapState = 5;
+
+    public GamePanel() {
+        this.setPreferredSize(new Dimension(screenWidth, screenHeight));
+        this.setBackground(Color.black);
+        this.setDoubleBuffered(true);
+        this.addKeyListener(keyH);
+        this.setFocusable(true);
+        
+        // Initial zone setup
+        if (currentZone == ZoneType.CAFETERIA) {
+            objM.loadCafeteriaObjects();
+        } else if (currentZone == ZoneType.LIBRARY) {
+            objM.loadLibraryObjects();
+        }
+
+        gameState = titleState;
+    }
+
+    public void startGameThread() {
+        gameThread = new Thread(this);
+        gameThread.start();
+    }
+
+    @Override
+    public void run() {
+        double drawInterval = 1000000000 / FPS;
+        double delta = 0;
+        long lastTime = System.nanoTime();
+        long currentTime;
+
+        while(gameThread != null) {
+            currentTime = System.nanoTime();
+            delta += (currentTime - lastTime) / drawInterval;
+            lastTime = currentTime;
+
+            if(delta >= 1) {
+                update();
+                repaint();
+                delta--;
+            }
+        }
+    }
+
+    public void update() {
+        if (gameState == titleState) {
+            ui.updateTitleScreen();
+        } else if (gameState == playState) {
+            if (keyH.escapePressed) {
+                gameState = pauseState;
+                keyH.escapePressed = false;
+            } else if (keyH.mPressed) {
+                gameState = mapState;
+                keyH.mPressed = false;
+            } else {
+                player.update();
+                checkZoneTransitions();
+                checkInteractions();
+                updateLiveLocation();
+            }
+        } else if (gameState == pauseState) {
+            ui.updatePauseScreen();
+        } else if (gameState == optionsState) {
+            ui.updateOptionsScreen();
+        } else if (gameState == cafeMenuState) {
+            ui.updateCafeMenu();
+        } else if (gameState == mapState) {
+            updateFastTravel();
+        }
+    }
+
+    private void clearKeys() {
+        keyH.upPressed = false;
+        keyH.downPressed = false;
+        keyH.leftPressed = false;
+        keyH.rightPressed = false;
+        keyH.ePressed = false;
+        keyH.enterPressed = false;
+        keyH.mPressed = false;
+        keyH.num1Pressed = false;
+        keyH.num2Pressed = false;
+        keyH.num3Pressed = false;
+    }
+
+    private void updateFastTravel() {
+        if (keyH.escapePressed || keyH.mPressed) {
+            gameState = playState;
+            clearKeys();
+            return;
+        }
+
+        if (keyH.num1Pressed) {
+            teleportToZone(ZoneType.GROUND);
+        } else if (keyH.num2Pressed) {
+            teleportToZone(ZoneType.CORRIDOR);
+        }
+    }
+
+    private void teleportToZone(ZoneType target) {
+        currentZone = target;
+        tileM.loadMap();
+        objM.clearObjects();
+        
+        if (currentZone == ZoneType.CAFETERIA) objM.loadCafeteriaObjects();
+        if (currentZone == ZoneType.LIBRARY) objM.loadLibraryObjects();
+        if (currentZone == ZoneType.CLASSROOM) objM.loadClassroomObjects();
+        if (currentZone == ZoneType.PRAYER_AREA) objM.loadPrayerAreaObjects();
+        if (currentZone == ZoneType.SERVER_ROOM) objM.loadServerRoomObjects();
+
+        // Safe Spawn Coordinates for Fast Travel
+        if (currentZone == ZoneType.GROUND) {
+            player.xLocation = 2 * tileSize;
+            player.yLocation = (maxScreenRow / 2) * tileSize;
+        } else if (currentZone == ZoneType.CORRIDOR) {
+            player.xLocation = 2 * tileSize;
+            player.yLocation = (maxScreenRow / 2) * tileSize;
+        } else {
+            // Fallback safe spawn
+            player.xLocation = 2 * tileSize;
+            player.yLocation = 2 * tileSize;
+        }
+        
+        gameState = playState;
+        clearKeys();
+    }
+
+    private void updateLiveLocation() {
+        nearbyDoorName = "";
+        int pCol = (player.xLocation + tileSize / 2) / tileSize;
+        int pRow = (player.yLocation + tileSize / 2) / tileSize;
+
+        // Special: Corridor classroom/AI Lab doors (not in CampusMap)
+        if (currentZone == ZoneType.CORRIDOR) {
+            if (pRow <= 1 || pRow >= maxScreenRow - 2) {
+                if (Math.abs(pCol - 4) <= 1 || Math.abs(pCol - 10) <= 1) {
+                    nearbyDoorName = "Classroom";
+                    return;
+                }
+                if (Math.abs(pCol - 16) <= 1 || Math.abs(pCol - 20) <= 1) {
+                    nearbyDoorName = (pRow <= 1) ? "AI Lab" : "Classroom";
+                    return;
+                }
+            }
+        }
+
+        // Special: Inside a Classroom/AI Lab - exit door
+        if (currentZone == ZoneType.CLASSROOM || currentZone == ZoneType.AI_LAB) {
+            if (pRow >= maxScreenRow - 2 && Math.abs(pCol - maxScreenCol / 2) <= 1) {
+                nearbyDoorName = "Academic Corridor";
+                return;
+            }
+        }
+
+        // Dynamic OO Routing from CampusMap
+        Zone current = campusMap.getZone(currentZone);
+        if (current == null) return;
+
+        for (Location loc : current.getLocations()) {
+            int locCol = (int) loc.getPosition().getX();
+            int locRow = (int) loc.getPosition().getY();
+
+            int dx = Math.abs(pCol - locCol);
+            int dy = Math.abs(pRow - locRow);
+
+            if (dx <= 2 && dy <= 2) {
+                nearbyDoorName = loc.getName();
+                return;
+            }
+        }
+    }
+
+    private void checkZoneTransitions() {
+        int playerCol = (player.xLocation + tileSize / 2) / tileSize;
+        int playerRow = (player.yLocation + tileSize / 2) / tileSize;
+
+        // Dynamic OO Routing
+        Zone current = campusMap.getZone(currentZone);
+        if (current != null) {
+            for (Location loc : current.getLocations()) {
+                int locCol = (int) loc.getPosition().getX();
+                int locRow = (int) loc.getPosition().getY();
+
+                // Wider radius: within 1 tile of the door
+                boolean hit = (Math.abs(playerCol - locCol) <= 1 && Math.abs(playerRow - locRow) <= 1);
+
+                if (hit) {
+                    boolean dirMatch = false;
+                    if (loc.getRequiredDirection().equals("up") && keyH.upPressed) dirMatch = true;
+                    if (loc.getRequiredDirection().equals("down") && keyH.downPressed) dirMatch = true;
+                    if (loc.getRequiredDirection().equals("left") && keyH.leftPressed) dirMatch = true;
+                    if (loc.getRequiredDirection().equals("right") && keyH.rightPressed) dirMatch = true;
+
+                    if (dirMatch) {
+                        currentZone = loc.getTargetZone();
+                        tileM.loadMap();
+                        objM.clearObjects();
+                        
+                        if (currentZone == ZoneType.CAFETERIA) objM.loadCafeteriaObjects();
+                        if (currentZone == ZoneType.LIBRARY) objM.loadLibraryObjects();
+                        if (currentZone == ZoneType.CLASSROOM) objM.loadClassroomObjects();
+                        if (currentZone == ZoneType.PRAYER_AREA) objM.loadPrayerAreaObjects();
+                        if (currentZone == ZoneType.SERVER_ROOM) objM.loadServerRoomObjects();
+                        if (currentZone == ZoneType.AI_LAB) objM.loadAILabObjects();
+                        
+                        player.xLocation = (int)loc.getTargetSpawnPosition().getX();
+                        player.yLocation = (int)loc.getTargetSpawnPosition().getY();
+                        clearKeys();
+                        return; // Transition handled
+                    }
+                }
+            }
+        }
+
+        // Special case for Classrooms (dynamic multiple doors)
+        if (currentZone == ZoneType.CORRIDOR) {
+            boolean isTopDoor = (playerRow <= 1);
+            boolean isBottomDoor = (playerRow >= maxScreenRow - 2);
+            if ((isTopDoor && keyH.upPressed) || (isBottomDoor && keyH.downPressed)) {
+                // Check if near any classroom door column (within 1 tile)
+                int nearDoorCol = -1;
+                int[] doorCols = {4, 10, 16, 20};
+                for (int dc : doorCols) {
+                    if (Math.abs(playerCol - dc) <= 1) { nearDoorCol = dc; break; }
+                }
+                if (nearDoorCol != -1) {
+                    currentClassroomId = nearDoorCol + (isTopDoor ? 100 : 200);
+                    enteredFromDoorCol = nearDoorCol;
+                    enteredFromTopDoor = isTopDoor;
+
+                    if (isTopDoor && (nearDoorCol == 16 || nearDoorCol == 20)) {
+                        currentZone = ZoneType.AI_LAB;
+                        tileM.loadMap();
+                        objM.loadAILabObjects();
+                    } else {
+                        currentZone = ZoneType.CLASSROOM;
+                        tileM.loadMap();
+                        objM.loadClassroomObjects();
+                    }
+                    
+                    // Spawn player safely inside
+                    player.xLocation = (maxScreenCol / 2) * tileSize;
+                    player.yLocation = (maxScreenRow - 3) * tileSize;
+                    clearKeys();
+                }
+            }
+        } else if ((currentZone == ZoneType.CLASSROOM || currentZone == ZoneType.AI_LAB) && playerRow >= maxScreenRow - 2 && Math.abs(playerCol - maxScreenCol / 2) <= 1 && keyH.downPressed) {
+            currentZone = ZoneType.CORRIDOR;
+            tileM.loadMap();
+            objM.clearObjects();
+            
+            // Place back at the correct corridor door
+            player.xLocation = enteredFromDoorCol * tileSize;
+            player.yLocation = enteredFromTopDoor ? (tileSize * 2) : (maxScreenRow - 3) * tileSize;
+            clearKeys();
+        }
+    }
+
+    private void checkInteractions() {
+        if (keyH.ePressed) {
+            // Interacting with Cafe Counter (Top side)
+            // Giving a bit of leeway (tileSize * 2) so they don't have to be perfectly against the wall
+            if (currentZone == ZoneType.CAFETERIA && player.yLocation < tileSize * 2) {
+                gameState = cafeMenuState;
+                ui.commandNum = 0; // Reset menu selection
+            }
+            // Consume the key press to avoid rapid firing
+            keyH.ePressed = false; 
+        }
+    }
+
+    @Override
+    public void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        Graphics2D g2 = (Graphics2D)g;
+        
+        if (gameState == titleState) {
+            ui.draw(g2);
+        } else {
+            tileM.draw(g2);
+            objM.draw(g2);
+            player.draw(g2);
+            ui.draw(g2);
+        }
+        
+        g2.dispose();
+    }
+}
+
+=== OldCode\engine\KeyHandler.java ===
+package engine;
+
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+
+public class KeyHandler implements KeyListener {
+
+    public boolean upPressed, downPressed, leftPressed, rightPressed, ePressed, enterPressed, escapePressed;
+    public boolean mPressed, num1Pressed, num2Pressed, num3Pressed;
+
+    @Override
+    public void keyTyped(KeyEvent e) {
+        // Not used
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        int code = e.getKeyCode();
+
+        if(code == KeyEvent.VK_W || code == KeyEvent.VK_UP) {
+            upPressed = true;
+        }
+        if(code == KeyEvent.VK_S || code == KeyEvent.VK_DOWN) {
+            downPressed = true;
+        }
+        if(code == KeyEvent.VK_A || code == KeyEvent.VK_LEFT) {
+            leftPressed = true;
+        }
+        if(code == KeyEvent.VK_D || code == KeyEvent.VK_RIGHT) {
+            rightPressed = true;
+        }
+        if(code == KeyEvent.VK_E) {
+            ePressed = true;
+        }
+        if(code == KeyEvent.VK_ENTER) {
+            enterPressed = true;
+        }
+        if(code == KeyEvent.VK_ESCAPE) {
+            escapePressed = true;
+        }
+        if(code == KeyEvent.VK_M) {
+            mPressed = true;
+        }
+        if(code == KeyEvent.VK_1) {
+            num1Pressed = true;
+        }
+        if(code == KeyEvent.VK_2) {
+            num2Pressed = true;
+        }
+        if(code == KeyEvent.VK_3) {
+            num3Pressed = true;
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+        int code = e.getKeyCode();
+
+        if(code == KeyEvent.VK_W || code == KeyEvent.VK_UP) {
+            upPressed = false;
+        }
+        if(code == KeyEvent.VK_S || code == KeyEvent.VK_DOWN) {
+            downPressed = false;
+        }
+        if(code == KeyEvent.VK_A || code == KeyEvent.VK_LEFT) {
+            leftPressed = false;
+        }
+        if(code == KeyEvent.VK_D || code == KeyEvent.VK_RIGHT) {
+            rightPressed = false;
+        }
+        if(code == KeyEvent.VK_E) {
+            ePressed = false;
+        }
+        if(code == KeyEvent.VK_ENTER) {
+            enterPressed = false;
+        }
+        if(code == KeyEvent.VK_ESCAPE) {
+            escapePressed = false;
+        }
+        if(code == KeyEvent.VK_M) {
+            mPressed = false;
+        }
+        if(code == KeyEvent.VK_1) {
+            num1Pressed = false;
+        }
+        if(code == KeyEvent.VK_2) {
+            num2Pressed = false;
+        }
+        if(code == KeyEvent.VK_3) {
+            num3Pressed = false;
+        }
+    }
+}
+
+=== OldCode\engine\ObjectManager.java ===
+package engine;
+
+import entity.Furniture;
+import map.TileManager;
+import map.ZoneType;
+
+import javax.imageio.ImageIO;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+public class ObjectManager {
+
+    GamePanel gp;
+    public List<Furniture> furnitureList = new CopyOnWriteArrayList<>();
+    
+    private BufferedImage tableImg;
+    private BufferedImage chairImg;
+    private BufferedImage chairMirrorImg;
+    
+    // Library Objects
+    private BufferedImage libDeskImg;
+    private BufferedImage libBookshelfImg;
+    private BufferedImage libGlobeImg;
+    private BufferedImage libClockImg;
+    private BufferedImage libTableImg;
+    private BufferedImage libMainTableImg;
+    
+    // Micro Objects
+    private BufferedImage bookStack1Img;
+    private BufferedImage bookStack2Img;
+    private BufferedImage bookRedImg;
+    private BufferedImage bookBlueImg;
+    private BufferedImage libChestImg;
+
+    // Classroom Objects
+    private BufferedImage studentDeskImg;
+    private BufferedImage emptyStudentDeskImg;
+    private BufferedImage teacherDeskImg;
+
+    // Prayer Room Objects
+    private BufferedImage prayerMatImg;
+    private BufferedImage prayerMatPersonImg;
+    private BufferedImage shoeRackImg;
+
+    // Server Room & AI Lab Objects
+    private BufferedImage aiDeskImg;
+    private BufferedImage aiDeskPersonImg;
+    private BufferedImage serverImg;
+    private BufferedImage cableCrapImg;
+
+    public ObjectManager(GamePanel gp) {
+        this.gp = gp;
+        loadObjectImages();
+    }
+
+    private void loadObjectImages() {
+        try {
+            BufferedImage rawTable = ImageIO.read(new File("assets/table.png"));
+            BufferedImage rawChair = ImageIO.read(new File("assets/chair.png"));
+            BufferedImage rawChairMirror = ImageIO.read(new File("assets/chair mirror.png"));
+            
+            tableImg = makeTransparent(rawTable, Color.BLACK);
+            chairImg = makeTransparent(rawChair, Color.BLACK);
+            chairMirrorImg = makeTransparent(rawChairMirror, Color.BLACK);
+            
+            File libFile = new File("assets/LibraryCompeteSet.png");
+            if (libFile.exists()) {
+                BufferedImage libSheet = ImageIO.read(libFile);
+                
+                // --- EXACT CROPS ---
+                try { libDeskImg = makeTransparent(libSheet.getSubimage(541, 229, 191, 107), Color.BLACK); } catch (Exception e) {}
+                try { libBookshelfImg = makeTransparent(libSheet.getSubimage(28, 384, 88, 120), Color.BLACK); } catch (Exception e) {}
+                try { libGlobeImg = makeTransparent(libSheet.getSubimage(146, 228, 92, 108), Color.BLACK); } catch (Exception e) {}
+                try { libClockImg = makeTransparent(libSheet.getSubimage(79, 24, 58, 120), Color.BLACK); } catch (Exception e) {}
+                try { libTableImg = makeTransparent(libSheet.getSubimage(362, 216, 164, 96), Color.BLACK); } catch (Exception e) {}
+                
+                try { bookStack1Img = makeTransparent(libSheet.getSubimage(240, 96, 30, 48), Color.BLACK); } catch (Exception e) {}
+                try { bookStack2Img = makeTransparent(libSheet.getSubimage(288, 115, 48, 29), Color.BLACK); } catch (Exception e) {}
+                try { bookRedImg = makeTransparent(libSheet.getSubimage(240, 168, 9, 24), Color.BLACK); } catch (Exception e) {}
+                try { bookBlueImg = makeTransparent(libSheet.getSubimage(264, 168, 9, 24), Color.BLACK); } catch (Exception e) {}
+                try { libChestImg = makeTransparent(libSheet.getSubimage(168, 84, 48, 36), Color.BLACK); } catch (Exception e) {}
+            }
+
+            // Classroom and Library Tables (Cropped perfectly to their non-transparent bounding boxes)
+            try { 
+                BufferedImage temp = ImageIO.read(new File("assets/classrooom/StudentTablechair.png"));
+                studentDeskImg = makeTransparent(temp.getSubimage(1020, 295, 776, 1011), Color.BLACK); 
+            } catch (Exception e) {}
+            try { 
+                BufferedImage temp = ImageIO.read(new File("assets/classrooom/EmptyStudentChairtable.png"));
+                emptyStudentDeskImg = makeTransparent(temp.getSubimage(379, 101, 765, 1183), Color.BLACK); 
+            } catch (Exception e) {}
+            try { 
+                BufferedImage temp = ImageIO.read(new File("assets/classrooom/TeacherDesk.png"));
+                teacherDeskImg = makeTransparent(temp.getSubimage(353, 235, 823, 491), Color.BLACK); 
+            } catch (Exception e) {}
+            try {
+                BufferedImage temp = ImageIO.read(new File("assets/LibraryTable.png"));
+                libMainTableImg = makeTransparent(temp.getSubimage(753, 111, 1312, 1316), Color.BLACK);
+            } catch (Exception e) {}
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // --- NEW ASSETS (Prayer Room & Server Room) ---
+        // User has already cropped these PNGs manually, so load them directly.
+        try {
+            prayerMatPersonImg = cropImage(ImageIO.read(new File("assets/PrayerRoom/Matwithperson.png")), 0, 0, -1, -1);
+            System.out.println("Loaded Matwithperson.png: " + prayerMatPersonImg.getWidth() + "x" + prayerMatPersonImg.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load Matwithperson: " + e.getMessage()); }
+        try {
+            prayerMatImg = cropImage(ImageIO.read(new File("assets/PrayerRoom/pryaerMat.png")), 0, 0, -1, -1);
+            System.out.println("Loaded pryaerMat.png: " + prayerMatImg.getWidth() + "x" + prayerMatImg.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load pryaerMat: " + e.getMessage()); }
+        try {
+            shoeRackImg = cropImage(ImageIO.read(new File("assets/PrayerRoom/ShoeRack.png")), 0, 0, -1, -1);
+            System.out.println("Loaded ShoeRack.png: " + shoeRackImg.getWidth() + "x" + shoeRackImg.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load ShoeRack: " + e.getMessage()); }
+
+        try {
+            aiDeskImg = cropImage(ImageIO.read(new File("assets/ServerRoom/DesktopTable.png")), 0, 0, -1, -1);
+            System.out.println("Loaded DesktopTable.png: " + aiDeskImg.getWidth() + "x" + aiDeskImg.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load DesktopTable: " + e.getMessage()); }
+        try {
+            aiDeskPersonImg = cropImage(ImageIO.read(new File("assets/ServerRoom/DesktopTablewithPerson.png")), 0, 0, -1, -1);
+            System.out.println("Loaded DesktopTablewithPerson.png: " + aiDeskPersonImg.getWidth() + "x" + aiDeskPersonImg.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load DesktopTablewithPerson: " + e.getMessage()); }
+        try {
+            serverImg = cropImage(ImageIO.read(new File("assets/ServerRoom/Server.png")), 0, 0, -1, -1);
+            System.out.println("Loaded Server.png: " + serverImg.getWidth() + "x" + serverImg.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load Server: " + e.getMessage()); }
+        try {
+            cableCrapImg = cropImage(ImageIO.read(new File("assets/ServerRoom/cablecrap.png")), 0, 0, -1, -1);
+            System.out.println("Loaded cablecrap.png: " + cableCrapImg.getWidth() + "x" + cableCrapImg.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load cablecrap: " + e.getMessage()); }
+    }
+
+    /**
+     * Copies an image region into a NEW standalone TYPE_INT_ARGB BufferedImage.
+     * If w or h is -1, uses the full image dimensions (no cropping).
+     */
+    private BufferedImage cropImage(BufferedImage src, int x, int y, int w, int h) {
+        if (w == -1) w = src.getWidth();
+        if (h == -1) h = src.getHeight();
+        BufferedImage cropped = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = cropped.createGraphics();
+        g.drawImage(src, 0, 0, w, h, x, y, x + w, y + h, null);
+        g.dispose();
+        return cropped;
+    }
+
+    public void loadCafeteriaObjects() {
+        furnitureList.clear();
+        
+        // 12 tables in a 4x3 grid creating straight alleys
+        int cols = 4;
+        int rows = 3;
+        
+        int startX = 100;
+        int gapX = 170;
+        
+        int startY = 120;
+        int gapY = 130;
+
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                int tableX = startX + (col * gapX);
+                int tableY = startY + (row * gapY);
+                
+                Furniture table = new Furniture(tableX, tableY, tableImg);
+                furnitureList.add(table);
+                
+                int chairW = chairImg != null ? chairImg.getWidth() : 20;
+                int chairH = chairImg != null ? chairImg.getHeight() : 20;
+
+                // Left Chair (Standard)
+                furnitureList.add(new Furniture(tableX - chairW - 5, tableY + 2, chairImg));
+                
+                // Right Chair (Mirrored)
+                furnitureList.add(new Furniture(tableX + table.width + 5, tableY + 2, chairMirrorImg));
+                
+                // Top Chair (50% chance, standard)
+                if (Math.random() > 0.5) {
+                    furnitureList.add(new Furniture(tableX + (table.width / 2) - (chairW / 2), tableY - chairH - 5, chairImg));
+                }
+            }
+        }
+    }
+
+    public void loadLibraryObjects() {
+        furnitureList.clear();
+        
+        int tileSize = gp.tileSize; // 32
+        double scale = 0.7;
+
+        // Back Wall Bookshelves
+        for (int i = 1; i < gp.maxScreenCol - 2; i += 3) {
+            if (i != 10 && i != 13) { // Skip the center area to make room for the clock
+                if (libBookshelfImg != null) {
+                    int bx = i * tileSize;
+                    int by = tileSize;
+                    furnitureList.add(new Furniture(bx, by, libBookshelfImg, scale));
+                    
+                    // Add books to shelves!
+                    int shelf1Y = by + (int)(32 * scale);
+                    int shelf2Y = by + (int)(68 * scale);
+                    int shelf3Y = by + (int)(103 * scale);
+                    
+                    // Randomly place books
+                    if (Math.random() > 0.4 && bookStack1Img != null) {
+                        furnitureList.add(new Furniture(bx + 5, shelf1Y - (int)(48 * scale), bookStack1Img, scale));
+                    }
+                    if (Math.random() > 0.3 && bookStack2Img != null) {
+                        furnitureList.add(new Furniture(bx + 15, shelf2Y - (int)(29 * scale), bookStack2Img, scale));
+                    }
+                    if (Math.random() > 0.2 && bookRedImg != null) {
+                        furnitureList.add(new Furniture(bx + 30, shelf3Y - (int)(24 * scale), bookRedImg, scale));
+                        if (bookBlueImg != null) {
+                            furnitureList.add(new Furniture(bx + (int)(40 * scale), shelf3Y - (int)(24 * scale), bookBlueImg, scale));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Grandfather Clock in center back
+        if (libClockImg != null) {
+            furnitureList.add(new Furniture((gp.maxScreenCol / 2) * tileSize - (tileSize/2), tileSize, libClockImg, scale));
+        }
+
+        // Center Desk
+        if (libDeskImg != null) {
+            furnitureList.add(new Furniture((gp.maxScreenCol / 2) * tileSize - (int)(95 * scale), gp.maxScreenRow / 2 * tileSize - 20, libDeskImg, scale));
+        }
+
+        // Globe at bottom left
+        if (libGlobeImg != null) {
+            furnitureList.add(new Furniture(3 * tileSize, (gp.maxScreenRow - 4) * tileSize, libGlobeImg, scale));
+        }
+
+        // Tables at bottom right
+        if (libTableImg != null) {
+            int tableX = (gp.maxScreenCol - 6) * tileSize;
+            int tableY = (gp.maxScreenRow - 4) * tileSize;
+            furnitureList.add(new Furniture(tableX, tableY, libTableImg, scale));
+        }
+        
+        // New Main Library Tables
+        if (libMainTableImg != null) {
+            double libTableScale = 102.0 / libMainTableImg.getWidth(); // Reduced by ~20%
+            furnitureList.add(new Furniture(4 * tileSize, 6 * tileSize, libMainTableImg, libTableScale));
+            furnitureList.add(new Furniture(16 * tileSize, 6 * tileSize, libMainTableImg, libTableScale));
+            
+            // Third table placed further below the center red desk and slid left
+            int thirdTableX = (gp.maxScreenCol / 2) * tileSize - 91; // Slid to the left
+            int thirdTableY = (gp.maxScreenRow / 2) * tileSize - 20 + 145; // Brought down further
+            furnitureList.add(new Furniture(thirdTableX, thirdTableY, libMainTableImg, libTableScale));
+        }
+        
+        // Add a chest somewhere
+        if (libChestImg != null) {
+            furnitureList.add(new Furniture((gp.maxScreenCol - 4) * tileSize, 2 * tileSize, libChestImg, scale));
+        }
+    }
+
+    public void loadClassroomObjects() {
+        furnitureList.clear();
+        
+        int tileSize = gp.tileSize; // 32
+        
+        // Teacher's Desk at top center (target width ~ 3 tiles = 96 pixels)
+        if (teacherDeskImg != null) {
+            double teacherScale = 96.0 / teacherDeskImg.getWidth();
+            furnitureList.add(new Furniture((gp.maxScreenCol / 2) * tileSize - 48, 2 * tileSize, teacherDeskImg, teacherScale));
+        }
+        
+        // Student desks in a grid (target width ~ 2 tiles = 64 pixels)
+        int startX = 4 * tileSize;
+        int startY = 6 * tileSize;
+        int gapX = 5 * tileSize;
+        int gapY = 3 * tileSize;
+        
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 4; col++) {
+                int deskX = startX + (col * gapX);
+                int deskY = startY + (row * gapY);
+                
+                // Mix empty and full desks
+                BufferedImage deskImg = Math.random() > 0.3 ? studentDeskImg : emptyStudentDeskImg;
+                
+                if (deskImg != null) {
+                    double deskScale = 31.5 / deskImg.getWidth(); // Reduced by another 30% (from 45)
+                    furnitureList.add(new Furniture(deskX, deskY, deskImg, deskScale));
+                }
+            }
+        }
+    }
+
+    public void clearObjects() {
+        furnitureList.clear();
+    }
+
+    public void draw(Graphics2D g2) {
+        for (Furniture f : furnitureList) {
+            f.draw(g2);
+        }
+    }
+
+    private BufferedImage makeTransparent(BufferedImage img, Color color) {
+        if (img == null) return null;
+        BufferedImage dimg = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        int targetRGB = color.getRGB();
+        for (int i = 0; i < img.getHeight(); i++) {
+            for (int j = 0; j < img.getWidth(); j++) {
+                int pixelRGB = img.getRGB(j, i);
+                if (pixelRGB == targetRGB) {
+                    dimg.setRGB(j, i, 0x00000000);
+                } else {
+                    dimg.setRGB(j, i, pixelRGB);
+                }
+            }
+        }
+        return dimg;
+    }
+
+    public void loadPrayerAreaObjects() {
+        int ts = gp.tileSize; // 32
+        
+        // Shoe Rack near the door (bottom right)
+        if (shoeRackImg != null) {
+            int rackW = 160;
+            int rackH = 100;
+            furnitureList.add(new Furniture(shoeRackImg, (gp.maxScreenCol - 7) * ts, (gp.maxScreenRow - 4) * ts, rackW, rackH));
+        }
+
+        // Prayer mats in neat rows - 3 rows of 4, properly spaced
+        if (prayerMatImg != null) {
+            int matW = 100;
+            int matH = 130;
+            int gapX = 30;  // Gap between mats
+            int gapY = 15;  // Gap between rows
+            
+            // Center the grid horizontally
+            int totalGridW = 4 * matW + 3 * gapX;
+            int startX = (gp.screenWidth - totalGridW) / 2;
+            int startY = 2 * ts;
+
+            for (int row = 0; row < 3; row++) {
+                for (int col = 0; col < 4; col++) {
+                    BufferedImage matToUse = (prayerMatPersonImg != null && Math.random() > 0.4) ? prayerMatPersonImg : prayerMatImg;
+                    int mx = startX + col * (matW + gapX);
+                    int my = startY + row * (matH + gapY);
+                    furnitureList.add(new Furniture(matToUse, mx, my, matW, matH));
+                }
+            }
+        }
+    }
+
+    public void loadServerRoomObjects() {
+        int ts = gp.tileSize; // 32
+        
+        // Large Server rack centered at the back wall
+        if (serverImg != null) {
+            int serverW = 200;
+            int serverH = 110;
+            int serverX = (gp.screenWidth - serverW) / 2;
+            int serverY = ts + 10; // Near top wall
+            furnitureList.add(new Furniture(serverImg, serverX, serverY, serverW, serverH));
+        }
+
+        // Desktop Tables in 2 horizontal rows (center of room), well spaced
+        if (aiDeskImg != null) {
+            int deskW = 100;
+            int deskH = 65;
+            int gapX = 25;
+            int gapY = 20;
+            
+            // Center the grid
+            int cols = 4;
+            int rows = 2;
+            int totalGridW = cols * deskW + (cols - 1) * gapX;
+            int startX = (gp.screenWidth - totalGridW) / 2;
+            int startY = 5 * ts; // Below the server
+
+            for (int row = 0; row < rows; row++) {
+                for (int col = 0; col < cols; col++) {
+                    BufferedImage deskToUse = (aiDeskPersonImg != null && Math.random() > 0.5) ? aiDeskPersonImg : aiDeskImg;
+                    int dx = startX + col * (deskW + gapX);
+                    int dy = startY + row * (deskH + gapY + ts);
+                    furnitureList.add(new Furniture(deskToUse, dx, dy, deskW, deskH));
+                }
+            }
+        }
+
+        // Random crap wires scattered (small but visible, avoid door area)
+        if (cableCrapImg != null) {
+            java.util.Random rng = new java.util.Random();
+            for (int i = 0; i < 10; i++) {
+                int cableW = 30;
+                int cableH = 24;
+                int cx = 2 * ts + rng.nextInt(gp.screenWidth - 6 * ts);
+                int cy = 2 * ts + rng.nextInt(gp.screenHeight - 5 * ts);
+                // Skip if too close to exit door on right wall
+                if (cx > gp.screenWidth - 4 * ts && Math.abs(cy - (gp.maxScreenRow / 2) * ts) < 3 * ts) continue;
+                furnitureList.add(new Furniture(cableCrapImg, cx, cy, cableW, cableH));
+            }
+        }
+    }
+
+    public void loadAILabObjects() {
+        int ts = gp.tileSize; // 32
+        
+        if (aiDeskImg != null) {
+            int deskW = 100;
+            int deskH = 65;
+            int gapX = 20;
+            int gapY = 15;
+            
+            int cols = 4;
+            int rows = 3;
+            int totalGridW = cols * deskW + (cols - 1) * gapX;
+            int startX = (gp.screenWidth - totalGridW) / 2;
+            int startY = 2 * ts;
+
+            for (int row = 0; row < rows; row++) {
+                for (int col = 0; col < cols; col++) {
+                    BufferedImage deskToUse = (aiDeskPersonImg != null && Math.random() > 0.5) ? aiDeskPersonImg : aiDeskImg;
+                    int dx = startX + col * (deskW + gapX);
+                    int dy = startY + row * (deskH + gapY + ts);
+                    furnitureList.add(new Furniture(deskToUse, dx, dy, deskW, deskH));
+                }
+            }
+        }
+    }
+}
+
+=== OldCode\entity\Furniture.java ===
+package entity;
+
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
+
+public class Furniture {
+    public int x, y;
+    public int width, height;
+    public BufferedImage image;
+    public Rectangle solidArea;
+
+    public Furniture(int x, int y, BufferedImage image) {
+        this(x, y, image, 1.0);
+    }
+
+    public Furniture(BufferedImage image, int x, int y, int width, int height) {
+        this.x = x;
+        this.y = y;
+        this.image = image;
+        this.width = width;
+        this.height = height;
+        this.solidArea = new Rectangle(x, y, width, height);
+    }
+
+    public Furniture(int x, int y, BufferedImage image, double scale) {
+        this.x = x;
+        this.y = y;
+        this.image = image;
+        if (image != null) {
+            this.width = (int)(image.getWidth() * scale);
+            this.height = (int)(image.getHeight() * scale);
+        } else {
+            this.width = (int)(32 * scale);
+            this.height = (int)(32 * scale);
+        }
+        
+        // Solid area for collision (matches the image size)
+        this.solidArea = new Rectangle(x, y, width, height);
+    }
+
+    public void draw(Graphics2D g2) {
+        if (image != null) {
+            g2.drawImage(image, x, y, width, height, null);
+        }
+    }
+}
+
+=== OldCode\entity\Player.java ===
+package entity;
+
+import engine.GamePanel;
+import engine.KeyHandler;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import javax.imageio.ImageIO;
+
+public class Player {
+
+    GamePanel gp;
+    KeyHandler keyH;
+
+    public int xLocation, yLocation;
+    public int speed;
+
+    // Additional original database traits
+    private int id;
+    private double gpa;
+    private int energy;
+    private int stress;
+    private int karma;
+    private int hp;
+    private int maxHp;
+
+    public BufferedImage[][] walkFrames;
+    public String direction;
+    public int spriteCounter = 0;
+    public int spriteNum = 0; // The current frame
+    public boolean collisionOn = false;
+
+    public Player(GamePanel gp, KeyHandler keyH) {
+        this.gp = gp;
+        this.keyH = keyH;
+        setDefaultValues();
+        getPlayerImage();
+    }
+
+    // Keep constructors for Database Compatibility
+    public Player() {
+    }
+
+    public Player(int id, double gpa, int energy, int stress, int karma, int xLocation, int yLocation) {
+        this.id = id;
+        this.gpa = gpa;
+        this.energy = energy;
+        this.stress = stress;
+        this.karma = karma;
+        this.xLocation = xLocation;
+        this.yLocation = yLocation;
+    }
+
+    public void setDefaultValues() {
+        xLocation = 384; // Center of screen
+        yLocation = 350; // Safely below the bookshelves
+        speed = 4;
+        direction = "down";
+        maxHp = 100;
+        hp = maxHp;
+        energy = 100;
+        stress = 0;
+        gpa = 4.0;
+        karma = 50;
+    }
+
+    public void getPlayerImage() {
+        try {
+            File walkFile = new File("assets/player_walk.png");
+            if (walkFile.exists()) {
+                BufferedImage walkSheet = ImageIO.read(walkFile);
+                // The loaded sheet is 4 rows by 6 columns
+                int frameWidth = walkSheet.getWidth() / 6;
+                int frameHeight = walkSheet.getHeight() / 4;
+
+                walkFrames = new BufferedImage[4][6];
+
+                // Typical layouts: Row 0=Down, Row 1=Left/Right, etc. For now we will map
+                // blindly.
+                // Assuming standard RPG Maker order: 0=Down, 1=Left, 2=Right, 3=Up
+                for (int row = 0; row < 4; row++) {
+                    for (int col = 0; col < 6; col++) {
+                        walkFrames[row][col] = walkSheet.getSubimage(col * frameWidth, row * frameHeight, frameWidth,
+                                frameHeight);
+                    }
+                }
+            } else {
+                System.out.println("Could not find player_walk.png! Check assets folder.");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void update() {
+        boolean isMoving = false;
+
+        if (keyH.upPressed || keyH.downPressed || keyH.leftPressed || keyH.rightPressed) {
+            if (keyH.upPressed)
+                direction = "up";
+            else if (keyH.downPressed)
+                direction = "down";
+            else if (keyH.leftPressed)
+                direction = "left";
+            else if (keyH.rightPressed)
+                direction = "right";
+
+            // CHECK TILE COLLISION
+            collisionOn = false;
+            gp.cChecker.checkTile(this);
+            gp.cChecker.checkObjectCollision(this); // New object collision check
+
+            // IF COLLISION IS FALSE, PLAYER CAN MOVE
+            if (!collisionOn) {
+                switch (direction) {
+                    case "up":
+                        yLocation -= speed;
+                        break;
+                    case "down":
+                        yLocation += speed;
+                        break;
+                    case "left":
+                        xLocation -= speed;
+                        break;
+                    case "right":
+                        xLocation += speed;
+                        break;
+                }
+            }
+
+            isMoving = true;
+        }
+
+        if (isMoving) {
+            spriteCounter++;
+            if (spriteCounter > 8) { // Frame swap interval
+                spriteNum++;
+                if (spriteNum >= 6) { // 6 frames total per row
+                    spriteNum = 0;
+                }
+                spriteCounter = 0;
+            }
+        } else {
+            spriteNum = 0; // idle frame is usually column 0
+        }
+    }
+
+    public void draw(Graphics2D g2) {
+        BufferedImage image = null;
+
+        if (walkFrames != null) {
+            int row = 0;
+            switch (direction) {
+                case "down":
+                    row = 0;
+                    break;
+                case "left":
+                    row = 1;
+                    break;
+                case "right":
+                    row = 2;
+                    break;
+                case "up":
+                    row = 3;
+                    break;
+            }
+            // Add safe bounds for spriteNum just in case
+            if (spriteNum >= 6)
+                spriteNum = 0;
+            image = walkFrames[row][spriteNum];
+        }
+
+        if (image != null) {
+            int drawSize = (int)(gp.tileSize * 2.0);
+            int drawX = xLocation - (drawSize - gp.tileSize) / 2;
+            int drawY = yLocation - (drawSize - gp.tileSize); // anchor at feet
+            g2.drawImage(image, drawX, drawY, drawSize, drawSize, null);
+        } else {
+            // Placeholder rect if image failed to load
+            g2.setColor(java.awt.Color.magenta);
+            g2.fillRect(xLocation, yLocation, gp.tileSize, gp.tileSize);
+        }
+    }
+
+    // -- Database Getters and Setters omitted for brevity but remain functional!
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public double getGpa() {
+        return gpa;
+    }
+
+    public void setGpa(double gpa) {
+        this.gpa = gpa;
+    }
+
+    public int getEnergy() {
+        return energy;
+    }
+
+    public void setEnergy(int energy) {
+        this.energy = energy;
+    }
+
+    public int getStress() {
+        return stress;
+    }
+
+    public void setStress(int stress) {
+        this.stress = stress;
+    }
+
+    public int getKarma() {
+        return karma;
+    }
+
+    public void setKarma(int karma) {
+        this.karma = karma;
+    }
+
+    public int getXLocation() {
+        return xLocation;
+    }
+
+    public void setXLocation(int xLocation) {
+        this.xLocation = xLocation;
+    }
+
+    public int getYLocation() {
+        return yLocation;
+    }
+
+    public void setYLocation(int yLocation) {
+        this.yLocation = yLocation;
+    }
+
+    public int getHp() {
+        return hp;
+    }
+
+    public void setHp(int hp) {
+        this.hp = hp;
+    }
+
+    public int getMaxHp() {
+        return maxHp;
+    }
+
+    public void setMaxHp(int maxHp) {
+        this.maxHp = maxHp;
+    }
+}
+
+=== OldCode\entity\Position.java ===
+package entity;
+
+public class Position {
+    private float x;
+    private float y;
+
+    public Position(float x, float y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    public float getX() { return x; }
+    public float getY() { return y; }
+    public void setX(float x) { this.x = x; }
+    public void setY(float y) { this.y = y; }
+
+    public float distanceTo(Position other) {
+        return (float) Math.sqrt(Math.pow(this.x - other.x, 2) + Math.pow(this.y - other.y, 2));
+    }
+}
+
+=== OldCode\map\Block.java ===
+package map;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Block {
+    private int blockId;
+    private String name;
+    private List<Zone> zones;
+
+    public Block(int blockId, String name) {
+        this.blockId = blockId;
+        this.name = name;
+        this.zones = new ArrayList<>();
+    }
+
+    public void addZone(Zone zone) {
+        zones.add(zone);
+    }
+
+    public List<Zone> getZones() { return zones; }
+    public int getBlockId() { return blockId; }
+    public String getName() { return name; }
+}
+
+=== OldCode\map\CampusMap.java ===
+package map;
+import entity.Position;
+import java.util.ArrayList;
+import java.util.List;
+
+public class CampusMap {
+    private int mapId;
+    private List<Block> blocks;
+
+    public CampusMap() {
+        this.mapId = 1;
+        this.blocks = new ArrayList<>();
+        initializeMap();
+    }
+
+    private void initializeMap() {
+        // Block 1: C-Block (Ground Floor)
+        Block cBlockGround = new Block(1, "C-Block (Ground)");
+        Zone ground = new Zone(ZoneType.GROUND, "Campus Ground");
+        Zone cafe = new Zone(ZoneType.CAFETERIA, "Cafeteria");
+        Zone prayer = new Zone(ZoneType.PRAYER_AREA, "Prayer Area");
+        cBlockGround.addZone(ground);
+        cBlockGround.addZone(cafe);
+        cBlockGround.addZone(prayer);
+
+        // Block 2: C-Block (First Floor)
+        Block cBlockFirst = new Block(2, "C-Block (First Floor)");
+        Zone corridor = new Zone(ZoneType.CORRIDOR, "Academic Corridor");
+        Zone classroom = new Zone(ZoneType.CLASSROOM, "Classroom"); // Handled dynamically
+        Zone aiLab = new Zone(ZoneType.AI_LAB, "AI Lab"); // Handled dynamically
+        cBlockFirst.addZone(corridor);
+        cBlockFirst.addZone(classroom);
+        cBlockFirst.addZone(aiLab);
+
+        // Block 3: D-Block
+        Block dBlock = new Block(3, "D-Block");
+        Zone library = new Zone(ZoneType.LIBRARY, "Library");
+        Zone serverRoom = new Zone(ZoneType.SERVER_ROOM, "Main Server Room");
+        dBlock.addZone(library);
+        dBlock.addZone(serverRoom);
+
+        // Block 4: Common Walkway Hub
+        Block hubBlock = new Block(4, "Shared Area");
+        Zone walkway = new Zone(ZoneType.WALKWAY, "Campus Walkway");
+        hubBlock.addZone(walkway);
+
+        blocks.add(cBlockGround);
+        blocks.add(cBlockFirst);
+        blocks.add(dBlock);
+        blocks.add(hubBlock);
+
+        // --- Define Connections (Doors) ---
+        int tileSize = 32;
+        int maxCol = 24;
+        int maxRow = 18;
+
+        // C-Block (Ground): Ground <-> Cafeteria
+        ground.addLocation(new Location("Cafe Door", new Position((maxCol / 2), 0), ZoneType.CAFETERIA, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "up"));
+        cafe.addLocation(new Location("Ground Door", new Position((maxCol / 2), maxRow - 1), ZoneType.GROUND, new Position((maxCol / 2) * tileSize, 2 * tileSize), "down"));
+
+        // C-Block (Ground): Ground <-> Prayer Area
+        ground.addLocation(new Location("Prayer Door", new Position(maxCol / 2 + 5, 0), ZoneType.PRAYER_AREA, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "up"));
+        prayer.addLocation(new Location("Ground Door", new Position((maxCol / 2), maxRow - 1), ZoneType.GROUND, new Position((maxCol / 2 + 5) * tileSize, 2 * tileSize), "down"));
+
+        // D-Block: Library <-> Server Room (Left wall of Library, row = maxRow/2)
+        library.addLocation(new Location("Server Room", new Position(0, maxRow / 2), ZoneType.SERVER_ROOM, new Position((maxCol - 3) * tileSize, (maxRow / 2) * tileSize), "left"));
+        serverRoom.addLocation(new Location("Library", new Position(maxCol - 1, maxRow / 2), ZoneType.LIBRARY, new Position(2 * tileSize, (maxRow / 2) * tileSize), "right"));
+
+        // Hub Connections: Walkway <-> Ground, Corridor, Library
+        // Walkway (Right, row=maxRow/2) <-> Ground (Left, row=maxRow/2)
+        walkway.addLocation(new Location("C-Block (Ground)", new Position(maxCol - 1, maxRow / 2), ZoneType.GROUND, new Position(2 * tileSize, (maxRow / 2) * tileSize), "right"));
+        ground.addLocation(new Location("Campus Walkway", new Position(0, maxRow / 2), ZoneType.WALKWAY, new Position((maxCol - 3) * tileSize, (maxRow / 2) * tileSize), "left"));
+
+        // Walkway (Top, col=maxCol/2) <-> Corridor (Left, row=maxRow/2)
+        walkway.addLocation(new Location("C-Block (First Floor)", new Position(maxCol / 2, 0), ZoneType.CORRIDOR, new Position(2 * tileSize, (maxRow / 2) * tileSize), "up"));
+        corridor.addLocation(new Location("Stairs to Walkway", new Position(0, maxRow / 2), ZoneType.WALKWAY, new Position((maxCol / 2) * tileSize, 2 * tileSize), "left"));
+
+        // Walkway (Bottom, col=maxCol/2) <-> Library (Bottom, col=maxCol/2)
+        walkway.addLocation(new Location("D-Block (Library)", new Position(maxCol / 2, maxRow - 1), ZoneType.LIBRARY, new Position((maxCol / 2) * tileSize, 5 * tileSize), "down"));
+        library.addLocation(new Location("Campus Walkway", new Position(maxCol / 2, maxRow - 1), ZoneType.WALKWAY, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "down"));
+    }
+
+    public Zone getZone(ZoneType type) {
+        for (Block b : blocks) {
+            for (Zone z : b.getZones()) {
+                if (z.getType() == type) {
+                    return z;
+                }
+            }
+        }
+        return null;
+    }
+
+    public Block getBlock(int blockId) {
+        for (Block b : blocks) {
+            if (b.getBlockId() == blockId) return b;
+        }
+        return null;
+    }
+}
+
+=== OldCode\map\Location.java ===
+package map;
+import entity.Position;
+
+public class Location {
+    private String name;
+    private Position position;
+    private ZoneType targetZone;
+    private Position targetSpawnPosition;
+    private String requiredDirection; // "up", "down", "left", "right"
+
+    public Location(String name, Position position, ZoneType targetZone, Position targetSpawnPosition, String requiredDirection) {
+        this.name = name;
+        this.position = position;
+        this.targetZone = targetZone;
+        this.targetSpawnPosition = targetSpawnPosition;
+        this.requiredDirection = requiredDirection;
+    }
+
+    public String getName() { return name; }
+    public Position getPosition() { return position; }
+    public ZoneType getTargetZone() { return targetZone; }
+    public Position getTargetSpawnPosition() { return targetSpawnPosition; }
+    public String getRequiredDirection() { return requiredDirection; }
+}
+
+=== OldCode\map\Tile.java ===
+package map;
+
+import java.awt.image.BufferedImage;
+
+public class Tile {
+    public BufferedImage image;
+    public boolean collision = false;
+}
+
+=== OldCode\map\TileManager.java ===
+package map;
+
+import engine.GamePanel;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import javax.imageio.ImageIO;
+
+public class TileManager {
+    GamePanel gp;
+    public Tile[] tile;
+    public int mapTileNum[][];
+    public BufferedImage cafeCounterWide;
+
+    public TileManager(GamePanel gp) {
+        this.gp = gp;
+        tile = new Tile[30]; // Increased capacity for Library tiles
+        mapTileNum = new int[gp.maxScreenCol][gp.maxScreenRow];
+        getTileImage();
+        loadMap();
+    }
+
+    public void getTileImage() {
+        try {
+            File file = new File("assets/floor.png");
+            if (!file.exists()) {
+                System.out.println("Could not find assets/floor.png. Make sure you placed it!");
+                return;
+            }
+            BufferedImage spriteSheet = ImageIO.read(file);
+            
+            // The user's image is a 3x3 grid of tiles.
+            int tileColW = spriteSheet.getWidth() / 3;
+            int tileRowH = spriteSheet.getHeight() / 3;
+
+            // Load all 9 tiles into our tile array
+            int index = 0;
+            for (int row = 0; row < 3; row++) {
+                for (int col = 0; col < 3; col++) {
+                    tile[index] = new Tile();
+                    tile[index].image = spriteSheet.getSubimage(col * tileColW, row * tileRowH, tileColW, tileRowH);
+                    index++;
+                }
+            }
+
+            // Load Custom Tiles with Transparency
+            tile[5] = new Tile();
+            tile[5].image = ImageIO.read(new File("assets/cafe floor aquatic.png"));
+
+            tile[6] = new Tile();
+            tile[6].image = ImageIO.read(new File("assets/cafe floor white.png"));
+
+            tile[11] = new Tile();
+            tile[11].image = makeTransparent(ImageIO.read(new File("assets/door.png")), java.awt.Color.BLACK);
+            // Door is NOT solid so player can walk into it to switch zones
+
+            cafeCounterWide = makeTransparent(ImageIO.read(new File("assets/Cafe counter.png")), java.awt.Color.BLACK);
+
+            tile[12] = new Tile();
+            tile[12].image = null; // Don't draw as repeating tile
+            tile[12].collision = true;
+
+            // Load Library Sprite Sheet
+            File libFile = new File("assets/LibraryCompeteSet.png");
+            if (libFile.exists()) {
+                BufferedImage libSheet = ImageIO.read(libFile);
+                
+                // 13: Library Floor (Dark Wood Floor) 
+                tile[13] = new Tile();
+                try { tile[13].image = ImageIO.read(new File("assets/dark_wood_floor2.png")); } catch (Exception e) { e.printStackTrace(); }
+
+                // 14: Library Wall (Blue Wallpaper) 
+                tile[14] = new Tile();
+                try { tile[14].image = libSheet.getSubimage(960, 50, 32, 32); } catch (Exception e) {}
+                tile[14].collision = true;
+
+                // 15: Library Carpet (Red Runner)
+                tile[15] = new Tile();
+                try { tile[15].image = libSheet.getSubimage(765, 80, 32, 32); } catch (Exception e) {}
+                
+            } else {
+                System.out.println("Warning: assets/LibraryCompeteSet.png not found.");
+            }
+
+            // Load Prayer Area Floor
+            tile[16] = new Tile();
+            try { tile[16].image = ImageIO.read(new File("assets/PrayerRoom/floor.jpg")); } catch (Exception e) {}
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public BufferedImage makeTransparent(BufferedImage img, java.awt.Color color) {
+        if (img == null) return null;
+        BufferedImage dimg = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        int targetRGB = color.getRGB();
+        for (int i = 0; i < img.getHeight(); i++) {
+            for (int j = 0; j < img.getWidth(); j++) {
+                int pixelRGB = img.getRGB(j, i);
+                if (pixelRGB == targetRGB) {
+                    dimg.setRGB(j, i, 0x00000000);
+                } else {
+                    dimg.setRGB(j, i, pixelRGB);
+                }
+            }
+        }
+        return dimg;
+    }
+
+    public void loadMap() {
+        if (gp.currentZone == ZoneType.CAFETERIA) {
+            loadCafeteriaMap();
+        } else if (gp.currentZone == ZoneType.GROUND) {
+            loadGroundMap();
+        } else if (gp.currentZone == ZoneType.LIBRARY) {
+            loadLibraryMap();
+        } else if (gp.currentZone == ZoneType.CORRIDOR) {
+            loadCorridorMap();
+        } else if (gp.currentZone == ZoneType.CLASSROOM) {
+            loadClassroomMap();
+        } else if (gp.currentZone == ZoneType.PRAYER_AREA) {
+            loadPrayerAreaMap();
+        } else if (gp.currentZone == ZoneType.SERVER_ROOM) {
+            loadServerRoomMap();
+        } else if (gp.currentZone == ZoneType.AI_LAB) {
+            loadAILabMap();
+        } else if (gp.currentZone == ZoneType.WALKWAY) {
+            loadWalkwayMap();
+        }
+    }
+
+    private void loadCafeteriaMap() {
+        int floorTileOrange = 5;
+        int floorTileWhite = 6;
+        int counterTile = 12;
+        int doorTile = 11;
+
+        // Fill with checkerboard floor
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                if ((col + row) % 2 == 0) {
+                    mapTileNum[col][row] = floorTileOrange;
+                } else {
+                    mapTileNum[col][row] = floorTileWhite;
+                }
+            }
+        }
+
+        // Place Counter at the top
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            mapTileNum[col][0] = counterTile;
+        }
+
+        // Place Single Door at bottom center
+        mapTileNum[gp.maxScreenCol/2][gp.maxScreenRow - 1] = doorTile;
+    }
+
+    private void loadGroundMap() {
+        int grassTile = 1;
+        int doorTile = 11;
+
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                // Top row: door to Cafe (center) and door to Prayer Area (center+5)
+                if (row == 0 && (col == gp.maxScreenCol / 2 || col == gp.maxScreenCol / 2 + 5)) {
+                    mapTileNum[col][row] = doorTile;
+                }
+                // Left edge: door to Walkway at mid-height
+                else if (col == 0 && row == gp.maxScreenRow / 2) {
+                    mapTileNum[col][row] = doorTile;
+                }
+                else {
+                    mapTileNum[col][row] = grassTile;
+                }
+            }
+        }
+    }
+
+    private void loadLibraryMap() {
+        int floorTile = 13;
+        int wallTile = 14;
+        int doorTile = 11;
+
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                // Top row is wall
+                if (row == 0) {
+                    mapTileNum[col][row] = wallTile;
+                }
+                // Bottom row: door to Walkway at center
+                else if (row == gp.maxScreenRow - 1) {
+                    if (col == gp.maxScreenCol / 2) {
+                        mapTileNum[col][row] = doorTile; // Exit to Walkway
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                }
+                // Left edge: door to Server Room at mid-height
+                else if (col == 0) {
+                    if (row == gp.maxScreenRow / 2) {
+                        mapTileNum[col][row] = doorTile; // Server Room
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                }
+                // Right edge is wall
+                else if (col == gp.maxScreenCol - 1) {
+                    mapTileNum[col][row] = wallTile;
+                }
+                // Everything else is wooden floor
+                else {
+                    mapTileNum[col][row] = floorTile;
+                }
+            }
+        }
+    }
+
+    private void loadCorridorMap() {
+        int floorTile = 13; // Dark wood floor 
+        int doorTile = 11;
+        int wallTile = 14;
+
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                if (row == 0 || row == gp.maxScreenRow - 1) {
+                    // Place doors at intervals for classrooms/AI labs
+                    if (col == 4 || col == 10 || col == 16 || col == 20) {
+                        mapTileNum[col][row] = doorTile;
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else if (col == 0) {
+                    // Left edge: door to Walkway at mid-height
+                    if (row == gp.maxScreenRow / 2) {
+                        mapTileNum[col][row] = doorTile; // Stairs to Walkway
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else if (col == gp.maxScreenCol - 1) {
+                    mapTileNum[col][row] = wallTile; // Right wall
+                } else {
+                    mapTileNum[col][row] = floorTile; 
+                }
+            }
+        }
+    }
+
+    private void loadClassroomMap() {
+        int floorTile = 2; // 3rd tile, 1st row from floor.png
+        int doorTile = 11;
+        int wallTile = 14;
+
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                if (row == 0 || col == 0 || col == gp.maxScreenCol - 1) {
+                    mapTileNum[col][row] = wallTile;
+                } else if (row == gp.maxScreenRow - 1) {
+                    if (col == gp.maxScreenCol / 2) {
+                        mapTileNum[col][row] = doorTile; // Exit to Corridor
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else {
+                    mapTileNum[col][row] = floorTile;
+                }
+            }
+        }
+    }
+
+    public void draw(Graphics2D g2) {
+        // Draw the map based on the map file/array
+        int col = 0;
+        int row = 0;
+        int x = 0;
+        int y = 0;
+
+        while (col < gp.maxScreenCol && row < gp.maxScreenRow) {
+            int tileNum = mapTileNum[col][row];
+
+            if (tile[tileNum] != null && tile[tileNum].image != null) {
+                g2.drawImage(tile[tileNum].image, x, y, gp.tileSize, gp.tileSize, null);
+            }
+
+            col++;
+            x += gp.tileSize;
+
+            if (col == gp.maxScreenCol) {
+                col = 0;
+                x = 0;
+                row++;
+                y += gp.tileSize;
+            }
+        }
+
+        // Draw single wide cafe counter over the top row
+        if (gp.currentZone == ZoneType.CAFETERIA && cafeCounterWide != null) {
+            g2.drawImage(cafeCounterWide, 0, 0, gp.screenWidth, gp.tileSize, null);
+        }
+    }
+
+    private void loadPrayerAreaMap() {
+        int floorTile = 16;
+        int wallTile = 14;
+        int doorTile = 11;
+        
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                if (row == 0 || col == 0 || col == gp.maxScreenCol - 1) {
+                    mapTileNum[col][row] = wallTile;
+                } else if (row == gp.maxScreenRow - 1) {
+                    if (col == gp.maxScreenCol / 2) {
+                        mapTileNum[col][row] = doorTile; 
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else {
+                    mapTileNum[col][row] = floorTile;
+                }
+            }
+        }
+    }
+
+    private void loadServerRoomMap() {
+        int floorTile = 2; // Classroom floor
+        int wallTile = 14;
+        int doorTile = 11;
+        
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                if (row == 0 || row == gp.maxScreenRow - 1 || col == 0 || col == gp.maxScreenCol - 1) {
+                    if (col == gp.maxScreenCol - 1 && row == gp.maxScreenRow / 2) {
+                        mapTileNum[col][row] = doorTile; // Door to Library (right wall)
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else {
+                    mapTileNum[col][row] = floorTile;
+                }
+            }
+        }
+    }
+
+    private void loadAILabMap() {
+        int floorTile = 2; // Classroom floor
+        int wallTile = 14;
+        int doorTile = 11;
+
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                if (row == 0 || col == 0 || col == gp.maxScreenCol - 1) {
+                    mapTileNum[col][row] = wallTile;
+                } else if (row == gp.maxScreenRow - 1) {
+                    if (col == gp.maxScreenCol / 2) {
+                        mapTileNum[col][row] = doorTile; // Exit to Corridor
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else {
+                    mapTileNum[col][row] = floorTile;
+                }
+            }
+        }
+    }
+
+    private void loadWalkwayMap() {
+        int floorTile = 13; // Dark wood floor / Dark tile theme
+        int wallTile = 14;
+        int doorTile = 11;
+
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                if (row == 0 || row == gp.maxScreenRow - 1 || col == 0 || col == gp.maxScreenCol - 1) {
+                    // Doors on Top, Bottom, and Right
+                    if ((col == gp.maxScreenCol / 2 && row == 0) || 
+                        (col == gp.maxScreenCol / 2 && row == gp.maxScreenRow - 1) || 
+                        (col == gp.maxScreenCol - 1 && row == gp.maxScreenRow / 2)) {
+                        mapTileNum[col][row] = doorTile;
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else {
+                    mapTileNum[col][row] = floorTile;
+                }
+            }
+        }
+    }
+}
+
+=== OldCode\map\Zone.java ===
+package map;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Zone {
+    private ZoneType type;
+    private String name;
+    private boolean isLocked;
+    private List<ZoneType> connectedZones;
+    private List<Location> locations;
+
+    public Zone(ZoneType type, String name) {
+        this.type = type;
+        this.name = name;
+        this.isLocked = false;
+        this.connectedZones = new ArrayList<>();
+        this.locations = new ArrayList<>();
+    }
+
+    public void addLocation(Location loc) {
+        locations.add(loc);
+        if (!connectedZones.contains(loc.getTargetZone())) {
+            connectedZones.add(loc.getTargetZone());
+        }
+    }
+
+    public void unlock() { isLocked = false; }
+    public void lock() { isLocked = true; }
+    public boolean isLocked() { return isLocked; }
+
+    public ZoneType getType() { return type; }
+    public String getName() { return name; }
+    public List<Location> getLocations() { return locations; }
+}
+
+=== OldCode\map\ZoneType.java ===
+package map;
+
+public enum ZoneType {
+    CAFETERIA,
+    GROUND,
+    LIBRARY,
+    CORRIDOR,
+    CLASSROOM,
+    PRAYER_AREA,
+    SERVER_ROOM,
+    AI_LAB,
+    WALKWAY
+}
+
+=== OldCode\ui\UI.java ===
+package ui;
+
+import engine.GamePanel;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import javax.imageio.ImageIO;
+import database.GameStateDao;
+import entity.Player;
+
+public class UI {
+
+    GamePanel gp;
+    Font arial_20, arial_14;
+    Font titleFont, titleOptionFont;
+    BufferedImage barFrame;
+    BufferedImage hpIcon, energyIcon, stressIcon, gpaIcon, karmaIcon;
+    
+    // TITLE MENU
+    public int titleCommandNum = 0;
+    
+    // PAUSE MENU
+    public int pauseCommandNum = 0;
+    
+    // OPTIONS MENU
+    public int optionsCommandNum = 0;
+    public boolean musicOn = true;
+    public boolean sfxOn = true;
+
+    // CAFE MENU
+    public int commandNum = 0;
+    private BufferedImage[] foodIcons;
+    private String[] foodNames = {
+        "Biryani (Healthy)", 
+        "Fruit Shake (Healthy)", 
+        "Fruit Chat (Healthy)", 
+        "Samosa (Unhealthy)", 
+        "Soda (Unhealthy)", 
+        "Lays (Unhealthy)", 
+        "Fries (Unhealthy)"
+    };
+    // Cooldown to prevent rapid key scrolling
+    private int keyCooldown = 0;
+
+    public UI(GamePanel gp) {
+        this.gp = gp;
+        arial_20 = new Font("Arial", Font.BOLD, 20);
+        arial_14 = new Font("Arial", Font.PLAIN, 14);
+        titleFont = new Font("Monospaced", Font.BOLD, 72);
+        titleOptionFont = new Font("Monospaced", Font.BOLD, 30);
+        loadImages();
+    }
+
+    private void loadImages() {
+        hpIcon = safeLoad("assets/health-health.png");
+        energyIcon = safeLoad("assets/energy icon.png");
+        stressIcon = safeLoad("assets/stress.png");
+        gpaIcon = safeLoad("assets/gpa icon.png");
+        karmaIcon = safeLoad("assets/karma icon.png");
+
+        foodIcons = new BufferedImage[7];
+        foodIcons[0] = safeLoad("assets/foods/biryani.png");
+        foodIcons[1] = safeLoad("assets/foods/fruit_shake.png");
+        foodIcons[2] = safeLoad("assets/foods/fruit_chat.png");
+        foodIcons[3] = safeLoad("assets/foods/samosa.png");
+        foodIcons[4] = safeLoad("assets/foods/soda.png");
+        foodIcons[5] = safeLoad("assets/foods/lays.png");
+        foodIcons[6] = safeLoad("assets/foods/fries.png");
+    }
+
+    private BufferedImage safeLoad(String path) {
+        try {
+            File file = new File(path);
+            if (file.exists()) {
+                return ImageIO.read(file);
+            } else {
+                System.out.println("Warning: Asset not found: " + path);
+            }
+        } catch (IOException e) {
+            System.err.println("Error loading " + path + ": " + e.getMessage());
+        }
+        return null;
+    }
+
+    public void draw(Graphics2D g2) {
+        if (gp.gameState == gp.titleState) {
+            drawTitleScreen(g2);
+            return;
+        }
+
+        // Draw Live HUD
+        if (gp.gameState == gp.playState) {
+            drawLiveHUD(g2);
+        }
+
+        // Pushing further right to minimize empty space
+        int x = gp.screenWidth - 110; 
+        int y = 15;
+        int verticalGap = 25; // Increased from 20
+
+        // Draw Stats
+        drawStatBar(g2, x, y, hpIcon, gp.player.getHp(), gp.player.getMaxHp(), new Color(200, 0, 0));
+        y += verticalGap;
+        drawStatBar(g2, x, y, energyIcon, gp.player.getEnergy(), 100, new Color(0, 150, 255)); 
+        y += verticalGap;
+        drawStatBar(g2, x, y, stressIcon, gp.player.getStress(), 100, new Color(150, 0, 150)); 
+        y += verticalGap;
+        drawStatBar(g2, x, y, gpaIcon, (int)(gp.player.getGpa() * 25), 100, new Color(255, 215, 0)); 
+        y += verticalGap;
+        drawStatBar(g2, x, y, karmaIcon, gp.player.getKarma(), 100, new Color(255, 255, 255)); 
+
+        if (gp.gameState == gp.cafeMenuState) {
+            drawCafeMenu(g2);
+        } else if (gp.gameState == gp.pauseState) {
+            drawPauseScreen(g2);
+        } else if (gp.gameState == gp.optionsState) {
+            drawOptionsScreen(g2);
+        } else if (gp.gameState == gp.mapState) {
+            drawMapScreen(g2);
+        }
+    }
+
+    public void updateCafeMenu() {
+        if (keyCooldown > 0) {
+            keyCooldown--;
+            return;
+        }
+
+        if (gp.keyH.upPressed) {
+            commandNum--;
+            if (commandNum < 0) commandNum = foodNames.length - 1;
+            keyCooldown = 10;
+        }
+        if (gp.keyH.downPressed) {
+            commandNum++;
+            if (commandNum >= foodNames.length) commandNum = 0;
+            keyCooldown = 10;
+        }
+        if (gp.keyH.escapePressed) {
+            gp.gameState = gp.playState;
+            keyCooldown = 10;
+        }
+        if (gp.keyH.enterPressed) {
+            consumeFood(commandNum);
+            gp.gameState = gp.playState;
+            keyCooldown = 10;
+        }
+    }
+
+    private void consumeFood(int index) {
+        // 0: Biryani, 1: Fruit Shake, 2: Fruit Chat -> HEALTHY
+        // 3: Samosa, 4: Soda, 5: Lays, 6: Fries -> UNHEALTHY
+        
+        boolean isHealthy = (index <= 2);
+
+        if (isHealthy) {
+            gp.player.setHp(Math.min(gp.player.getMaxHp(), gp.player.getHp() + 20));
+            gp.player.setEnergy(Math.min(100, gp.player.getEnergy() + 20));
+            gp.player.setStress(Math.max(0, gp.player.getStress() - 10));
+            System.out.println("Ate " + foodNames[index] + " - Healthy! Stats improved.");
+        } else {
+            gp.player.setHp(Math.min(gp.player.getMaxHp(), gp.player.getHp() + 10)); // Half HP
+            gp.player.setEnergy(Math.max(0, gp.player.getEnergy() - 10)); // Decrease Energy
+            System.out.println("Ate " + foodNames[index] + " - Unhealthy! Energy dropped.");
+        }
+    }
+
+    private void drawCafeMenu(Graphics2D g2) {
+        int frameX = gp.screenWidth / 2 - 150;
+        int frameY = gp.screenHeight / 2 - 200;
+        int frameWidth = 300;
+        int frameHeight = 400;
+
+        // Draw Menu Background
+        g2.setColor(new Color(0, 0, 0, 210));
+        g2.fillRoundRect(frameX, frameY, frameWidth, frameHeight, 20, 20);
+        g2.setColor(Color.white);
+        g2.setStroke(new java.awt.BasicStroke(3));
+        g2.drawRoundRect(frameX, frameY, frameWidth, frameHeight, 20, 20);
+
+        // Title
+        g2.setFont(arial_20);
+        String title = "CAFE MENU";
+        int titleX = getXForCenteredText(g2, title, frameX, frameWidth);
+        g2.drawString(title, titleX, frameY + 35);
+        g2.drawLine(frameX + 20, frameY + 45, frameX + frameWidth - 20, frameY + 45);
+
+        // Options
+        g2.setFont(arial_14);
+        int textX = frameX + 70;
+        int textY = frameY + 80;
+        int lineHeight = 40;
+
+        for (int i = 0; i < foodNames.length; i++) {
+            // Draw Icon
+            if (foodIcons[i] != null) {
+                g2.drawImage(foodIcons[i], frameX + 20, textY - 24, 32, 32, null);
+            }
+            
+            // Draw Text
+            g2.drawString(foodNames[i], textX, textY);
+            
+            // Draw Cursor
+            if (commandNum == i) {
+                g2.drawString(">", frameX + 10, textY);
+            }
+            
+            textY += lineHeight;
+        }
+
+        g2.drawString("Press ENTER to buy, ESC to close.", frameX + 20, frameY + frameHeight - 20);
+    }
+
+    private int getXForCenteredText(Graphics2D g2, String text, int frameX, int frameWidth) {
+        int length = (int) g2.getFontMetrics().getStringBounds(text, g2).getWidth();
+        return frameX + (frameWidth / 2) - (length / 2);
+    }
+
+    private void drawStatBar(Graphics2D g2, int x, int y, BufferedImage icon, int current, int max, Color barColor) {
+        int barWidth = 100; 
+        int barHeight = 6; // Halved from 12
+        int iconSize = 20;
+
+        // 1. Draw Icon
+        if (icon != null) {
+            g2.drawImage(icon, x - 30, y - 7, iconSize, iconSize, null);
+        } else {
+            g2.setColor(barColor);
+            g2.fillOval(x - 28, y - 2, 12, 12); 
+        }
+
+        // 2. Draw Bar Background
+        g2.setColor(new Color(50, 50, 50, 200)); 
+        g2.fillRect(x, y, barWidth, barHeight);
+
+        // 3. Draw Bar Fill
+        double oneUnit = (double)barWidth / max; 
+        int fillWidth = (int)(oneUnit * current);
+
+        g2.setColor(barColor);
+        g2.fillRect(x, y, fillWidth, barHeight);
+
+        // 4. Draw thin border
+        g2.setColor(Color.white);
+        g2.drawRect(x, y, barWidth, barHeight);
+    }
+
+    public void updateTitleScreen() {
+        if (keyCooldown > 0) {
+            keyCooldown--;
+            return;
+        }
+
+        if (gp.keyH.upPressed) {
+            titleCommandNum--;
+            if (titleCommandNum < 0) {
+                titleCommandNum = 2; // 3 options
+            }
+            keyCooldown = 12;
+        }
+        if (gp.keyH.downPressed) {
+            titleCommandNum++;
+            if (titleCommandNum > 2) {
+                titleCommandNum = 0;
+            }
+            keyCooldown = 12;
+        }
+
+        if (gp.keyH.enterPressed) {
+            if (titleCommandNum == 0) {
+                // NEW GAME
+                gp.player.setDefaultValues();
+                gp.gameState = gp.playState;
+            } else if (titleCommandNum == 1) {
+                // LOAD GAME
+                GameStateDao dao = new GameStateDao();
+                Player loadedPlayer = dao.loadSavedGame(1); // Load default player ID 1
+                if (loadedPlayer != null) {
+                    gp.player.setHp(loadedPlayer.getHp() > 0 ? loadedPlayer.getHp() : gp.player.getMaxHp());
+                    gp.player.setEnergy(loadedPlayer.getEnergy());
+                    gp.player.setStress(loadedPlayer.getStress());
+                    gp.player.setGpa(loadedPlayer.getGpa());
+                    gp.player.setKarma(loadedPlayer.getKarma());
+                    gp.player.setXLocation(loadedPlayer.getXLocation());
+                    gp.player.setYLocation(loadedPlayer.getYLocation());
+                    // Update zone if necessary, though basic loading might just keep them in default zone
+                }
+                gp.gameState = gp.playState;
+            } else if (titleCommandNum == 2) {
+                // QUIT
+                System.exit(0);
+            }
+            keyCooldown = 15;
+        }
+    }
+
+    private void drawTitleScreen(Graphics2D g2) {
+        // Background color
+        g2.setColor(new Color(20, 20, 30));
+        g2.fillRect(0, 0, gp.screenWidth, gp.screenHeight);
+
+        // TITLE NAME
+        g2.setFont(titleFont);
+        String text = "CampusFlex";
+        int x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        int y = gp.tileSize * 3;
+
+        // Drop Shadow
+        g2.setColor(Color.black);
+        g2.drawString(text, x + 5, y + 5);
+
+        // Main Color
+        g2.setColor(new Color(0, 255, 127)); // Spring Green / Retro feel
+        g2.drawString(text, x, y);
+
+        // SUBTITLE
+        g2.setFont(arial_20);
+        g2.setColor(Color.white);
+        text = "A 2D Survival Adventure";
+        x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        y += gp.tileSize;
+        g2.drawString(text, x, y);
+
+        // MENU OPTIONS
+        g2.setFont(titleOptionFont);
+
+        text = "NEW GAME";
+        x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        y += gp.tileSize * 4;
+        g2.drawString(text, x, y);
+        if (titleCommandNum == 0) {
+            g2.drawString(">", x - gp.tileSize, y);
+        }
+
+        text = "LOAD GAME";
+        x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        y += gp.tileSize * 1.5;
+        g2.drawString(text, x, y);
+        if (titleCommandNum == 1) {
+            g2.drawString(">", x - gp.tileSize, y);
+        }
+
+        text = "QUIT";
+        x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        y += gp.tileSize * 1.5;
+        g2.drawString(text, x, y);
+        if (titleCommandNum == 2) {
+            g2.drawString(">", x - gp.tileSize, y);
+        }
+    }
+
+    public void updatePauseScreen() {
+        if (keyCooldown > 0) {
+            keyCooldown--;
+            return;
+        }
+
+        if (gp.keyH.escapePressed) {
+            gp.gameState = gp.playState;
+            gp.keyH.escapePressed = false;
+            keyCooldown = 12;
+            return;
+        }
+
+        if (gp.keyH.upPressed) {
+            pauseCommandNum--;
+            if (pauseCommandNum < 0) {
+                pauseCommandNum = 3; // 4 options
+            }
+            keyCooldown = 12;
+        }
+        if (gp.keyH.downPressed) {
+            pauseCommandNum++;
+            if (pauseCommandNum > 3) {
+                pauseCommandNum = 0;
+            }
+            keyCooldown = 12;
+        }
+
+        if (gp.keyH.enterPressed) {
+            if (pauseCommandNum == 0) {
+                // RESUME
+                gp.gameState = gp.playState;
+            } else if (pauseCommandNum == 1) {
+                // SAVE GAME
+                gp.player.setId(1); // Ensure player ID is set to 1 for basic save
+                GameStateDao dao = new GameStateDao();
+                dao.saveCurrentGame(gp.player);
+                System.out.println("Game Saved!");
+            } else if (pauseCommandNum == 2) {
+                // OPTIONS
+                gp.gameState = gp.optionsState;
+            } else if (pauseCommandNum == 3) {
+                // QUIT TO TITLE
+                gp.gameState = gp.titleState;
+            }
+            keyCooldown = 15;
+        }
+    }
+
+    private void drawPauseScreen(Graphics2D g2) {
+        g2.setColor(new Color(0, 0, 0, 150));
+        g2.fillRect(0, 0, gp.screenWidth, gp.screenHeight);
+
+        g2.setFont(titleFont);
+        g2.setColor(Color.white);
+        String text = "PAUSED";
+        int x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        int y = gp.tileSize * 4;
+        g2.drawString(text, x, y);
+
+        g2.setFont(titleOptionFont);
+
+        text = "RESUME";
+        x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        y += gp.tileSize * 3;
+        g2.drawString(text, x, y);
+        if (pauseCommandNum == 0) g2.drawString(">", x - gp.tileSize, y);
+
+        text = "SAVE GAME";
+        x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        y += gp.tileSize * 1.5;
+        g2.drawString(text, x, y);
+        if (pauseCommandNum == 1) g2.drawString(">", x - gp.tileSize, y);
+
+        text = "OPTIONS";
+        x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        y += gp.tileSize * 1.5;
+        g2.drawString(text, x, y);
+        if (pauseCommandNum == 2) g2.drawString(">", x - gp.tileSize, y);
+
+        text = "QUIT TO TITLE";
+        x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        y += gp.tileSize * 1.5;
+        g2.drawString(text, x, y);
+        if (pauseCommandNum == 3) g2.drawString(">", x - gp.tileSize, y);
+    }
+
+    public void updateOptionsScreen() {
+        if (keyCooldown > 0) {
+            keyCooldown--;
+            return;
+        }
+
+        if (gp.keyH.escapePressed) {
+            gp.gameState = gp.pauseState;
+            gp.keyH.escapePressed = false;
+            keyCooldown = 12;
+            return;
+        }
+
+        if (gp.keyH.upPressed) {
+            optionsCommandNum--;
+            if (optionsCommandNum < 0) {
+                optionsCommandNum = 2; // 3 options
+            }
+            keyCooldown = 12;
+        }
+        if (gp.keyH.downPressed) {
+            optionsCommandNum++;
+            if (optionsCommandNum > 2) {
+                optionsCommandNum = 0;
+            }
+            keyCooldown = 12;
+        }
+
+        if (gp.keyH.enterPressed) {
+            if (optionsCommandNum == 0) {
+                // Toggle Music
+                musicOn = !musicOn;
+            } else if (optionsCommandNum == 1) {
+                // Toggle SFX
+                sfxOn = !sfxOn;
+            } else if (optionsCommandNum == 2) {
+                // BACK
+                gp.gameState = gp.pauseState;
+            }
+            keyCooldown = 15;
+        }
+    }
+
+    private void drawOptionsScreen(Graphics2D g2) {
+        g2.setColor(new Color(0, 0, 0, 200));
+        g2.fillRect(0, 0, gp.screenWidth, gp.screenHeight);
+
+        g2.setFont(titleFont);
+        g2.setColor(Color.white);
+        String text = "OPTIONS";
+        int x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        int y = gp.tileSize * 3;
+        g2.drawString(text, x, y);
+
+        g2.setFont(titleOptionFont);
+
+        // Music
+        text = "MUSIC < " + (musicOn ? "ON" : "OFF") + " >";
+        x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        y += gp.tileSize * 4;
+        g2.drawString(text, x, y);
+        if (optionsCommandNum == 0) g2.drawString(">", x - gp.tileSize, y);
+
+        // SFX
+        text = "SFX   < " + (sfxOn ? "ON" : "OFF") + " >";
+        x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        y += gp.tileSize * 1.5;
+        g2.drawString(text, x, y);
+        if (optionsCommandNum == 1) g2.drawString(">", x - gp.tileSize, y);
+
+        // BACK
+        text = "BACK";
+        x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        y += gp.tileSize * 2;
+        g2.drawString(text, x, y);
+        if (optionsCommandNum == 2) g2.drawString(">", x - gp.tileSize, y);
+    }
+
+    private void drawMapScreen(Graphics2D g2) {
+        g2.setColor(new Color(0, 0, 0, 210));
+        g2.fillRect(0, 0, gp.screenWidth, gp.screenHeight);
+
+        g2.setFont(titleFont);
+        g2.setColor(Color.white);
+        String text = "FAST TRAVEL";
+        int x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+        int y = gp.tileSize * 3;
+        g2.drawString(text, x, y);
+
+        g2.setFont(titleOptionFont);
+
+        // Check if player is in C-Block (Ground, Cafe, Prayer, Corridor, Classrooms, AILab)
+        boolean inCBlock = (gp.currentZone == map.ZoneType.GROUND || 
+                            gp.currentZone == map.ZoneType.CAFETERIA || 
+                            gp.currentZone == map.ZoneType.PRAYER_AREA ||
+                            gp.currentZone == map.ZoneType.CORRIDOR ||
+                            gp.currentZone == map.ZoneType.CLASSROOM ||
+                            gp.currentZone == map.ZoneType.AI_LAB);
+
+        if (inCBlock) {
+            text = "[1] C-Block (Ground Floor)";
+            x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+            y += gp.tileSize * 3;
+            g2.drawString(text, x, y);
+
+            text = "[2] C-Block (First Floor)";
+            x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+            y += gp.tileSize * 2;
+            g2.drawString(text, x, y);
+            
+            g2.setFont(arial_20);
+            text = "Press 1 or 2 to warp floors. ESC to cancel.";
+            x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+            y += gp.tileSize * 3;
+            g2.drawString(text, x, y);
+        } else {
+            g2.setFont(arial_20);
+            text = "Fast Travel is unavailable in this Block.";
+            x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+            y += gp.tileSize * 3;
+            g2.drawString(text, x, y);
+            
+            text = "Press ESC to cancel.";
+            x = getXForCenteredText(g2, text, 0, gp.screenWidth);
+            y += gp.tileSize * 2;
+            g2.drawString(text, x, y);
+        }
+    }
+
+    private void drawLiveHUD(Graphics2D g2) {
+        int x = 20;
+        int y = 20;
+        int width = 300;
+        int height = 80;
+
+        g2.setColor(new Color(0, 0, 0, 150));
+        g2.fillRoundRect(x, y, width, height, 10, 10);
+        g2.setColor(Color.white);
+        g2.setStroke(new java.awt.BasicStroke(2));
+        g2.drawRoundRect(x, y, width, height, 10, 10);
+
+        g2.setFont(arial_20);
+        map.Zone currentZone = gp.campusMap.getZone(gp.currentZone);
+        String zoneName = (currentZone != null) ? currentZone.getName() : gp.currentZone.toString();
+        g2.drawString("Location: " + zoneName, x + 15, y + 30);
+
+        g2.setFont(arial_14);
+        if (!gp.nearbyDoorName.isEmpty()) {
+            g2.setColor(new Color(0, 255, 127)); // Green
+            g2.drawString("Door nearby: Leads to " + gp.nearbyDoorName, x + 15, y + 60);
+        } else {
+            g2.setColor(Color.lightGray);
+            g2.drawString("Explore to find doors...", x + 15, y + 60);
+        }
+    }
+}
+

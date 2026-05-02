@@ -14,6 +14,11 @@ public class CampusMap {
     }
 
     private void initializeMap() {
+        // Placeholder for initial setup
+        createBlock(1, "C-Block (Ground)");
+        createBlock(2, "C-Block (First Floor)");
+        createBlock(3, "D-Block");
+        createBlock(4, "Shared Area");
         // Block 1: C-Block (Ground Floor)
         Block cBlockGround = new Block(1, "C-Block (Ground)");
         Zone ground = new Zone(ZoneType.GROUND, "Campus Ground");
@@ -80,6 +85,13 @@ public class CampusMap {
         library.addLocation(new Location("Campus Walkway", new Position(maxCol / 2, maxRow - 1), ZoneType.WALKWAY, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "down"));
     }
 
+    public void createBlock(int id, String name) {
+        // Only add if not exists
+        if (getBlock(id) == null) {
+            blocks.add(new Block(id, name));
+        }
+    }
+
     public Zone getZone(ZoneType type) {
         for (Block b : blocks) {
             for (Zone z : b.getZones()) {
@@ -91,10 +103,42 @@ public class CampusMap {
         return null;
     }
 
+    public Zone getZone(int zoneId) {
+        // Placeholder implementation to match PUML signature exactly
+        for (Block b : blocks) {
+            for (Zone z : b.getZones()) {
+                if (z.getType().ordinal() == zoneId) return z;
+            }
+        }
+        return null;
+    }
+
     public Block getBlock(int blockId) {
         for (Block b : blocks) {
             if (b.getBlockId() == blockId) return b;
         }
         return null;
+    }
+
+    public boolean isRouteBlocked(int fromZoneId, int toZoneId) {
+        // Placeholder implementation to match PUML signature exactly
+        return false;
+    }
+
+    public boolean isRouteBlocked(ZoneType fromZone, ZoneType toZone) {
+        Zone from = getZone(fromZone);
+        if (from != null) {
+            for (Location loc : from.getLocations()) {
+                if (loc.getTargetZone() == toZone) {
+                    Zone to = getZone(toZone);
+                    return to != null && to.isLocked();
+                }
+            }
+        }
+        return true; // No route exists
+    }
+
+    public Zone getSpawnZone() {
+        return getZone(ZoneType.GROUND); // Default
     }
 }

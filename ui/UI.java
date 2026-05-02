@@ -8,7 +8,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
-import database.GameStateDao;
 import entity.Player;
 
 public class UI {
@@ -102,15 +101,15 @@ public class UI {
         int verticalGap = 25; // Increased from 20
 
         // Draw Stats
-        drawStatBar(g2, x, y, hpIcon, gp.player.getHp(), gp.player.getMaxHp(), new Color(200, 0, 0));
+        drawStatBar(g2, x, y, hpIcon, gp.session.getPlayer().getHp(), gp.session.getPlayer().getMaxHp(), new Color(200, 0, 0));
         y += verticalGap;
-        drawStatBar(g2, x, y, energyIcon, gp.player.getEnergy(), 100, new Color(0, 150, 255)); 
+        drawStatBar(g2, x, y, energyIcon, gp.session.getPlayer().getStats().getEnergy(), 100, new Color(0, 150, 255)); 
         y += verticalGap;
-        drawStatBar(g2, x, y, stressIcon, gp.player.getStress(), 100, new Color(150, 0, 150)); 
+        drawStatBar(g2, x, y, stressIcon, gp.session.getPlayer().getStats().getStress(), 100, new Color(150, 0, 150)); 
         y += verticalGap;
-        drawStatBar(g2, x, y, gpaIcon, (int)(gp.player.getGpa() * 25), 100, new Color(255, 215, 0)); 
+        drawStatBar(g2, x, y, gpaIcon, (int)(gp.session.getPlayer().getStats().getGPA() * 25), 100, new Color(255, 215, 0)); 
         y += verticalGap;
-        drawStatBar(g2, x, y, karmaIcon, gp.player.getKarma(), 100, new Color(255, 255, 255)); 
+        drawStatBar(g2, x, y, karmaIcon, gp.session.getPlayer().getStats().getKarma(), 100, new Color(255, 255, 255)); 
 
         if (gp.gameState == gp.cafeMenuState) {
             drawCafeMenu(g2);
@@ -157,13 +156,13 @@ public class UI {
         boolean isHealthy = (index <= 2);
 
         if (isHealthy) {
-            gp.player.setHp(Math.min(gp.player.getMaxHp(), gp.player.getHp() + 20));
-            gp.player.setEnergy(Math.min(100, gp.player.getEnergy() + 20));
-            gp.player.setStress(Math.max(0, gp.player.getStress() - 10));
+            gp.session.getPlayer().heal(20);
+            gp.session.getPlayer().getStats().updateEnergy(20);
+            gp.session.getPlayer().getStats().updateStress(-10);
             System.out.println("Ate " + foodNames[index] + " - Healthy! Stats improved.");
         } else {
-            gp.player.setHp(Math.min(gp.player.getMaxHp(), gp.player.getHp() + 10)); // Half HP
-            gp.player.setEnergy(Math.max(0, gp.player.getEnergy() - 10)); // Decrease Energy
+            gp.session.getPlayer().heal(10);
+            gp.session.getPlayer().getStats().updateEnergy(-10);
             System.out.println("Ate " + foodNames[index] + " - Unhealthy! Energy dropped.");
         }
     }
@@ -272,22 +271,13 @@ public class UI {
         if (gp.keyH.enterPressed) {
             if (titleCommandNum == 0) {
                 // NEW GAME
-                gp.player.setDefaultValues();
+                gp.session.startNewGame();
+                gp.session.getPlayer().setEngineComponents(gp, gp.keyH);
                 gp.gameState = gp.playState;
             } else if (titleCommandNum == 1) {
                 // LOAD GAME
-                GameStateDao dao = new GameStateDao();
-                Player loadedPlayer = dao.loadSavedGame(1); // Load default player ID 1
-                if (loadedPlayer != null) {
-                    gp.player.setHp(loadedPlayer.getHp() > 0 ? loadedPlayer.getHp() : gp.player.getMaxHp());
-                    gp.player.setEnergy(loadedPlayer.getEnergy());
-                    gp.player.setStress(loadedPlayer.getStress());
-                    gp.player.setGpa(loadedPlayer.getGpa());
-                    gp.player.setKarma(loadedPlayer.getKarma());
-                    gp.player.setXLocation(loadedPlayer.getXLocation());
-                    gp.player.setYLocation(loadedPlayer.getYLocation());
-                    // Update zone if necessary, though basic loading might just keep them in default zone
-                }
+                gp.session.loadFromSave(1);
+                gp.session.getPlayer().setEngineComponents(gp, gp.keyH);
                 gp.gameState = gp.playState;
             } else if (titleCommandNum == 2) {
                 // QUIT
@@ -386,9 +376,7 @@ public class UI {
                 gp.gameState = gp.playState;
             } else if (pauseCommandNum == 1) {
                 // SAVE GAME
-                gp.player.setId(1); // Ensure player ID is set to 1 for basic save
-                GameStateDao dao = new GameStateDao();
-                dao.saveCurrentGame(gp.player);
+                gp.session.getSaveStrategy().save(gp.session.buildCurrentGameState());
                 System.out.println("Game Saved!");
             } else if (pauseCommandNum == 2) {
                 // OPTIONS
@@ -581,7 +569,7 @@ public class UI {
         g2.drawRoundRect(x, y, width, height, 10, 10);
 
         g2.setFont(arial_20);
-        map.Zone currentZone = gp.campusMap.getZone(gp.currentZone);
+        map.Zone currentZone = gp.session.getCampusMap().getZone(gp.currentZone);
         String zoneName = (currentZone != null) ? currentZone.getName() : gp.currentZone.toString();
         g2.drawString("Location: " + zoneName, x + 15, y + 30);
 

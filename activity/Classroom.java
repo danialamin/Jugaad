@@ -1,31 +1,44 @@
 package activity;
 
+import controller.GameSession;
 import entity.Player;
-// import controller.GameSession;
+import interfaces.IInteractable;
 
-public class Classroom {
+public class Classroom implements IInteractable {
     private int roomId;
     private String subject;
     private int scheduledHour;
     private boolean isAttended;
 
-    public Classroom(int roomId) {
+    public Classroom(int roomId, String subject, int scheduledHour) {
         this.roomId = roomId;
-        this.subject = "General Studies";
-        this.scheduledHour = 9;
-        this.isAttended = false;
+        this.subject = subject;
+        this.scheduledHour = scheduledHour;
     }
 
-    public int getRoomId() {
-        return roomId;
+    @Override
+    public void onInteract(Player player, GameSession session) {
+        if (!isAttended) {
+            startLecture(player);
+        } else {
+            System.out.println("You have already attended " + subject + " today.");
+        }
     }
 
     public boolean isAvailable(int currentHour) {
-        return currentHour >= scheduledHour;
+        return currentHour == scheduledHour && !isAttended;
     }
 
     public void startLecture(Player player) {
-        // Lecture logic
+        System.out.println("Attending lecture: " + subject);
+        Quiz quiz = generateQuiz();
+        System.out.println("A quiz has started!");
+        player.getStats().applyModifier(quiz.buildResultModifier(true)); // Placeholder auto-win
+        markAttended();
+    }
+
+    public Quiz generateQuiz() {
+        return new Quiz();
     }
 
     public void markAttended() {

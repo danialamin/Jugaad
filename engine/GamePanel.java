@@ -37,10 +37,10 @@ public class GamePanel extends JPanel implements Runnable {
     public KeyHandler keyH = new KeyHandler();
     public CollisionChecker cChecker = new CollisionChecker(this);
     public ObjectManager objM = new ObjectManager(this);
-    public CampusMap campusMap = new CampusMap();
     Thread gameThread;
-    public Player player = new Player(this, keyH);
-    public UI ui = new UI(this);
+    
+    public controller.GameSession session;
+    public ui.UI gameUI = new UI(this);
 
     // Live HUD Data
     public String nearbyDoorName = "";
@@ -60,6 +60,12 @@ public class GamePanel extends JPanel implements Runnable {
         this.setDoubleBuffered(true);
         this.addKeyListener(keyH);
         this.setFocusable(true);
+        
+        session = new controller.GameSession();
+        session.startNewGame();
+        
+        // Connect player back to panel and keyboard
+        session.getPlayer().setEngineComponents(this, keyH);
         
         // Initial zone setup
         if (currentZone == ZoneType.CAFETERIA) {
@@ -98,7 +104,7 @@ public class GamePanel extends JPanel implements Runnable {
 
     public void update() {
         if (gameState == titleState) {
-            ui.updateTitleScreen();
+            gameUI.updateTitleScreen();
         } else if (gameState == playState) {
             if (keyH.escapePressed) {
                 gameState = pauseState;
@@ -107,17 +113,17 @@ public class GamePanel extends JPanel implements Runnable {
                 gameState = mapState;
                 keyH.mPressed = false;
             } else {
-                player.update();
+                session.getPlayer().update();
                 checkZoneTransitions();
                 checkInteractions();
                 updateLiveLocation();
             }
         } else if (gameState == pauseState) {
-            ui.updatePauseScreen();
+            gameUI.updatePauseScreen();
         } else if (gameState == optionsState) {
-            ui.updateOptionsScreen();
+            gameUI.updateOptionsScreen();
         } else if (gameState == cafeMenuState) {
-            ui.updateCafeMenu();
+            gameUI.updateCafeMenu();
         } else if (gameState == mapState) {
             updateFastTravel();
         }
@@ -163,15 +169,15 @@ public class GamePanel extends JPanel implements Runnable {
 
         // Safe Spawn Coordinates for Fast Travel
         if (currentZone == ZoneType.GROUND) {
-            player.xLocation = 2 * tileSize;
-            player.yLocation = (maxScreenRow / 2) * tileSize;
+            session.getPlayer().xLocation = 2 * tileSize;
+            session.getPlayer().yLocation = (maxScreenRow / 2) * tileSize;
         } else if (currentZone == ZoneType.CORRIDOR) {
-            player.xLocation = 2 * tileSize;
-            player.yLocation = (maxScreenRow / 2) * tileSize;
+            session.getPlayer().xLocation = 2 * tileSize;
+            session.getPlayer().yLocation = (maxScreenRow / 2) * tileSize;
         } else {
             // Fallback safe spawn
-            player.xLocation = 2 * tileSize;
-            player.yLocation = 2 * tileSize;
+            session.getPlayer().xLocation = 2 * tileSize;
+            session.getPlayer().yLocation = 2 * tileSize;
         }
         
         gameState = playState;
@@ -180,33 +186,11 @@ public class GamePanel extends JPanel implements Runnable {
 
     private void updateLiveLocation() {
         nearbyDoorName = "";
-        int pCol = (player.xLocation + tileSize / 2) / tileSize;
-        int pRow = (player.yLocation + tileSize / 2) / tileSize;
-
-        // Special: Corridor classroom/AI Lab doors (not in CampusMap)
-        if (currentZone == ZoneType.CORRIDOR) {
-            if (pRow <= 1 || pRow >= maxScreenRow - 2) {
-                if (Math.abs(pCol - 4) <= 1 || Math.abs(pCol - 10) <= 1) {
-                    nearbyDoorName = "Classroom";
-                    return;
-                }
-                if (Math.abs(pCol - 16) <= 1 || Math.abs(pCol - 20) <= 1) {
-                    nearbyDoorName = (pRow <= 1) ? "AI Lab" : "Classroom";
-                    return;
-                }
-            }
-        }
-
-        // Special: Inside a Classroom/AI Lab - exit door
-        if (currentZone == ZoneType.CLASSROOM || currentZone == ZoneType.AI_LAB) {
-            if (pRow >= maxScreenRow - 2 && Math.abs(pCol - maxScreenCol / 2) <= 1) {
-                nearbyDoorName = "Academic Corridor";
-                return;
-            }
-        }
+        int pCol = (session.getPlayer().xLocation + tileSize / 2) / tileSize;
+        int pRow = (session.getPlayer().yLocation + tileSize / 2) / tileSize;
 
         // Dynamic OO Routing from CampusMap
-        Zone current = campusMap.getZone(currentZone);
+        Zone current = session.getCampusMap().getZone(currentZone);
         if (current == null) return;
 
         for (Location loc : current.getLocations()) {
@@ -224,11 +208,11 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     private void checkZoneTransitions() {
-        int playerCol = (player.xLocation + tileSize / 2) / tileSize;
-        int playerRow = (player.yLocation + tileSize / 2) / tileSize;
+        int playerCol = (session.getPlayer().xLocation + tileSize / 2) / tileSize;
+        int playerRow = (session.getPlayer().yLocation + tileSize / 2) / tileSize;
 
         // Dynamic OO Routing
-        Zone current = campusMap.getZone(currentZone);
+        Zone current = session.getCampusMap().getZone(currentZone);
         if (current != null) {
             for (Location loc : current.getLocations()) {
                 int locCol = (int) loc.getPosition().getX();
@@ -256,66 +240,25 @@ public class GamePanel extends JPanel implements Runnable {
                         if (currentZone == ZoneType.SERVER_ROOM) objM.loadServerRoomObjects();
                         if (currentZone == ZoneType.AI_LAB) objM.loadAILabObjects();
                         
-                        player.xLocation = (int)loc.getTargetSpawnPosition().getX();
-                        player.yLocation = (int)loc.getTargetSpawnPosition().getY();
+                        session.getPlayer().xLocation = (int)loc.getTargetSpawnPosition().getX();
+                        session.getPlayer().yLocation = (int)loc.getTargetSpawnPosition().getY();
+                        session.getPlayer().setCurrentZoneId(currentZone.ordinal());
                         clearKeys();
                         return; // Transition handled
                     }
                 }
             }
         }
-
-        // Special case for Classrooms (dynamic multiple doors)
-        if (currentZone == ZoneType.CORRIDOR) {
-            boolean isTopDoor = (playerRow <= 1);
-            boolean isBottomDoor = (playerRow >= maxScreenRow - 2);
-            if ((isTopDoor && keyH.upPressed) || (isBottomDoor && keyH.downPressed)) {
-                // Check if near any classroom door column (within 1 tile)
-                int nearDoorCol = -1;
-                int[] doorCols = {4, 10, 16, 20};
-                for (int dc : doorCols) {
-                    if (Math.abs(playerCol - dc) <= 1) { nearDoorCol = dc; break; }
-                }
-                if (nearDoorCol != -1) {
-                    currentClassroomId = nearDoorCol + (isTopDoor ? 100 : 200);
-                    enteredFromDoorCol = nearDoorCol;
-                    enteredFromTopDoor = isTopDoor;
-
-                    if (isTopDoor && (nearDoorCol == 16 || nearDoorCol == 20)) {
-                        currentZone = ZoneType.AI_LAB;
-                        tileM.loadMap();
-                        objM.loadAILabObjects();
-                    } else {
-                        currentZone = ZoneType.CLASSROOM;
-                        tileM.loadMap();
-                        objM.loadClassroomObjects();
-                    }
-                    
-                    // Spawn player safely inside
-                    player.xLocation = (maxScreenCol / 2) * tileSize;
-                    player.yLocation = (maxScreenRow - 3) * tileSize;
-                    clearKeys();
-                }
-            }
-        } else if ((currentZone == ZoneType.CLASSROOM || currentZone == ZoneType.AI_LAB) && playerRow >= maxScreenRow - 2 && Math.abs(playerCol - maxScreenCol / 2) <= 1 && keyH.downPressed) {
-            currentZone = ZoneType.CORRIDOR;
-            tileM.loadMap();
-            objM.clearObjects();
-            
-            // Place back at the correct corridor door
-            player.xLocation = enteredFromDoorCol * tileSize;
-            player.yLocation = enteredFromTopDoor ? (tileSize * 2) : (maxScreenRow - 3) * tileSize;
-            clearKeys();
-        }
     }
 
     private void checkInteractions() {
         if (keyH.ePressed) {
+            session.onInteract(); // Forward to session
+            
             // Interacting with Cafe Counter (Top side)
-            // Giving a bit of leeway (tileSize * 2) so they don't have to be perfectly against the wall
-            if (currentZone == ZoneType.CAFETERIA && player.yLocation < tileSize * 2) {
+            if (currentZone == ZoneType.CAFETERIA && session.getPlayer().yLocation < tileSize * 2) {
                 gameState = cafeMenuState;
-                ui.commandNum = 0; // Reset menu selection
+                gameUI.commandNum = 0; // Reset menu selection
             }
             // Consume the key press to avoid rapid firing
             keyH.ePressed = false; 
@@ -328,12 +271,12 @@ public class GamePanel extends JPanel implements Runnable {
         Graphics2D g2 = (Graphics2D)g;
         
         if (gameState == titleState) {
-            ui.draw(g2);
+            gameUI.draw(g2);
         } else {
             tileM.draw(g2);
             objM.draw(g2);
-            player.draw(g2);
-            ui.draw(g2);
+            session.getPlayer().draw(g2);
+            gameUI.draw(g2);
         }
         
         g2.dispose();

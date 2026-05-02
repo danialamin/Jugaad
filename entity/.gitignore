@@ -1,3 +1,9 @@
 /Player.class
 /Furniture.class
 /Position.class
+/Enemy.class
+/FinalBoss.class
+/NPC.class
+/PlayerStats.class
+/StatModifierImpl.class
+/ZombieEnemy.class
