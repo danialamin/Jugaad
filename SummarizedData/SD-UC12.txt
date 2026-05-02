@@ -1,0 +1,152 @@
+@startuml
+title UC12: Deploy System Patch (SD) - CampusFlex Section D
+
+participant ":GameSession" as gameSession
+participant ":ZombieMode" as zombieMode
+participant ":CombatController" as combatController
+participant ":CombatStrategyFactory" as combatStrategyFactory
+participant ":FinalBoss" as finalBoss
+participant ":CombatChallenge" as combatChallenge
+participant ":KarmaTracker" as karmaTracker
+participant ":Player" as playerEntity
+participant ":DebugStrategy" as debugStrategy
+participant ":CombatResult" as combatResult
+participant ":TerminateStrategy" as terminateStrategy
+participant ":EndingResolver" as endingResolver
+
+[-> gameSession: handleSystemEvent("enterResearchLab")
+activate gameSession
+gameSession -> zombieMode: onInteract(session)
+activate zombieMode
+
+alt Checkpoint exists
+    zombieMode -> combatController: initiateCombat(finalBoss)
+    activate combatController
+    combatController -> finalBoss: getCombatChallenge()
+    activate finalBoss
+    finalBoss -> finalBoss: getCurrentPhase()
+    finalBoss --> combatController: phaseChallengeRef
+    deactivate finalBoss
+    
+    loop Each boss phase (up to maxPhases = 3)
+        alt Player chooses DEBUG
+            [-> gameSession: handleSystemEvent("solveChallenge")
+            gameSession -> combatController: executeCombatMove(debugMove)
+            
+            combatController -> combatStrategyFactory: createStrategy("Debug")
+            activate combatStrategyFactory
+            combatStrategyFactory -> debugStrategy **: create(bossChallenge)
+            combatStrategyFactory --> combatController: debugStrategyRef
+            deactivate combatStrategyFactory
+            
+            combatController -> combatController: setStrategy(debugStrategyRef)
+            combatController -> debugStrategy: execute(player, finalBoss)
+            activate debugStrategy
+            
+            debugStrategy -> combatChallenge: present()
+            activate combatChallenge
+            deactivate combatChallenge
+            
+            alt Challenge CORRECT
+                debugStrategy -> combatChallenge: evaluate(answer)
+                activate combatChallenge
+                combatChallenge --> debugStrategy: isCorrect = true
+                deactivate combatChallenge
+                
+                debugStrategy -> debugStrategy: getKarmaEffect()
+                debugStrategy -> combatResult **: create(victory=true, usedDebug=true, karmaChange=+10, hpChange=0)
+                debugStrategy --> combatController: combatResult
+                deactivate debugStrategy
+                
+                combatController -> combatController: applyResult(combatResult)
+                combatController -> finalBoss: escalatePhase()
+                activate finalBoss
+                finalBoss -> finalBoss: isMaxPhase()
+                deactivate finalBoss
+                
+                combatController -> karmaTracker: add(10, "Boss phase cleared - Debug")
+                destroy combatResult
+                destroy debugStrategy
+                
+            else Challenge FAILED
+                debugStrategy -> combatChallenge: evaluate(answer)
+                activate combatChallenge
+                combatChallenge --> debugStrategy: isCorrect = false
+                deactivate combatChallenge
+                
+                debugStrategy -> combatResult **: create(victory=false, usedDebug=true, karmaChange=0, hpChange=-20)
+                debugStrategy --> combatController: combatResult
+                
+                combatController -> combatController: applyResult(combatResult)
+                combatController -> playerEntity: takeDamage(20)
+                activate playerEntity
+                deactivate playerEntity
+                destroy combatResult
+                destroy debugStrategy
+            end
+            
+        else Player chooses TERMINATE
+            [-> gameSession: handleSystemEvent("makeChoiceTerminate")
+            gameSession -> combatController: executeCombatMove(terminateMove)
+            
+            combatController -> combatStrategyFactory: createStrategy("Terminate")
+            activate combatStrategyFactory
+            combatStrategyFactory -> terminateStrategy **: create()
+            combatStrategyFactory --> combatController: terminateStrategyRef
+            deactivate combatStrategyFactory
+            
+            combatController -> combatController: setStrategy(terminateStrategyRef)
+            combatController -> terminateStrategy: execute(player, finalBoss)
+            activate terminateStrategy
+            
+            terminateStrategy -> combatResult **: create(victory=true, usedDebug=false, karmaChange=-15, hpChange=0)
+            terminateStrategy --> combatController: combatResult
+            deactivate terminateStrategy
+            
+            combatController -> combatController: applyResult(combatResult)
+            combatController -> finalBoss: escalatePhase()
+            activate finalBoss
+            finalBoss -> finalBoss: isMaxPhase()
+            deactivate finalBoss
+            
+            combatController -> karmaTracker: deduct(15, "Boss phase - Terminate brute force")
+            destroy combatResult
+            destroy terminateStrategy
+        end
+    end
+    
+    combatController -> finalBoss: deployPatch()
+    activate finalBoss
+    finalBoss -> finalBoss: isMaxPhase()
+    deactivate finalBoss
+    
+    [-> gameSession: handleSystemEvent("confirmPatch")
+    gameSession -> endingResolver **: create()
+    gameSession -> endingResolver: resolve(karmaTracker)
+    activate endingResolver
+    
+    endingResolver -> karmaTracker: getTotal()
+    activate karmaTracker
+    karmaTracker --> endingResolver: totalKarma
+    deactivate karmaTracker
+    
+    alt totalKarma >= 70 (PACIFIST)
+        endingResolver -> endingResolver: buildEpilogueText(PACIFIST)
+        
+    else totalKarma <= 30 (EVIL)
+        endingResolver -> endingResolver: buildEpilogueText(EVIL)
+        
+    else 30 < totalKarma < 70 (MIXED)
+        endingResolver -> endingResolver: buildEpilogueText(MIXED)
+    end
+    
+    deactivate endingResolver
+    
+    gameSession -> zombieMode: deactivate()
+    gameSession -> gameSession: endSession()
+end
+
+deactivate combatController
+deactivate zombieMode
+deactivate gameSession
+@enduml

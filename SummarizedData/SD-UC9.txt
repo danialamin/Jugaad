@@ -1,0 +1,100 @@
+@startuml
+title UC9: Engage in Combat (SD) - CampusFlex Section D
+
+participant ":GameSession" as gameSession
+participant ":ZombieMode" as zombieMode
+participant ":CombatController" as combatController
+participant ":CombatStrategyFactory" as combatStrategyFactory
+participant ":ZombieEnemy" as zombieEnemy
+participant ":KarmaTracker" as karmaTracker
+participant ":Player" as playerEntity
+participant ":DebugStrategy" as debugStrategy
+participant ":CombatResult" as combatResult
+participant ":TerminateStrategy" as terminateStrategy
+
+[-> gameSession: handleSystemEvent("contactZombie")
+activate gameSession
+gameSession -> zombieMode: onInteract(session)
+activate zombieMode
+zombieMode -> combatController: initiateCombat(zombieEnemy)
+activate combatController
+
+combatController -> playerEntity: isAlive()
+activate playerEntity
+playerEntity --> combatController: aliveStatus
+deactivate playerEntity
+
+combatController -> zombieEnemy: getCombatChallenge()
+activate zombieEnemy
+zombieEnemy --> combatController: combatChallengeRef
+deactivate zombieEnemy
+
+alt Player chooses DEBUG (Pacifist)
+    [-> gameSession: handleSystemEvent("executeDebugMove")
+    gameSession -> combatController: executeCombatMove(debugMove)
+    
+    combatController -> combatStrategyFactory: createStrategy("Debug")
+    activate combatStrategyFactory
+    combatStrategyFactory -> debugStrategy **: create(challenge)
+    combatStrategyFactory --> combatController: debugStrategyRef
+    deactivate combatStrategyFactory
+    
+    combatController -> combatController: setStrategy(debugStrategyRef)
+    combatController -> debugStrategy: execute(player, zombieEnemy)
+    activate debugStrategy
+    
+    debugStrategy -> combatResult **: create(victory=true, usedDebug=true, karmaChange=+15, hpChange=0)
+    debugStrategy --> combatController: combatResult
+    deactivate debugStrategy
+    
+    combatController -> combatController: applyResult(combatResult)
+    combatController -> zombieEnemy: takeDamage(enemy.maxHp)
+    activate zombieEnemy
+    zombieEnemy -> zombieEnemy: isDefeated()
+    deactivate zombieEnemy
+    
+    combatController -> karmaTracker: add(15, "Pacifist combat - Debug")
+    destroy combatResult
+    destroy debugStrategy
+    
+else Player chooses TERMINATE (Brute Force)
+    [-> gameSession: handleSystemEvent("executeTerminateMove")
+    gameSession -> combatController: executeCombatMove(terminateMove)
+    
+    combatController -> combatStrategyFactory: createStrategy("Terminate")
+    activate combatStrategyFactory
+    combatStrategyFactory -> terminateStrategy **: create()
+    combatStrategyFactory --> combatController: terminateStrategyRef
+    deactivate combatStrategyFactory
+    
+    combatController -> combatController: setStrategy(terminateStrategyRef)
+    combatController -> terminateStrategy: execute(player, zombieEnemy)
+    activate terminateStrategy
+    
+    terminateStrategy -> combatResult **: create(victory=true, usedDebug=false, karmaChange=-10, hpChange=0)
+    terminateStrategy --> combatController: combatResult
+    deactivate terminateStrategy
+    
+    combatController -> combatController: applyResult(combatResult)
+    combatController -> zombieEnemy: takeDamage(30)
+    activate zombieEnemy
+    zombieEnemy -> zombieEnemy: isDefeated()
+    deactivate zombieEnemy
+    
+    combatController -> karmaTracker: deduct(10, "Brute force - Terminate")
+    destroy combatResult
+    destroy terminateStrategy
+    
+else Player HP hits ZERO during fight
+    combatController -> playerEntity: takeDamage(amount)
+    activate playerEntity
+    playerEntity -> playerEntity: isAlive()
+    
+    combatController -> playerEntity: respawn()
+    deactivate playerEntity
+end
+
+deactivate combatController
+deactivate zombieMode
+deactivate gameSession
+@enduml

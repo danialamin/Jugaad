@@ -1,0 +1,56 @@
+@startuml
+title UC5: Pray at Prayer Area (SD) - CampusFlex Section D
+
+participant ":GameSession" as gameSession
+participant ":NormalMode" as normalMode
+participant ":Zone" as zone
+participant ":Location" as location
+participant ":PrayerArea" as prayerArea
+participant ":PlayerStats" as playerStats
+participant ":KarmaTracker" as karmaTracker
+participant ":StatModifierImpl" as statModifierImpl
+
+[-> gameSession: handleSystemEvent("enterPrayerArea")
+activate gameSession
+gameSession -> normalMode: onInteract(session)
+activate normalMode
+normalMode -> zone: getNearbyLocation(player.getPosition())
+activate zone
+zone --> normalMode: locationRef
+deactivate zone
+normalMode -> location: interact(player, session)
+activate location
+location -> prayerArea: onInteract(player, session)
+activate prayerArea
+
+prayerArea -> prayerArea: isAvailable()
+
+alt Prayer Area AVAILABLE (prayedThisCycle = false)
+    alt Player chooses to pray
+        [-> gameSession: handleSystemEvent("chooseToPray")
+        gameSession -> prayerArea: buildPrayerModifier()
+        
+        prayerArea -> statModifierImpl **: create(gpaDelta=0, energyDelta=0, stressDelta=0, karmaDelta=+20)
+        statModifierImpl --> prayerArea: prayerModifier
+        prayerArea --> gameSession: prayerModifier
+        
+        gameSession -> playerStats: applyModifier(prayerModifier)
+        activate playerStats
+        playerStats -> playerStats: updateKarma(+20)
+        playerStats --> gameSession
+        deactivate playerStats
+        
+        gameSession -> karmaTracker: add(20, "Prayer at Prayer Area")
+        gameSession -> prayerArea: resetCycle()
+        destroy statModifierImpl
+        
+    else Player decides not to pray
+        [-> gameSession: handleSystemEvent("declinePrayer")
+    end
+end
+
+deactivate prayerArea
+deactivate location
+deactivate normalMode
+deactivate gameSession
+@enduml

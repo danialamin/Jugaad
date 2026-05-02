@@ -1,0 +1,127 @@
+@startuml
+title UC2: Attend Class and Solve Quiz (SD) - CampusFlex Section D
+
+participant ":GameSession" as gameSession
+participant ":NormalMode" as normalMode
+participant ":Zone" as zone
+participant ":Location" as location
+participant ":Classroom" as classroom
+participant ":Player" as playerEntity
+participant ":Phone" as phone
+participant ":PlayerStats" as playerStats
+participant ":KarmaTracker" as karmaTracker
+participant ":Quiz" as quiz
+participant ":StatModifierImpl" as statModifierImpl
+
+[-> gameSession: handleSystemEvent("enterClassroom")
+activate gameSession
+gameSession -> normalMode: onInteract(session)
+activate normalMode
+normalMode -> zone: getNearbyLocation(player.getPosition())
+activate zone
+zone --> normalMode: locationRef
+deactivate zone
+normalMode -> location: interact(player, session)
+activate location
+location -> classroom: onInteract(player, session)
+activate classroom
+
+classroom -> classroom: isAvailable(currentHour)
+
+alt Class is available and player enters
+    classroom -> classroom: startLecture(player)
+    classroom -> quiz **: generateQuiz()
+    activate quiz
+    
+    alt Player opens Phone DURING quiz
+        [-> gameSession: handleSystemEvent("openPhone")
+        gameSession -> playerEntity: getPhone()
+        activate playerEntity
+        playerEntity --> gameSession: phoneRef
+        deactivate playerEntity
+        
+        gameSession -> phone: open()
+        activate phone
+        phone -> phone: isDuringQuiz(session)
+        
+        phone -> quiz: incrementAttempt()
+        
+        phone -> phone: buildCheatModifier()
+        phone -> statModifierImpl **: create(gpaDelta=0, energyDelta=0, stressDelta=0, karmaDelta=-15)
+        statModifierImpl --> phone: cheatModifier
+        phone --> gameSession: cheatModifier
+        deactivate phone
+        
+        gameSession -> playerStats: applyModifier(cheatModifier)
+        activate playerStats
+        playerStats -> playerStats: updateKarma(-15)
+        playerStats --> gameSession
+        deactivate playerStats
+        
+        gameSession -> karmaTracker: deduct(15, "Phone during quiz")
+        destroy statModifierImpl
+        
+    else Player submits answer normally
+        [-> gameSession: handleSystemEvent("submitAnswer")
+        gameSession -> quiz: evaluate(answer)
+        
+        alt Answer CORRECT
+            quiz --> gameSession: isCorrect = true
+            gameSession -> quiz: buildResultModifier(true)
+            
+            quiz -> statModifierImpl **: create(gpaDelta=+0.3, energyDelta=0, stressDelta=0, karmaDelta=+5)
+            statModifierImpl --> quiz: modifier
+            quiz --> gameSession: modifier
+            
+            gameSession -> playerStats: applyModifier(modifier)
+            activate playerStats
+            playerStats -> playerStats: updateGPA(+0.3)
+            playerStats -> playerStats: updateKarma(+5)
+            playerStats --> gameSession
+            deactivate playerStats
+            
+            gameSession -> karmaTracker: add(5, "Correct quiz answer")
+            
+            gameSession -> classroom: markAttended()
+            destroy statModifierImpl
+            
+        else Answer WRONG
+            quiz --> gameSession: isCorrect = false
+            gameSession -> quiz: incrementAttempt()
+            gameSession -> quiz: buildResultModifier(false)
+            
+            quiz -> statModifierImpl **: create(gpaDelta=+0.1, energyDelta=0, stressDelta=0, karmaDelta=0)
+            statModifierImpl --> quiz: modifier
+            quiz --> gameSession: modifier
+            
+            gameSession -> playerStats: applyModifier(modifier)
+            activate playerStats
+            playerStats -> playerStats: updateGPA(+0.1)
+            playerStats --> gameSession
+            deactivate playerStats
+            
+            gameSession -> classroom: markAttended()
+            destroy statModifierImpl
+        end
+    end
+    destroy quiz
+    
+else Player skips class entirely
+    location -> statModifierImpl **: create(gpaDelta=-0.1, energyDelta=0, stressDelta=0, karmaDelta=-10)
+    
+    location -> playerStats: applyModifier(skipModifier)
+    activate playerStats
+    playerStats -> playerStats: updateGPA(-0.1)
+    playerStats -> playerStats: updateKarma(-10)
+    playerStats --> location
+    deactivate playerStats
+    
+    location -> karmaTracker: deduct(10, "Skipped class")
+    destroy statModifierImpl
+end
+
+deactivate classroom
+deactivate location
+deactivate normalMode
+deactivate gameSession
+@enduml

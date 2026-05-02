@@ -1,0 +1,91 @@
+@startuml
+title UC11: Navigate Campus Obstacles (SD) - CampusFlex Section D
+
+participant ":GameSession" as gameSession
+participant ":ZombieMode" as zombieMode
+participant ":CampusMap" as campusMap
+participant ":Zone" as zone
+participant ":Obstacle" as obstacle
+participant ":Inventory" as inventory
+participant ":CombatController" as combatController
+participant ":ZombieEnemy" as zombieEnemy
+participant ":KeyItem" as keyItem
+
+[-> gameSession: handleSystemEvent("attemptBlockedRoute")
+activate gameSession
+gameSession -> zombieMode: onPlayerMove(routeX, routeY, session)
+activate zombieMode
+
+zombieMode -> campusMap: isRouteBlocked(fromZoneId, toZoneId)
+activate campusMap
+campusMap -> zone: isBlocked()
+activate zone
+zone -> obstacle: isBlocked()
+activate obstacle
+obstacle --> zone: blockedStatus
+deactivate obstacle
+zone --> campusMap: routeBlocked
+deactivate zone
+campusMap --> zombieMode: isRouteBlocked
+deactivate campusMap
+
+[-> gameSession: handleSystemEvent("takeAlternateRoute")
+gameSession -> zombieMode: revealAlternate(zone)
+
+zombieMode -> campusMap: getZone(alternateZoneId)
+activate campusMap
+campusMap -> zone: getAlternateZone()
+activate zone
+zone --> campusMap: alternateZoneRef
+deactivate zone
+campusMap --> zombieMode: alternateZone
+deactivate campusMap
+
+[-> gameSession: handleSystemEvent("collectKey")
+gameSession -> campusMap: getLocation(keyLocationId)
+activate campusMap
+campusMap -> zone: getLocation(keyLocationId)
+activate zone
+zone --> campusMap: locationRef
+deactivate zone
+campusMap --> gameSession: locationRef
+deactivate campusMap
+
+alt Key spot is guarded by a zombie
+    gameSession -> combatController: initiateCombat(guardingZombie)
+    activate combatController
+    combatController -> zombieEnemy: getCombatChallenge()
+    activate zombieEnemy
+    zombieEnemy --> combatController: challengeRef
+    deactivate zombieEnemy
+    deactivate combatController
+end
+
+gameSession -> obstacle: onInteract(player, session)
+activate obstacle
+obstacle -> obstacle: isLocked()
+
+alt Player tries door WITHOUT key
+    obstacle -> obstacle: getHint()
+    
+else Player reaches key pickup location
+    gameSession -> inventory: addItem(keyItem)
+    activate inventory
+    inventory -> keyItem **: create(itemId, name, description)
+    inventory --> gameSession: addedStatus
+    deactivate inventory
+    
+    gameSession -> obstacle: tryUnlock(keyItem)
+    obstacle -> inventory: hasItem(keyItem.getItemId())
+    activate inventory
+    inventory --> obstacle: hasItem
+    deactivate inventory
+    
+    obstacle --> gameSession: unlockStatus
+    gameSession -> zombieMode: revealAlternate(zone)
+end
+
+deactivate obstacle
+deactivate zombieMode
+deactivate gameSession
+@enduml

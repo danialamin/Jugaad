@@ -1,0 +1,79 @@
+@startuml
+title UC10: Debug Enemy (SD) - CampusFlex Section D
+
+participant ":GameSession" as gameSession
+participant ":CombatController" as combatController
+participant ":CombatStrategyFactory" as combatStrategyFactory
+participant ":CombatChallenge" as combatChallenge
+participant ":ZombieEnemy" as zombieEnemy
+participant ":KarmaTracker" as karmaTracker
+participant ":Player" as playerEntity
+participant ":DebugStrategy" as debugStrategy
+participant ":CombatResult" as combatResult
+
+[-> gameSession: handleSystemEvent("selectDebug")
+activate gameSession
+
+gameSession -> combatController: executeCombatMove(debugMove)
+activate combatController
+
+combatController -> combatStrategyFactory: createStrategy("Debug")
+activate combatStrategyFactory
+combatStrategyFactory -> debugStrategy **: create(challenge)
+combatStrategyFactory --> combatController: debugStrategyRef
+deactivate combatStrategyFactory
+
+combatController -> combatController: setStrategy(debugStrategyRef)
+combatController -> debugStrategy: execute(player, zombieEnemy)
+activate debugStrategy
+
+debugStrategy -> combatChallenge: present()
+activate combatChallenge
+deactivate combatChallenge
+
+[-> gameSession: handleSystemEvent("submitSolution")
+gameSession -> combatController: executeCombatMove(debugMove)
+combatController -> debugStrategy: execute(player, zombieEnemy)
+
+debugStrategy -> combatChallenge: evaluate(answer)
+activate combatChallenge
+
+alt Answer CORRECT
+    combatChallenge --> debugStrategy: isCorrect = true
+    debugStrategy -> debugStrategy: getKarmaEffect()
+    
+    debugStrategy -> combatResult **: create(victory=true, usedDebug=true, karmaChange=+15, hpChange=0)
+    debugStrategy --> combatController: combatResult
+    
+    combatController -> combatController: applyResult(combatResult)
+    combatController -> zombieEnemy: takeDamage(enemy.maxHp)
+    activate zombieEnemy
+    zombieEnemy -> zombieEnemy: isDefeated()
+    deactivate zombieEnemy
+    
+    combatController -> karmaTracker: add(15, "Debug - Pacifist victory")
+    destroy combatResult
+    
+else Answer WRONG OR Time limit EXCEEDED
+    combatChallenge --> debugStrategy: isCorrect = false
+    deactivate combatChallenge
+    debugStrategy -> debugStrategy: getKarmaEffect()
+    
+    debugStrategy -> combatResult **: create(victory=false, usedDebug=true, karmaChange=0, hpChange=-10)
+    debugStrategy --> combatController: combatResult
+    
+    combatController -> combatController: applyResult(combatResult)
+    combatController -> zombieEnemy: attack(player)
+    activate zombieEnemy
+    deactivate zombieEnemy
+    
+    combatController -> playerEntity: takeDamage(10)
+    activate playerEntity
+    deactivate playerEntity
+    destroy combatResult
+end
+
+destroy debugStrategy
+deactivate combatController
+deactivate gameSession
+@enduml

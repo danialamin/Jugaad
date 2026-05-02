@@ -1,0 +1,68 @@
+@startuml
+title UC3: Use Phone (SD) - CampusFlex Section D
+
+participant ":GameSession" as gameSession
+participant ":Player" as playerEntity
+participant ":Phone" as phone
+participant ":Quiz" as quiz
+participant ":PlayerStats" as playerStats
+participant ":KarmaTracker" as karmaTracker
+participant ":StatModifierImpl" as statModifierImpl
+
+[-> gameSession: handleSystemEvent("openPhone")
+activate gameSession
+gameSession -> playerEntity: getPhone()
+activate playerEntity
+playerEntity --> gameSession: phoneRef
+deactivate playerEntity
+
+gameSession -> phone: open()
+activate phone
+phone -> phone: isDuringQuiz(session)
+
+alt Phone opened DURING active Quiz
+    phone -> quiz: incrementAttempt()
+    
+    phone -> phone: buildCheatModifier()
+    phone -> statModifierImpl **: create(gpaDelta=0, energyDelta=0, stressDelta=0, karmaDelta=-15)
+    statModifierImpl --> phone: cheatModifier
+    phone --> gameSession: cheatModifier
+    
+    gameSession -> playerStats: applyModifier(cheatModifier)
+    activate playerStats
+    playerStats -> playerStats: updateKarma(-15)
+    playerStats --> gameSession
+    deactivate playerStats
+    
+    gameSession -> karmaTracker: deduct(15, "Phone during quiz - cheating")
+    destroy statModifierImpl
+    
+else Phone opened OUTSIDE quiz
+    alt Player selects Scroll Social Media
+        [-> gameSession: handleSystemEvent("scrollSocialMedia")
+        gameSession -> phone: buildSocialMediaModifier()
+        
+        phone -> statModifierImpl **: create(gpaDelta=0, energyDelta=0, stressDelta=-5, karmaDelta=-5)
+        statModifierImpl --> phone: socialModifier
+        phone --> gameSession: socialModifier
+        
+        gameSession -> playerStats: applyModifier(socialModifier)
+        activate playerStats
+        playerStats -> playerStats: updateStress(-5)
+        playerStats -> playerStats: updateKarma(-5)
+        playerStats --> gameSession
+        deactivate playerStats
+        
+        gameSession -> karmaTracker: deduct(5, "Scrolled social media")
+        
+        gameSession -> phone: close()
+        destroy statModifierImpl
+        
+    else Player selects Close Phone
+        [-> gameSession: handleSystemEvent("closePhone")
+        gameSession -> phone: close()
+    end
+end
+deactivate phone
+deactivate gameSession
+@enduml

@@ -1,0 +1,65 @@
+@startuml
+title UC6: Interact with NPC (SD) - CampusFlex Section D
+
+participant ":GameSession" as gameSession
+participant ":Zone" as zone
+participant ":NPC" as npcEntity
+participant ":DialogueFactory" as dialogueFactory
+participant ":DialogueOption" as dialogueOption
+participant ":KarmaTracker" as karmaTracker
+participant ":Dialogue" as dialogue
+
+[-> gameSession: handleSystemEvent("initiateConversation")
+activate gameSession
+gameSession -> zone: getNearbyLocation(player.getPosition())
+activate zone
+zone --> gameSession: npcLocationRef
+deactivate zone
+
+alt Player walks away without talking
+    [-> gameSession: handleSystemEvent("walkAway")
+else Player initiates dialogue
+    gameSession -> npcEntity: onInteract(player, session)
+    activate npcEntity
+    npcEntity -> npcEntity: isHostile(player.getStats().getKarma())
+    npcEntity -> npcEntity: incrementInteraction()
+    
+    npcEntity -> dialogueFactory: loadDialogue(npc.npcId, session.getCurrentMode())
+    activate dialogueFactory
+    dialogueFactory -> dialogueFactory: hasEasterEgg(npc.npcId)
+    
+    alt NPC has Easter Egg line
+        dialogueFactory -> dialogue **: create(easterEggId, easterEggText, options)
+        activate dialogue
+        dialogue -> dialogue: display()
+        dialogue --> dialogueFactory: dialogueRef
+        dialogueFactory --> gameSession: dialogueRef
+        
+    else Normal dialogue
+        dialogueFactory -> dialogue **: create(dialogueId, text, options)
+        dialogue -> dialogue: display()
+        dialogue --> dialogueFactory: dialogueRef
+        dialogueFactory --> gameSession: dialogueRef
+        
+        [-> gameSession: handleSystemEvent("selectResponse")
+        gameSession -> dialogueFactory: applyEffect(selectedOption, karmaTracker)
+        
+        dialogueFactory -> dialogueOption: getKarmaEffect()
+        activate dialogueOption
+        dialogueOption --> dialogueFactory: karmaEffect
+        dialogueFactory -> dialogueOption: isKindChoice()
+        dialogueOption --> dialogueFactory: isKind
+        deactivate dialogueOption
+        
+        alt Kind response (isKind = true)
+            dialogueFactory -> karmaTracker: add(karmaEffect, "Kind NPC response")
+        else Dismissive response (isKind = false)
+            dialogueFactory -> karmaTracker: deduct(karmaEffect, "Rude NPC response")
+        end
+    end
+    destroy dialogue
+    deactivate dialogueFactory
+    deactivate npcEntity
+end
+deactivate gameSession
+@enduml

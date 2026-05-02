@@ -1,0 +1,47 @@
+@startuml
+title UC7: Save Game (SD) - CampusFlex Section D
+
+participant ":GameSession" as gameSession
+participant ":Zone" as zone
+participant ":Location" as location
+participant ":SavePoint" as savePoint
+participant ":GameStateRepository" as gameStateRepository
+participant ":GameState" as gameState
+
+[-> gameSession: handleSystemEvent("approachSavePoint")
+activate gameSession
+gameSession -> zone: getNearbyLocation(player.getPosition())
+activate zone
+zone --> gameSession: locationRef
+deactivate zone
+
+gameSession -> location: interact(player, session)
+activate location
+location -> savePoint: onInteract(player, session)
+activate savePoint
+savePoint -> savePoint: isActive()
+
+alt Player cancels save
+    [-> gameSession: handleSystemEvent("cancelSave")
+else Player confirms save
+    [-> gameSession: handleSystemEvent("confirmSave")
+    gameSession -> gameSession: buildCurrentGameState()
+    
+    gameSession -> gameState **: create(saveId, zoneId, posX, posY, modeSnapshot, flags, timestamp)
+    
+    gameSession -> gameStateRepository: save(gameState)
+    activate gameStateRepository
+    gameStateRepository -> gameStateRepository: persist(gameState)
+    
+    alt Database write SUCCEEDS
+        gameStateRepository --> gameSession: isSaved = true
+    else Database write FAILS
+        gameStateRepository --> gameSession: isSaved = false
+    end
+    deactivate gameStateRepository
+    destroy gameState
+end
+deactivate savePoint
+deactivate location
+deactivate gameSession
+@enduml

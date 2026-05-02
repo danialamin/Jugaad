@@ -1,0 +1,522 @@
+{
+  "C:\\Users\\HP\\git\\CampusFlex\\bbox.py": {
+    "mtime": 1777668163.2556267,
+    "hash": "13c596654477427aeda1034de8ca7b01"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\DatabaseTest.java": {
+    "mtime": 1777668162.8127282,
+    "hash": "c159f0531502f9ba272395d70e857907"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\find_sprites.py": {
+    "mtime": 1777668163.3045702,
+    "hash": "c9cbc3602a62a7d4e9798623458b749d"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\read_pdf.py": {
+    "mtime": 1777668163.3507743,
+    "hash": "5aaea0da5125286078f1f2450dfb6abc"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\activity\\Canteen.java": {
+    "mtime": 1777719637.7153344,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\activity\\Classroom.java": {
+    "mtime": 1777719637.7034414,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\activity\\Phone.java": {
+    "mtime": 1777719637.7123358,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\activity\\PrayerArea.java": {
+    "mtime": 1777719637.717332,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\activity\\Quiz.java": {
+    "mtime": 1777719637.7097392,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\combat\\CombatChallenge.java": {
+    "mtime": 1777719637.7254071,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\combat\\CombatResult.java": {
+    "mtime": 1777719637.7333684,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\combat\\CombatStrategyFactory.java": {
+    "mtime": 1777719637.7193656,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\combat\\DebugStrategy.java": {
+    "mtime": 1777719637.7274063,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\combat\\TerminateStrategy.java": {
+    "mtime": 1777719637.7298496,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\Context\\context\\setup_graphify.ps1": {
+    "mtime": 1777668162.803462,
+    "hash": "74feba1a1123726486a36388a051dd9f"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\Context\\pushfromhere\\push.ps1": {
+    "mtime": 1777720354.3364909,
+    "hash": "59031477d960eb776f612bfdfc96a7b9"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\controller\\CombatController.java": {
+    "mtime": 1777719637.5781627,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\controller\\Game.java": {
+    "mtime": 1777719637.5581138,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\controller\\GameSession.java": {
+    "mtime": 1777719637.5741618,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\dialogue\\Dialogue.java": {
+    "mtime": 1777719637.7413688,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\dialogue\\DialogueFactory.java": {
+    "mtime": 1777719637.735402,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\dialogue\\DialogueOption.java": {
+    "mtime": 1777719637.7449331,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\entity\\Enemy.java": {
+    "mtime": 1777719637.6443024,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\entity\\FinalBoss.java": {
+    "mtime": 1777719637.6513994,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\entity\\NPC.java": {
+    "mtime": 1777719637.6397893,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\entity\\Player.java": {
+    "mtime": 1777719637.6292725,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\entity\\PlayerStats.java": {
+    "mtime": 1777719637.6337898,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\entity\\Position.java": {
+    "mtime": 1777719637.6222737,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\entity\\StatModifierImpl.java": {
+    "mtime": 1777719637.6377912,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\entity\\ZombieEnemy.java": {
+    "mtime": 1777719637.6483986,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\interfaces\\ICombatStrategy.java": {
+    "mtime": 1777719637.5896883,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\interfaces\\IInteractable.java": {
+    "mtime": 1777719637.5826814,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\interfaces\\ISaveStrategy.java": {
+    "mtime": 1777719637.593199,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\interfaces\\IStatModifier.java": {
+    "mtime": 1777719637.597208,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\inventory\\Inventory.java": {
+    "mtime": 1777719637.67689,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\inventory\\KeyItem.java": {
+    "mtime": 1777719637.683406,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\map\\Block.java": {
+    "mtime": 1777719637.6598482,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\map\\CampusMap.java": {
+    "mtime": 1777719637.653849,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\map\\Location.java": {
+    "mtime": 1777719637.6673634,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\map\\Obstacle.java": {
+    "mtime": 1777719637.6748908,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\map\\SavePoint.java": {
+    "mtime": 1777719637.671368,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\map\\Zone.java": {
+    "mtime": 1777719637.664364,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\mode\\GameMode.java": {
+    "mtime": 1777719637.692918,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\mode\\GameModeFactory.java": {
+    "mtime": 1777719637.6864107,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\mode\\NormalMode.java": {
+    "mtime": 1777719637.6959221,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\mode\\ZombieMode.java": {
+    "mtime": 1777719637.6999247,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\database\\DatabaseConnection.java": {
+    "mtime": 1777668163.2616432,
+    "hash": "e2a8a80fc5cdb43501fec61faa027817"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\database\\GameStateDao.java": {
+    "mtime": 1777668163.2671504,
+    "hash": "5a695143aa98ac12ff8c0ae6e89d3d12"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\database\\schema.sql": {
+    "mtime": 1777668163.2691503,
+    "hash": "01f9d420e06ff621a664a14923aa54b9"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\engine\\CollisionChecker.java": {
+    "mtime": 1777668163.276703,
+    "hash": "3bc63d2ef6d329ac8516d52baa69da07"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\engine\\GameEngine.java": {
+    "mtime": 1777668163.2787158,
+    "hash": "8fb1175a73bac694822f5c968d32ebd0"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\engine\\GamePanel.java": {
+    "mtime": 1777668163.2796898,
+    "hash": "1a2d367fe85f20b560e421142b78d740"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\engine\\KeyHandler.java": {
+    "mtime": 1777668163.2837026,
+    "hash": "b5c000331c7008f96a24fa9846c83dde"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\engine\\ObjectManager.java": {
+    "mtime": 1777668163.2892234,
+    "hash": "60d528df8d772256978e4f5585661694"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\entity\\Furniture.java": {
+    "mtime": 1777668163.2960455,
+    "hash": "41fb47b64bfaed84a5c3a34cc9fa08f1"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\entity\\Player.java": {
+    "mtime": 1777668163.3000624,
+    "hash": "878a9de0e2947d0b8ca95a2b7320576c"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\entity\\Position.java": {
+    "mtime": 1777668163.3020623,
+    "hash": "e5efbc5adec16e577ccbcc7c641e89e1"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\map\\Block.java": {
+    "mtime": 1777668163.3286912,
+    "hash": "e642baf4e0e7ad2c90639e7595564607"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\map\\CampusMap.java": {
+    "mtime": 1777668163.3316705,
+    "hash": "17b5fe829ae068406a0ec81f386603ae"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\map\\Location.java": {
+    "mtime": 1777668163.3336859,
+    "hash": "908127479f2042f9455945bb5189555e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\map\\Tile.java": {
+    "mtime": 1777668163.336218,
+    "hash": "46fb080b87257d81d353c4e0fce3a6a7"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\map\\TileManager.java": {
+    "mtime": 1777668163.3392336,
+    "hash": "04a93b5a968fe758b3b47be062d44921"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\map\\Zone.java": {
+    "mtime": 1777668163.3412342,
+    "hash": "4f0117461b4a5b506a05975c6e6555d5"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\map\\ZoneType.java": {
+    "mtime": 1777668163.3457525,
+    "hash": "9f5fe600cb26f7ba4978c585f3bc2468"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\OldCode\\ui\\UI.java": {
+    "mtime": 1777668163.3589184,
+    "hash": "519c854664ae1a2c9aae4316cd4faf5d"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\state\\EndingResolver.java": {
+    "mtime": 1777719637.6192348,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\state\\GameState.java": {
+    "mtime": 1777719637.6002047,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\state\\GameStateRepository.java": {
+    "mtime": 1777719637.6067169,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\state\\KarmaEvent.java": {
+    "mtime": 1777719637.615235,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\state\\KarmaTracker.java": {
+    "mtime": 1777719637.6097145,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\Game Brainstorming.txt": {
+    "mtime": 1777668162.8265426,
+    "hash": "8093b43e0fe28443eb9ec34815becbd7"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\overview.txt": {
+    "mtime": 1777668163.3487577,
+    "hash": "b5e800aadb9a7c9b2a931b708a2e0626"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\Context\\context\\CONTEXT.md": {
+    "mtime": 1777668162.690811,
+    "hash": "f53836d3215c88a0dd990e824dd282a4"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\CampusFlex_Use_Cases_Summary.md": {
+    "mtime": 1777701355.033433,
+    "hash": "3be96f0e318cd42844ff2b1ebcb0cce0"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\ClassDiagramPUML.txt": {
+    "mtime": 1777702677.4203737,
+    "hash": "39c0a20ad9d7b6b8fa83bc89f63f090b"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\ProjectOverview.md": {
+    "mtime": 1777719116.7250218,
+    "hash": "720312ec6808598a337d18b87f5c071d"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\SD-UC1.txt": {
+    "mtime": 1777718318.9496562,
+    "hash": "15c72fe500b5f792b40bb637b5da9cb6"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\SD-UC10.txt": {
+    "mtime": 1777718486.491121,
+    "hash": "113c760428d2694a16bc26a98b4be1e2"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\SD-UC11.txt": {
+    "mtime": 1777718498.1956172,
+    "hash": "df5ddaa6d67874a7810aa4d8c631b612"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\SD-UC12.txt": {
+    "mtime": 1777718510.7746336,
+    "hash": "e64648d94785ffa5a108da16bac46fb7"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\SD-UC2.txt": {
+    "mtime": 1777718358.5665574,
+    "hash": "d193cba6640489d8a61631ee4a4fdbe3"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\SD-UC3.txt": {
+    "mtime": 1777718394.6751904,
+    "hash": "34229fb8b4ee105b1af9ea35d0922bad"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\SD-UC4.txt": {
+    "mtime": 1777718410.5863192,
+    "hash": "44c0b3bf1f34aa20d78645f85766fe17"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\SD-UC5.txt": {
+    "mtime": 1777718420.011832,
+    "hash": "1edda557facf253e086874f4f5a08343"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\SD-UC6.txt": {
+    "mtime": 1777718428.525784,
+    "hash": "f34053f72ab1493874c9440f01477af3"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\SD-UC7.txt": {
+    "mtime": 1777718439.3494308,
+    "hash": "a7a8866ca323913a5f1378b8acc548af"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\SD-UC8.txt": {
+    "mtime": 1777718466.0262165,
+    "hash": "7d545f2e4ddf06a5a0db2bcdb18c685f"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\SD-UC9.txt": {
+    "mtime": 1777718476.8057704,
+    "hash": "8d2d1aedf3e1d794143ea7c32ffa0dc6"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\SummarizedData\\SSDsSummary.md": {
+    "mtime": 1777719109.5094237,
+    "hash": "ba3664de8de516ce6ecb4266c7bb38f3"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\Cafe counter.png": {
+    "mtime": 1777668162.8536103,
+    "hash": "69b661f73fffb170b44f28b8ddce706a"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\cafe floor aquatic.png": {
+    "mtime": 1777668163.0854812,
+    "hash": "0f806243d9a13995adeee3794b490122"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\cafe floor orange.png": {
+    "mtime": 1777668163.0874984,
+    "hash": "eabb86162c1af206aa762b7750c457b9"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\cafe floor white.png": {
+    "mtime": 1777668163.0900161,
+    "hash": "7b3c4665c1a313e615877b195e21a6bd"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\cafe_counter.png": {
+    "mtime": 1777668163.1025758,
+    "hash": "e6374e20413e5a9abcc7646f3e27763e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\chair mirror.png": {
+    "mtime": 1777668163.105683,
+    "hash": "3f0fba76cc145725c3f3c8964f6525d8"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\chair.png": {
+    "mtime": 1777668163.1076877,
+    "hash": "ed3a30489abcade5620aeef6f6cdde50"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\darkest_floor.png": {
+    "mtime": 1777668163.1733973,
+    "hash": "0f705e0419ab48eb75cc1445ff11d03d"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\dark_wood_floor.png": {
+    "mtime": 1777668163.1628332,
+    "hash": "4ff2b319698226f717207d5c30b393e1"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\dark_wood_floor2.png": {
+    "mtime": 1777668163.1705034,
+    "hash": "defc09499f104dbf9edb520d1c514d8b"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\door.png": {
+    "mtime": 1777668163.1743956,
+    "hash": "9e4124e113fb6ad0bb0403a222989be0"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\energy icon.png": {
+    "mtime": 1777668163.1769314,
+    "hash": "904eb244222462eab61296a5557eb1ad"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\floor.png": {
+    "mtime": 1777668163.1779292,
+    "hash": "15fc2afe06ef45e1edac87abce5eb56b"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\gpa icon.png": {
+    "mtime": 1777668163.2349615,
+    "hash": "dfd175ab9951f56e3747661d97670a22"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\health-health.png": {
+    "mtime": 1777668163.2379677,
+    "hash": "31315454d0f07b2753e5a511844d7c63"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\karma icon.png": {
+    "mtime": 1777668163.2399673,
+    "hash": "e9a79b1a4f4dddfcf7aa9cac1aa23629"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\LibraryCompeteSet.png": {
+    "mtime": 1777668162.8571334,
+    "hash": "3cf73caf9890b1d58c74601d1d2044b5"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\LibraryTable.png": {
+    "mtime": 1777668162.8784297,
+    "hash": "71879d212a5ab67d9317f909353b2a76"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\player_idle.png": {
+    "mtime": 1777668163.2419841,
+    "hash": "5f4d6a607067a914c0f5015cc0f75aac"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\player_run.png": {
+    "mtime": 1777668163.2444913,
+    "hash": "e8a2fe28daf03ba63f543c7b0f79140f"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\player_walk.png": {
+    "mtime": 1777668163.246513,
+    "hash": "c6f2a09d91e4bdd36d6195119d245a7f"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\stress.png": {
+    "mtime": 1777668163.2504969,
+    "hash": "3e73d3e42bf62c5bc3097d998eb5fd0d"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\table.png": {
+    "mtime": 1777668163.2534952,
+    "hash": "1dd5af0865313d2c3c5bfe100add7003"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\classrooom\\EmptyStudentChairtable.png": {
+    "mtime": 1777668163.127352,
+    "hash": "55b4d233a6d336d7153478cbbcdab1d2"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\classrooom\\StudentTablechair.png": {
+    "mtime": 1777668163.1444838,
+    "hash": "f9185f409d1327b903fc7e4ddb35d77b"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\classrooom\\TeacherDesk.png": {
+    "mtime": 1777668163.1546016,
+    "hash": "5bf22d94b0f7c28ad2dff176b4766517"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\foods\\biryani.png": {
+    "mtime": 1777668163.1874495,
+    "hash": "ef9670f3527ab8d95368d1e45ac1e3ba"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\foods\\fries.png": {
+    "mtime": 1777668163.1946204,
+    "hash": "03a2dc555049266bd1af29a6b8cc739b"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\foods\\fruit_chat.png": {
+    "mtime": 1777668163.2036529,
+    "hash": "7a205c8ce5680d85cd0c1aa501037148"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\foods\\fruit_shake.png": {
+    "mtime": 1777668163.2108254,
+    "hash": "b423f96fa4a4b9dd9d6f8bd0f74a5929"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\foods\\lays.png": {
+    "mtime": 1777668163.2183962,
+    "hash": "b52b52d78ee44598c4c04ebd98cadc86"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\foods\\samosa.png": {
+    "mtime": 1777668163.2254283,
+    "hash": "585f983a6555010134636062abd679c5"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\foods\\soda.png": {
+    "mtime": 1777668163.232428,
+    "hash": "7bec89f3dcf68e4626c3aba8dd63ccab"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\PrayerRoom\\floor.jpg": {
+    "mtime": 1777668162.9379423,
+    "hash": "dca5a53825337bafddd8f0d6decf3ffb"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\PrayerRoom\\Matwithperson.png": {
+    "mtime": 1777668162.9093995,
+    "hash": "bc36d3e1cb06ac82d8da0aa5b1cfdc7e"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\PrayerRoom\\pryaerMat.png": {
+    "mtime": 1777668162.9686234,
+    "hash": "3cd5384bb4257898714a629d5f32917f"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\PrayerRoom\\ShoeRack.png": {
+    "mtime": 1777668162.9294817,
+    "hash": "c40a91237e021e4fa35764ea5b97ff51"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\ServerRoom\\cablecrap.png": {
+    "mtime": 1777668163.0824008,
+    "hash": "95a4289c0c4a466b5e7549207bf9f861"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\ServerRoom\\DesktopTable.png": {
+    "mtime": 1777668162.996992,
+    "hash": "772a0ddd04101ff4aaf32cc95e4fd99d"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\ServerRoom\\DesktopTablewithPerson.png": {
+    "mtime": 1777668163.01969,
+    "hash": "007c8a860e2e629d984d2da8047b8e31"
+  },
+  "C:\\Users\\HP\\git\\CampusFlex\\assets\\ServerRoom\\Server.png": {
+    "mtime": 1777668163.055336,
+    "hash": "213ff493e5a22e1c60d3bc75d66fda46"
+  }
+}

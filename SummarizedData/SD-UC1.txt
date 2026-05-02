@@ -1,0 +1,81 @@
+@startuml
+title UC1: Start Game (SD) - CampusFlex Section D
+
+participant ":Game" as game
+participant ":GameSession" as gameSession
+participant ":Player" as playerEntity
+participant ":PlayerStats" as playerStats
+participant ":KarmaTracker" as karmaTracker
+participant ":CampusMap" as campusMap
+participant ":Block" as block
+participant ":Zone" as zone
+participant ":GameModeFactory" as gameModeFactory
+participant ":NormalMode" as normalMode
+participant ":GameStateRepository" as gameStateRepository
+
+alt Player selects New Game
+    [-> game: start()
+    activate game
+    game -> gameSession **: create()
+    
+    game -> gameSession: startNewGame()
+    activate gameSession
+    
+    gameSession -> playerEntity **: create(name, spawnZoneId=1)
+    activate playerEntity
+    playerEntity -> playerStats **: create()
+    playerStats --> playerEntity: statsRef
+    playerEntity --> gameSession: playerRef
+    deactivate playerEntity
+    
+    gameSession -> karmaTracker **: create()
+    karmaTracker --> gameSession: karmaTrackerRef
+    
+    gameSession -> campusMap **: create(mapId=1)
+    activate campusMap
+    campusMap -> block **: createBlock(1, "C-Block")
+    activate block
+    block -> zone **: createZone(1, 0)
+    zone --> block: zoneRef
+    block --> campusMap: blockRef
+    deactivate block
+    
+    campusMap -> block **: createBlock(2, "D-Block")
+    activate block
+    block -> zone **: createZone(2, 0)
+    zone --> block: zoneRef
+    block --> campusMap: blockRef
+    deactivate block
+    
+    campusMap --> gameSession: campusMapRef
+    deactivate campusMap
+    
+    gameSession -> gameModeFactory: createNormalMode()
+    activate gameModeFactory
+    gameModeFactory -> normalMode **: create()
+    normalMode --> gameModeFactory: normalModeRef
+    gameModeFactory --> gameSession: normalModeRef
+    deactivate gameModeFactory
+    
+    gameSession -> normalMode: activate()
+    gameSession -> playerEntity: setCurrentZoneId(1)
+    deactivate gameSession
+    deactivate game
+    
+else Player selects Load Game
+    [-> game: loadGame(saveId)
+    activate game
+    game -> gameSession **: create()
+    game -> gameSession: loadFromSave(saveId)
+    activate gameSession
+    
+    gameSession -> gameStateRepository: fetch(saveId)
+    activate gameStateRepository
+    gameStateRepository --> gameSession: gameStateRef
+    deactivate gameStateRepository
+    
+    deactivate gameSession
+    deactivate game
+end
+
+@enduml

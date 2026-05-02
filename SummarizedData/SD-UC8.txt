@@ -1,0 +1,63 @@
+@startuml
+title UC8: Explore Campus Map (SD) - CampusFlex Section D
+
+participant ":GameSession" as gameSession
+participant ":GameMode" as gameMode
+participant ":Player" as playerEntity
+participant ":CampusMap" as campusMap
+participant ":Zone" as zone
+
+[-> gameSession: handleSystemEvent("exploreCampus")
+activate gameSession
+gameSession -> gameMode: onPlayerMove(x, y, session)
+activate gameMode
+
+gameMode -> playerEntity: moveTo(x, y)
+activate playerEntity
+playerEntity --> gameMode: positionUpdated
+deactivate playerEntity
+
+gameMode -> campusMap: getZone(player.getCurrentZoneId())
+activate campusMap
+campusMap --> gameMode: currentZone
+deactivate campusMap
+
+[-> gameSession: handleSystemEvent("reachZoneBoundary")
+gameSession -> gameMode: onPlayerMove(boundaryX, boundaryY, session)
+
+gameMode -> campusMap: isRouteBlocked(fromZoneId, toZoneId)
+activate campusMap
+campusMap -> zone: isBlocked()
+activate zone
+zone --> campusMap: blockedStatus
+deactivate zone
+campusMap --> gameMode: routeBlocked
+deactivate campusMap
+
+alt Zombie Mode AND route BLOCKED
+    gameMode -> campusMap: getZone(toZoneId)
+    activate campusMap
+    campusMap -> zone: getAlternateZone()
+    activate zone
+    zone --> campusMap: alternateZoneRef
+    deactivate zone
+    campusMap --> gameMode: alternateZone
+    deactivate campusMap
+    
+else Route is OPEN
+    gameMode -> campusMap: getZone(toZoneId)
+    activate campusMap
+    campusMap --> gameMode: nextZone
+    deactivate campusMap
+    
+    alt Zone loads successfully
+        gameSession -> playerEntity: setCurrentZoneId(toZoneId)
+        activate playerEntity
+        playerEntity --> gameSession: zoneUpdated
+        deactivate playerEntity
+    end
+end
+
+deactivate gameMode
+deactivate gameSession
+@enduml

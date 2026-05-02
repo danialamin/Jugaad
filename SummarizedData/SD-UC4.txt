@@ -1,0 +1,66 @@
+@startuml
+title UC4: Visit Canteen (SD) - CampusFlex Section D
+
+participant ":GameSession" as gameSession
+participant ":NormalMode" as normalMode
+participant ":Zone" as zone
+participant ":Location" as location
+participant ":Canteen" as canteen
+participant ":Player" as playerEntity
+participant ":PlayerStats" as playerStats
+participant ":StatModifierImpl" as statModifierImpl
+
+[-> gameSession: handleSystemEvent("enterCanteen")
+activate gameSession
+gameSession -> normalMode: onInteract(session)
+activate normalMode
+normalMode -> zone: getNearbyLocation(player.getPosition())
+activate zone
+zone --> normalMode: locationRef
+deactivate zone
+normalMode -> location: interact(player, session)
+activate location
+location -> canteen: onInteract(player, session)
+activate canteen
+
+canteen -> playerEntity: getStats()
+activate playerEntity
+playerEntity --> canteen: statsRef
+deactivate playerEntity
+
+canteen -> playerStats: isEnergyFull()
+activate playerStats
+playerStats --> canteen: energyFull
+deactivate playerStats
+
+canteen -> canteen: canEat(stats)
+
+alt Energy is BELOW max (canEat = true)
+    canteen -> canteen: showMenu()
+    
+    alt Player selects food
+        [-> gameSession: handleSystemEvent("selectFood")
+        gameSession -> canteen: buildFoodModifier()
+        
+        canteen -> statModifierImpl **: create(gpaDelta=0, energyDelta=+40, stressDelta=-10, karmaDelta=0)
+        statModifierImpl --> canteen: foodModifier
+        canteen --> gameSession: foodModifier
+        
+        gameSession -> playerStats: applyModifier(foodModifier)
+        activate playerStats
+        playerStats -> playerStats: updateEnergy(+40)
+        playerStats -> playerStats: updateStress(-10)
+        playerStats --> gameSession
+        deactivate playerStats
+        destroy statModifierImpl
+        
+    else Player leaves without ordering
+        [-> gameSession: handleSystemEvent("leaveCanteen")
+    end
+end
+
+deactivate canteen
+deactivate location
+deactivate normalMode
+deactivate gameSession
+@enduml
