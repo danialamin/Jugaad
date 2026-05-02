@@ -55,6 +55,7 @@ public class Zone {
     public void unlock() { isLocked = false; }
     public void lock() { isLocked = true; }
     public boolean isLocked() { return isLocked; }
+    public boolean isBlocked() { return isLocked; }
 
     public ZoneType getType() { return type; }
     public String getName() { return name; }

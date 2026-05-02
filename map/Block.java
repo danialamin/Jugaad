@@ -17,6 +17,19 @@ public class Block {
         zones.add(zone);
     }
 
+    public void createZone(int id, int floorNumber) {
+        // Gray-structure placeholder: map floor/id to a concrete ZoneType when implementing.
+    }
+
+    public Zone getZone(int floorNumber) {
+        // Gray-structure placeholder: resolve floor-to-zone mapping.
+        return null;
+    }
+
+    public List<Zone> getAllZones() {
+        return zones;
+    }
+
     public List<Zone> getZones() { return zones; }
     public int getBlockId() { return blockId; }
     public String getName() { return name; }
