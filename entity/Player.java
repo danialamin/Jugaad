@@ -35,6 +35,8 @@ public class Player {
 
     public BufferedImage[][] walkFrames;
     public String direction;
+    /** Seated at classroom desk — always renders front-facing (down) sprite. */
+    private boolean seatedInClass;
     public int spriteCounter = 0;
     public int spriteNum = 0; // The current frame
     public boolean collisionOn = false;
@@ -135,10 +137,23 @@ public class Player {
         }
     }
 
+    public boolean isSeatedInClass() {
+        return seatedInClass;
+    }
+
+    public void setSeatedInClass(boolean seated) {
+        this.seatedInClass = seated;
+        if (seated) {
+            direction = "down";
+            spriteNum = 0;
+            spriteCounter = 0;
+        }
+    }
+
     public void update() {
         boolean isMoving = false;
 
-        if (keyH.upPressed || keyH.downPressed || keyH.leftPressed || keyH.rightPressed) {
+        if (!seatedInClass && (keyH.upPressed || keyH.downPressed || keyH.leftPressed || keyH.rightPressed)) {
             if (keyH.upPressed)
                 direction = "up";
             else if (keyH.downPressed)
@@ -195,7 +210,9 @@ public class Player {
 
         if (walkFrames != null) {
             int row = 0;
-            switch (direction) {
+            if (seatedInClass) {
+                row = 0;
+            } else switch (direction) {
                 case "down":
                     row = 0;
                     break;
@@ -208,6 +225,8 @@ public class Player {
                 case "up":
                     row = 3;
                     break;
+                default:
+                    row = 0;
             }
             // Add safe bounds for spriteNum just in case
             if (spriteNum >= 6)

@@ -158,14 +158,28 @@ public class ObjectManager {
 
     public void loadCafeteriaObjects() {
         furnitureList.clear();
-        
+
+        // Cafeteria Uncle NPC - behind the counter at the top
+        BufferedImage uncleImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2Uncle = uncleImg.createGraphics();
+        g2Uncle.setColor(new Color(160, 82, 45)); // Sienna uniform
+        g2Uncle.fillRect(0, 0, 32, 32);
+        g2Uncle.setColor(Color.WHITE);
+        g2Uncle.drawRect(0, 0, 31, 31);
+        g2Uncle.dispose();
+        // Place uncle behind the counter (top center area)
+        int ts = gp.tileSize;
+        Furniture uncle = new Furniture(uncleImg, (gp.maxScreenCol / 2) * ts - 16, ts + 10, 32, 32);
+        uncle.name = "cafeteria_uncle";
+        furnitureList.add(uncle);
+
         // 12 tables in a 4x3 grid creating straight alleys
         int cols = 4;
         int rows = 3;
-        
+
         int startX = 100;
         int gapX = 170;
-        
+
         int startY = 120;
         int gapY = 130;
 
@@ -173,19 +187,19 @@ public class ObjectManager {
             for (int col = 0; col < cols; col++) {
                 int tableX = startX + (col * gapX);
                 int tableY = startY + (row * gapY);
-                
+
                 Furniture table = new Furniture(tableX, tableY, tableImg);
                 furnitureList.add(table);
-                
+
                 int chairW = chairImg != null ? chairImg.getWidth() : 20;
                 int chairH = chairImg != null ? chairImg.getHeight() : 20;
 
                 // Left Chair (Standard)
                 furnitureList.add(new Furniture(tableX - chairW - 5, tableY + 2, chairImg));
-                
+
                 // Right Chair (Mirrored)
                 furnitureList.add(new Furniture(tableX + table.width + 5, tableY + 2, chairMirrorImg));
-                
+
                 // Top Chair - DE-RANDOMIZED (Checkerboard pattern)
                 if ((row + col) % 2 == 0) {
                     furnitureList.add(new Furniture(tableX + (table.width / 2) - (chairW / 2), tableY - chairH - 5, chairImg));
@@ -235,9 +249,23 @@ public class ObjectManager {
             furnitureList.add(new Furniture((gp.maxScreenCol / 2) * tileSize - (tileSize/2), tileSize, libClockImg, scale));
         }
 
-        // Center Desk
+        // Center Desk (Librarian Counter)
         if (libDeskImg != null) {
-            furnitureList.add(new Furniture((gp.maxScreenCol / 2) * tileSize - (int)(95 * scale), gp.maxScreenRow / 2 * tileSize - 20, libDeskImg, scale));
+            int deskX = (gp.maxScreenCol / 2) * tileSize - (int)(95 * scale);
+            int deskY = gp.maxScreenRow / 2 * tileSize - 20;
+            furnitureList.add(new Furniture(deskX, deskY, libDeskImg, scale));
+
+            // Librarian NPC behind the counter
+            BufferedImage librarianImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2Librarian = librarianImg.createGraphics();
+            g2Librarian.setColor(new Color(139, 69, 19)); // Brown uniform
+            g2Librarian.fillRect(0, 0, 32, 32);
+            g2Librarian.setColor(Color.WHITE);
+            g2Librarian.drawRect(0, 0, 31, 31);
+            g2Librarian.dispose();
+            Furniture librarian = new Furniture(deskX + 40, deskY - 25, librarianImg, 1.0);
+            librarian.name = "librarian";
+            furnitureList.add(librarian);
         }
 
         // Globe at bottom left
@@ -261,7 +289,9 @@ public class ObjectManager {
             // Third table placed further below the center red desk and slid left
             int thirdTableX = (gp.maxScreenCol / 2) * tileSize - 91; // Slid to the left
             int thirdTableY = (gp.maxScreenRow / 2) * tileSize - 20 + 145; // Brought down further
-            furnitureList.add(new Furniture(thirdTableX, thirdTableY, libMainTableImg, libTableScale));
+            Furniture studySpot = new Furniture(thirdTableX, thirdTableY, libMainTableImg, libTableScale);
+            studySpot.name = "library_study_spot";
+            furnitureList.add(studySpot);
         }
         
         // Add a chest somewhere
@@ -281,12 +311,25 @@ public class ObjectManager {
             furnitureList.add(new Furniture((gp.maxScreenCol / 2) * tileSize - 48, 2 * tileSize, teacherDeskImg, teacherScale));
         }
         
+        // Teacher Box Sprite
+        BufferedImage teacherImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2Img = teacherImg.createGraphics();
+        g2Img.setColor(Color.RED);
+        g2Img.fillRect(0, 0, 32, 32);
+        g2Img.setColor(Color.WHITE);
+        g2Img.drawRect(0, 0, 31, 31);
+        g2Img.dispose();
+        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * tileSize - 16, 2 * tileSize - 20, teacherImg, 1.0);
+        teacherNPC.name = "teacher";
+        furnitureList.add(teacherNPC);
+
         // Student desks in a grid (target width ~ 2 tiles = 64 pixels)
         int startX = 4 * tileSize;
         int startY = 6 * tileSize;
         int gapX = 5 * tileSize;
         int gapY = 3 * tileSize;
         
+        int studentIndex = 0;
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 4; col++) {
                 int deskX = startX + (col * gapX);
@@ -297,7 +340,14 @@ public class ObjectManager {
                 
                 if (deskImg != null) {
                     double deskScale = 31.5 / deskImg.getWidth(); // Reduced by another 30% (from 45)
-                    furnitureList.add(new Furniture(deskX, deskY, deskImg, deskScale));
+                    Furniture f = new Furniture(deskX, deskY, deskImg, deskScale);
+                    if (deskImg == studentDeskImg) {
+                        f.name = "student_desk_" + studentIndex;
+                        studentIndex++;
+                    } else {
+                        f.name = "empty_desk";
+                    }
+                    furnitureList.add(f);
                 }
             }
         }
@@ -332,7 +382,8 @@ public class ObjectManager {
 
     public void loadPrayerAreaObjects() {
         int ts = gp.tileSize; // 32
-        
+        furnitureList.clear();
+
         // Shoe Rack near the door (bottom right)
         if (shoeRackImg != null) {
             int rackW = 160;
@@ -340,40 +391,61 @@ public class ObjectManager {
             furnitureList.add(new Furniture(shoeRackImg, (gp.maxScreenCol - 7) * ts, (gp.maxScreenRow - 4) * ts, rackW, rackH));
         }
 
-        // Prayer mats in neat rows - 3 rows of 4, properly spaced
+        // Prayer mats in neat rows - 3 rows of 4, with larger gaps for navigation
         if (prayerMatImg != null) {
-            int matW = 100;
-            int matH = 130;
-            int gapX = 30;  // Gap between mats
-            int gapY = 15;  // Gap between rows
-            
+            int matW = 64;   // Smaller mats (was 100)
+            int matH = 80;   // Smaller mats (was 130)
+            int gapX = 48;   // Larger gap for walking between mats (was 30)
+            int gapY = 32;   // Larger vertical gap (was 15)
+
             // Center the grid horizontally
             int totalGridW = 4 * matW + 3 * gapX;
             int startX = (gp.screenWidth - totalGridW) / 2;
-            int startY = 2 * ts;
+            int startY = 3 * ts; // Start a bit lower for better access
 
             for (int row = 0; row < 3; row++) {
                 for (int col = 0; col < 4; col++) {
-                    // DE-RANDOMIZED (Checkerboard)
-                    BufferedImage matToUse = (prayerMatPersonImg != null && (row + col) % 2 != 0) ? prayerMatPersonImg : prayerMatImg;
+                    // DE-RANDOMIZED (Checkerboard) - half occupied, half free
+                    boolean hasPerson = (prayerMatPersonImg != null && (row + col) % 2 != 0);
+                    BufferedImage matToUse = hasPerson ? prayerMatPersonImg : prayerMatImg;
                     int mx = startX + col * (matW + gapX);
                     int my = startY + row * (matH + gapY);
-                    furnitureList.add(new Furniture(matToUse, mx, my, matW, matH));
+                    Furniture mat = new Furniture(matToUse, mx, my, matW, matH);
+                    if (!hasPerson) {
+                        mat.name = "empty_prayer_mat";
+                    }
+                    furnitureList.add(mat);
                 }
             }
         }
     }
 
     public void loadServerRoomObjects() {
+        furnitureList.clear();
         int ts = gp.tileSize; // 32
-        
+
+        // Server Room Guard NPC - blocks player from touching anything
+        BufferedImage guardImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2Guard = guardImg.createGraphics();
+        g2Guard.setColor(new Color(80, 80, 80)); // Grey uniform
+        g2Guard.fillRect(0, 0, 32, 32);
+        g2Guard.setColor(Color.RED);
+        g2Guard.drawRect(0, 0, 31, 31);
+        g2Guard.dispose();
+        // Place guard near the entrance (center, blocking the room)
+        Furniture guard = new Furniture(guardImg, (gp.maxScreenCol / 2) * ts - 16, (gp.maxScreenRow / 2) * ts, 32, 32);
+        guard.name = "server_room_guard";
+        furnitureList.add(guard);
+
         // Large Server rack centered at the back wall
         if (serverImg != null) {
             int serverW = 200;
             int serverH = 110;
             int serverX = (gp.screenWidth - serverW) / 2;
             int serverY = ts + 10; // Near top wall
-            furnitureList.add(new Furniture(serverImg, serverX, serverY, serverW, serverH));
+            Furniture server = new Furniture(serverImg, serverX, serverY, serverW, serverH);
+            server.name = "server_rack";
+            furnitureList.add(server);
         }
 
         // Desktop Tables in 2 horizontal rows (center of room), well spaced
@@ -396,7 +468,9 @@ public class ObjectManager {
                     BufferedImage deskToUse = (aiDeskPersonImg != null && (row == 0 || col % 2 == 0)) ? aiDeskPersonImg : aiDeskImg;
                     int dx = startX + col * (deskW + gapX);
                     int dy = startY + row * (deskH + gapY + ts);
-                    furnitureList.add(new Furniture(deskToUse, dx, dy, deskW, deskH));
+                    Furniture desk = new Furniture(deskToUse, dx, dy, deskW, deskH);
+                    desk.name = "server_room_desk";
+                    furnitureList.add(desk);
                 }
             }
         }
@@ -417,9 +491,39 @@ public class ObjectManager {
         }
     }
 
+    public void loadGroundObjects() {
+        furnitureList.clear();
+        int ts = gp.tileSize;
+
+        // Haider Ramzan - friend sitting on floor with laptop
+        BufferedImage haiderImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2Haider = haiderImg.createGraphics();
+        g2Haider.setColor(new Color(60, 120, 180)); // Blue shirt
+        g2Haider.fillRect(0, 0, 32, 32);
+        g2Haider.setColor(Color.WHITE);
+        g2Haider.drawRect(0, 0, 31, 31);
+        g2Haider.dispose();
+        // Place Haider in the main lobby area (near the center-right)
+        Furniture haider = new Furniture(haiderImg, 16 * ts, 10 * ts, 32, 32);
+        haider.name = "haider_ramzan";
+        furnitureList.add(haider);
+    }
+
     public void loadAILabObjects() {
+        furnitureList.clear();
         int ts = gp.tileSize; // 32
-        
+
+        BufferedImage teacherImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2Img = teacherImg.createGraphics();
+        g2Img.setColor(new Color(70, 110, 190));
+        g2Img.fillRect(0, 0, 32, 32);
+        g2Img.setColor(Color.WHITE);
+        g2Img.drawRect(0, 0, 31, 31);
+        g2Img.dispose();
+        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * ts - 16, ts + 8, teacherImg, 1.0);
+        teacherNPC.name = "teacher";
+        furnitureList.add(teacherNPC);
+
         if (aiDeskImg != null) {
             int deskW = 100;
             int deskH = 65;
@@ -438,7 +542,9 @@ public class ObjectManager {
                     BufferedImage deskToUse = (aiDeskPersonImg != null && (row + col) % 2 == 0) ? aiDeskPersonImg : aiDeskImg;
                     int dx = startX + col * (deskW + gapX);
                     int dy = startY + row * (deskH + gapY + ts);
-                    furnitureList.add(new Furniture(deskToUse, dx, dy, deskW, deskH));
+                    Furniture desk = new Furniture(deskToUse, dx, dy, deskW, deskH);
+                    desk.name = deskToUse == aiDeskImg ? "empty_desk" : "student_desk_" + (row * cols + col);
+                    furnitureList.add(desk);
                 }
             }
         }

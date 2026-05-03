@@ -1,0 +1,53 @@
+CAMPUSFLEX - STORY CONTINUATION PLAN
+====================================
+
+This document outlines the proposed roadmap for advancing the story of CampusFlex, strictly adhering to the Class Diagram, Use Case Diagram, and Sequence Diagrams in the SummarizedData folder.
+
+CURRENT STATE:
+- Intro dialogue complete.
+- Player spawned at C-Block Ground entrance.
+- Goal: "RUSH TO CLASS!"
+
+PHASE 1: THE ACADEMIC GRIND (NORMAL MODE CORE)
+---------------------------------------------
+1. Target: UC2 (Attend Class & Solve Quiz).
+2. Interaction: Enter C-Block First Floor -> Classroom.
+3. Sequence (Follow SD-UC2):
+   - Professor Dialogue: Scolding for lateness.
+   - Lecture: Typewriter-effect flavor text about OOP/CS.
+   - Quiz UI: Present multiple-choice or logic questions.
+   - Phone Mechanic (UC3): If phone is opened during quiz, Karma -15 and high Stress.
+   - Success: GPA +0.3, Karma +5, set 'knowledgeFlag' for Zombie Mode buffs.
+
+PHASE 2: CAMPUS LIFE & STAT BALANCING
+-------------------------------------
+1. Stat Management (UC4 & UC5):
+   - Canteen (B1): Eat Healthy vs. Unhealthy food to balance Energy/Stress.
+   - Prayer Area (2nd Floor): Pray to boost Karma and lower Stress.
+2. NPC Socialization (UC6 & SD-UC6):
+   - Add NPCs (e.g., "The GPA 4.0 Silent Guy", "The Competitive Senior").
+   - Choices made here (Help vs. Rude) set flags (e.g., 'helped_classmate') that directly influence NPC behavior in Zombie Mode.
+
+PHASE 3: THE "FLEX" INCIDENT (THE PIVOT)
+----------------------------------------
+1. Trigger: Attend core classes and then visit the Server Room (Joke: "Flex is down").
+2. Event: A system crash dialogue/cutscene where the campus turns dark/corrupted.
+3. Mechanics: Call session.switchToZombieMode().
+4. Map Change: Load Zombie-specific objects and block paths (UC11) using "System Error" barriers.
+
+PHASE 4: SURVIVAL & MORAL ECHOES (ZOMBIE MODE)
+----------------------------------------------
+1. Pacifist Combat (UC10):
+   - First Zombie encounter (e.g., "The Chronically Online guy").
+   - Introduce 'Debug' strategy vs. 'Terminate'.
+2. GPA Influence: 
+   - Logic puzzles are easier if GPA is high (from Phase 1).
+3. Past Consequences: 
+   - Check NPC flags. Helped NPCs may provide items or allow safe passage.
+
+DIAGRAM REFERENCES:
+-------------------
+- Class Diagram: Follow IInteractable and IStatModifier for all activity implementation.
+- SD-UC2: Strictly follow the logic for Quiz/Phone interaction.
+- SD-UC6: Follow the DialogueFactory and KarmaTracker logic for NPC choices.
+- Brainstorming: Use the "Types of Zombies" and "Inside Jokes" for narrative flavor.

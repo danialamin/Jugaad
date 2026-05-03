@@ -81,19 +81,20 @@ public class CampusMap {
 
         // --- ADDED FOR CLASSROOM LOGIC ---
         // Top Corridor Doors
-        corridor.addLocation(new Location("Wrong Door 1", new Position(4, 0), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "up"));
-        corridor.addLocation(new Location("Computer Science Room", new Position(10, 0), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "up"));
-        corridor.addLocation(new Location("Wrong Door 2", new Position(16, 0), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "up"));
-        corridor.addLocation(new Location("Wrong Door 3", new Position(20, 0), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "up"));
+        corridor.addLocation(new Location("AI Lab", new Position(4, 0), ZoneType.AI_LAB, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "up"));
+        corridor.addLocation(new Location("CS-101 Classroom", new Position(10, 0), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "up"));
+        corridor.addLocation(new Location("Computer Lab 1", new Position(16, 0), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "up"));
+        corridor.addLocation(new Location("Digital Systems Lab", new Position(20, 0), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "up"));
 
         // Bottom Corridor Doors
-        corridor.addLocation(new Location("Wrong Door 4", new Position(4, maxRow - 1), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "down"));
-        corridor.addLocation(new Location("Wrong Door 5", new Position(10, maxRow - 1), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "down"));
-        corridor.addLocation(new Location("Wrong Door 6", new Position(16, maxRow - 1), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "down"));
-        corridor.addLocation(new Location("Wrong Door 7", new Position(20, maxRow - 1), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "down"));
+        corridor.addLocation(new Location("Classroom 101", new Position(4, maxRow - 1), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "down"));
+        corridor.addLocation(new Location("Classroom 102", new Position(10, maxRow - 1), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "down"));
+        corridor.addLocation(new Location("Classroom 103", new Position(16, maxRow - 1), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "down"));
+        corridor.addLocation(new Location("Seminar Hall", new Position(20, maxRow - 1), ZoneType.CLASSROOM, new Position((maxCol / 2) * tileSize, (maxRow - 3) * tileSize), "down"));
 
         // Classroom Exit to Corridor
         classroom.addLocation(new Location("Academic Corridor", new Position(maxCol / 2, maxRow - 1), ZoneType.CORRIDOR, new Position(10 * tileSize, 2 * tileSize), "down"));
+        aiLab.addLocation(new Location("Academic Corridor", new Position(maxCol / 2, maxRow - 1), ZoneType.CORRIDOR, new Position(4 * tileSize, 2 * tileSize), "down"));
     }
 
     public void createBlock(int id, String name) {

@@ -9,6 +9,7 @@ public class Furniture {
     public int width, height;
     public BufferedImage image;
     public Rectangle solidArea;
+    public String name = "";
 
     public Furniture(int x, int y, BufferedImage image) {
         this(x, y, image, 1.0);

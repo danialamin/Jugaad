@@ -18,6 +18,10 @@ public abstract class Enemy {
         return hp <= 0;
     }
 
+    public int getHp() {
+        return hp;
+    }
+
     public void attack(Player player) {
         player.takeDamage(10);
     }

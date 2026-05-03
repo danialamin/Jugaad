@@ -1,5 +1,7 @@
 package controller;
 
+// lectureQuizActive models UC2 quiz phase + UC3 cheat detection branching (SD-UC2 / SD-UC3 summaries).
+
 import entity.Player;
 import entity.Enemy;
 import map.CampusMap;
@@ -15,6 +17,8 @@ public class GameSession {
     private int sessionId;
     private GameModeType mode;
     private boolean isActive;
+    /** UC2 / SD-UC2: lecture quiz in progress — used by {@link activity.Phone#isDuringQuiz(GameSession)}. */
+    private boolean lectureQuizActive;
     
     private Player player;
     private CampusMap campusMap;
@@ -79,6 +83,8 @@ public class GameSession {
     }
 
     public GameModeType getCurrentMode() { return mode; }
+    public boolean isLectureQuizActive() { return lectureQuizActive; }
+    public void setLectureQuizActive(boolean active) { this.lectureQuizActive = active; }
     public Player getPlayer() { return player; }
     public CampusMap getCampusMap() { return campusMap; }
     public KarmaTracker getKarmaTracker() { return karmaTracker; }

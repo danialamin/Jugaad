@@ -7,6 +7,8 @@ public class KeyHandler implements KeyListener {
 
     public boolean upPressed, downPressed, leftPressed, rightPressed, ePressed, enterPressed, escapePressed;
     public boolean mPressed, num1Pressed, num2Pressed, num3Pressed;
+    /** UC3 Use Phone — open phone overlay from gameplay. */
+    public boolean pPressed;
 
     @Override
     public void keyTyped(KeyEvent e) {
@@ -50,6 +52,9 @@ public class KeyHandler implements KeyListener {
         if(code == KeyEvent.VK_3) {
             num3Pressed = true;
         }
+        if (code == KeyEvent.VK_P) {
+            pPressed = true;
+        }
     }
 
     @Override
@@ -88,6 +93,9 @@ public class KeyHandler implements KeyListener {
         }
         if(code == KeyEvent.VK_3) {
             num3Pressed = false;
+        }
+        if (code == KeyEvent.VK_P) {
+            pPressed = false;
         }
     }
 }
