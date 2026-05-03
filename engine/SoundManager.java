@@ -37,6 +37,14 @@ public class SoundManager {
         String path = "";
         switch (zone) {
             case LIBRARY: path = "assets/sound/LibraryTheme.wav"; break;
+            case PRAYER_AREA: path = "assets/sound/PrayerArea.wav"; break;
+            case CAFETERIA: path = "assets/sound/Cafe.wav"; break;
+            case GROUND: path = "assets/sound/Ground.wav"; break;
+            case CORRIDOR: path = "assets/sound/Corridor.wav"; break;
+            case CLASSROOM: path = "assets/sound/Classroom.wav"; break;
+            case SERVER_ROOM: path = "assets/sound/ServerRoom.wav"; break;
+            case AI_LAB: path = "assets/sound/AILab.wav"; break;
+            case WALKWAY: path = "assets/sound/Walkway.wav"; break;
             default: path = "assets/sound/startMenu.wav"; break; // Fallback
         }
         return path;
@@ -152,5 +160,31 @@ public class SoundManager {
 
     public void setSFXVolume(float volume) {
         this.sfxVolume = volume;
+    }
+
+    private Clip textClip;
+
+    public void playTextSound() {
+        if (!sfxOn) return;
+        if (textClip != null && textClip.isRunning()) return; 
+        try {
+            File file = new File("assets/sound/textOut.wav");
+            if (file.exists()) {
+                AudioInputStream ais = AudioSystem.getAudioInputStream(file.getAbsoluteFile());
+                textClip = AudioSystem.getClip();
+                textClip.open(ais);
+                FloatControl gainControl = (FloatControl) textClip.getControl(FloatControl.Type.MASTER_GAIN);
+                gainControl.setValue(sfxVolume);
+                textClip.loop(Clip.LOOP_CONTINUOUSLY);
+            }
+        } catch (Exception e) {}
+    }
+
+    public void stopTextSound() {
+        if (textClip != null) {
+            textClip.stop();
+            textClip.close();
+            textClip = null;
+        }
     }
 }

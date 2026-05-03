@@ -33,7 +33,7 @@ public class GamePanel extends JPanel implements Runnable {
     public int enteredFromDoorCol = -1;
     public boolean enteredFromTopDoor = false;
 
-    TileManager tileM = new TileManager(this);
+    public TileManager tileM = new TileManager(this);
     public KeyHandler keyH = new KeyHandler();
     public CollisionChecker cChecker = new CollisionChecker(this);
     public ObjectManager objM = new ObjectManager(this);
@@ -56,6 +56,8 @@ public class GamePanel extends JPanel implements Runnable {
     public final int pauseState = 3;
     public final int optionsState = 4;
     public final int mapState = 5;
+    public final int dialogueState = 6;
+    public final int introDialogueState = 7;
 
     public GamePanel() {
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
@@ -138,6 +140,8 @@ public class GamePanel extends JPanel implements Runnable {
             gameUI.updateCafeMenu();
         } else if (gameState == mapState) {
             updateFastTravel();
+        } else if (gameState == dialogueState || gameState == introDialogueState) {
+            gameUI.updateDialogueScreen();
         }
     }
 
@@ -241,7 +245,33 @@ public class GamePanel extends JPanel implements Runnable {
                     if (loc.getRequiredDirection().equals("right") && keyH.rightPressed) dirMatch = true;
 
                     if (dirMatch) {
-                        currentZone = loc.getTargetZone();
+                        ZoneType target = loc.getTargetZone();
+                        
+                        if (target == ZoneType.CLASSROOM && loc.getName().contains("Wrong")) {
+                            if (gameUI.showGoal) {
+                                gameUI.startDialogue("* (Wrong door!)\n* (My class is in the Computer Science room...)");
+                            } else {
+                                gameUI.startDialogue("* It's locked.");
+                            }
+                            gameState = dialogueState;
+                            clearKeys();
+                            return;
+                        }
+                        
+                        if (gameUI.showGoal) {
+                            if (target == ZoneType.CAFETERIA || target == ZoneType.PRAYER_AREA || target == ZoneType.LIBRARY || target == ZoneType.SERVER_ROOM) {
+                                gameUI.startDialogue("* Let's not wander off.\n* I am already incredibly late for class!");
+                                gameState = dialogueState;
+                                clearKeys();
+                                return;
+                            }
+                        }
+
+                        if (target == ZoneType.CLASSROOM && !loc.getName().contains("Wrong")) {
+                            gameUI.showGoal = false;
+                        }
+
+                        currentZone = target;
                         tileM.loadMap();
                         objM.clearObjects();
                         
