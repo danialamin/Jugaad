@@ -7,16 +7,27 @@ import interfaces.ICombatStrategy;
 public class TerminateStrategy implements ICombatStrategy {
     private int damageAmount = 30;
 
+    private boolean passed = true;
+
+    public void setPassed(boolean p) {
+        this.passed = p;
+    }
+
     @Override
     public CombatResult execute(Player p, Enemy e) {
         System.out.println("Executing Terminate Strategy...");
-        e.takeDamage(damageAmount);
+        
+        if (passed) {
+            e.takeDamage(damageAmount);
+        } else {
+            System.out.println("Terminate attack missed!");
+        }
         
         if (e.isDefeated()) {
             return new CombatResult(true, false, getKarmaEffect(), 0);
         } else {
-            e.attack(p);
-            return new CombatResult(false, false, 0, -10);
+            // SD-UC9: damage reported via hpChange, applied by caller (no direct attack here)
+            return new CombatResult(false, false, getKarmaEffect(), passed ? -10 : -15);
         }
     }
 

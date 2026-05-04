@@ -5,11 +5,15 @@ public class ZombieEnemy extends Enemy {
     private int patrolZoneId;
 
     public ZombieEnemy(String type, int patrolZoneId) {
+        this(type, patrolZoneId, 50);
+    }
+
+    public ZombieEnemy(String type, int patrolZoneId, int customHp) {
         this.type = type;
         this.patrolZoneId = patrolZoneId;
         this.name = "Zombie " + type;
-        this.hp = 50;
-        this.maxHp = 50;
+        this.hp = customHp;
+        this.maxHp = customHp;
         this.rewardKarma = 10;
     }
 

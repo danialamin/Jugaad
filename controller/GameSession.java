@@ -25,12 +25,14 @@ public class GameSession {
     private KarmaTracker karmaTracker;
     private ISaveStrategy saveStrategy;
     private GameMode activeGameMode;
+    private CombatController combatController;
 
     public void startNewGame() {
         this.player = new Player("Player 1", 1); // Default spawn zone
         this.karmaTracker = new KarmaTracker();
         this.campusMap = new CampusMap();
         this.saveStrategy = new GameStateRepository();
+        this.combatController = new CombatController(this.player);
         
         GameModeFactory factory = new GameModeFactory();
         this.activeGameMode = factory.createNormalMode();
@@ -50,6 +52,7 @@ public class GameSession {
         
         this.karmaTracker = new KarmaTracker(); // Should load from state
         this.campusMap = new CampusMap();
+        this.combatController = new CombatController(this.player);
         
         GameModeFactory factory = new GameModeFactory();
         if (state.getModeSnapshot() == GameModeType.ZOMBIE) {
@@ -89,6 +92,7 @@ public class GameSession {
     public CampusMap getCampusMap() { return campusMap; }
     public KarmaTracker getKarmaTracker() { return karmaTracker; }
     public ISaveStrategy getSaveStrategy() { return saveStrategy; }
+    public CombatController getCombatController() { return combatController; }
 
     public GameState buildCurrentGameState() {
         GameState state = new GameState();

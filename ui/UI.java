@@ -195,17 +195,43 @@ public class UI {
             drawPhoneMenu(g2);
         }
 
-        int x = gp.screenWidth - 112;
-        int y = 12;
-        int verticalGap = 22;
+        int x = gp.screenWidth - 130;
+        int y = 20;
+        int verticalGap = 28;
 
-        drawStatBar(g2, x, y, hpIcon, gp.session.getPlayer().getHp(), gp.session.getPlayer().getMaxHp(), new Color(200, 0, 0));
+        drawStatBar(g2, x, y, hpIcon, "HP", gp.session.getPlayer().getHp(), gp.session.getPlayer().getMaxHp(), new Color(255, 50, 80)); // Neon Red
         y += verticalGap;
-        drawStatBar(g2, x, y, energyIcon, gp.session.getPlayer().getStats().getEnergy(), 100, new Color(0, 150, 255));
+        drawStatBar(g2, x, y, energyIcon, "ENG", gp.session.getPlayer().getStats().getEnergy(), 100, new Color(50, 220, 255)); // Neon Cyan
         y += verticalGap;
-        drawStatBar(g2, x, y, stressIcon, gp.session.getPlayer().getStats().getStress(), 100, new Color(150, 0, 150));
+        drawStatBar(g2, x, y, stressIcon, "STR", gp.session.getPlayer().getStats().getStress(), 100, new Color(255, 80, 255)); // Neon Pink
         y += verticalGap;
-        drawStatBar(g2, x, y, gpaIcon, (int)(gp.session.getPlayer().getStats().getGPA() * 25), 100, new Color(255, 215, 0));
+        drawStatBar(g2, x, y, gpaIcon, gp.zombieMode ? "KRM" : "GPA", gp.zombieMode ? gp.session.getPlayer().getStats().getKarma() : (int)(gp.session.getPlayer().getStats().getGPA() * 25), 100, new Color(255, 230, 50));
+
+        if (gp.zombieMode) {
+            y += verticalGap + 10;
+            g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
+            g2.setColor(new Color(255, 255, 255, 200));
+            g2.drawString("INVENTORY:", x - 25, y);
+            y += 18;
+            
+            boolean hasKey1 = gp.session.getPlayer().getInventory().hasItem(1);
+            boolean hasKey2 = gp.session.getPlayer().getInventory().hasItem(2);
+            
+            if (!hasKey1 && !hasKey2) {
+                g2.setColor(new Color(150, 150, 150));
+                g2.drawString("- Empty", x - 20, y);
+            } else {
+                if (hasKey1) {
+                    g2.setColor(new Color(100, 255, 100));
+                    g2.drawString("• Corridor Keycard", x - 20, y);
+                    y += 16;
+                }
+                if (hasKey2) {
+                    g2.setColor(new Color(255, 200, 50));
+                    g2.drawString("• Server Card", x - 20, y);
+                }
+            }
+        }
 
         drawBottomHints(g2);
 
@@ -217,6 +243,14 @@ public class UI {
             drawOptionsScreen(g2);
         } else if (gp.gameState == gp.controlsState) {
             drawControlsScreen(g2);
+        } else if (gp.gameState == gp.combatState) {
+            drawCombatScreen(g2);
+        } else if (gp.gameState == gp.endingState) {
+            drawEndingScreen(g2);
+        }
+
+        if (gp.zombieMode && gp.phaseTwoState == engine.GamePanel.PhaseTwoState.BOSS_INTRO) {
+            drawBossIntro(g2);
         }
 
         drawPhaseOneEnding(g2);
@@ -244,6 +278,7 @@ public class UI {
         dialogueDelayCounter = 0;
         isTyping = true;
         transitionToQuiz = quizNext;
+        gp.soundM.stopTextSound(); // Reset sound before starting
         gp.soundM.playTextSound();
     }
 
@@ -364,18 +399,23 @@ private void drawFittedString(Graphics2D g2, String text, int x, int y, int maxW
     g2.drawString(fit + ellipsis, x, y);
 }
 
-private void drawStatBar(Graphics2D g2, int x, int y, BufferedImage icon, int current, int max, Color barColor) {
+private void drawStatBar(Graphics2D g2, int x, int y, BufferedImage icon, String label, int current, int max, Color barColor) {
     int barWidth = 92;
-    int barHeight = 6;
+    int barHeight = 8;
     int iconSize = 20;
 
     // 1. Draw Icon
     if (icon != null) {
-        g2.drawImage(icon, x - 30, y - 7, iconSize, iconSize, null);
+        g2.drawImage(icon, x - 60, y - 7, iconSize, iconSize, null);
     } else {
         g2.setColor(barColor);
-        g2.fillOval(x - 28, y - 2, 12, 12); 
+        g2.fillOval(x - 60, y - 2, 12, 12); 
     }
+
+    // 1b. Draw Label
+    g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
+    g2.setColor(barColor); // Match label to the neon bar color
+    g2.drawString(label, x - 35, y + 8);
 
     // 2. Draw Bar Background
     g2.setColor(new Color(50, 50, 50, 200)); 
@@ -674,9 +714,18 @@ private void drawLiveHUD(Graphics2D g2) {
     g2.drawString("Where: " + zoneName, x + 14, y + 28);
 
     g2.setFont(arial_14);
-    String doorCue = gp.nearbyDoorName.isEmpty() ? "Door: none nearby"
-            : "Door: " + trimHud(gp.nearbyDoorName, 30);
-    g2.setColor(!gp.nearbyDoorName.isEmpty() ? new Color(135, 255, 182) : new Color(155, 155, 155));
+    String nearbyName = gp.nearbyDoorName;
+    String doorCue;
+    if (nearbyName.isEmpty()) {
+        doorCue = "Nearby: nothing";
+        g2.setColor(new Color(155, 155, 155));
+    } else if (nearbyName.startsWith("\u26A0")) {
+        doorCue = nearbyName;
+        g2.setColor(new Color(255, 100, 100)); // Red for zombies
+    } else {
+        doorCue = "Nearby: " + trimHud(nearbyName, 28);
+        g2.setColor(new Color(135, 255, 182));
+    }
     drawFittedString(g2, doorCue, x + 14, y + 50, width - 28);
 
     String goalText = gp.getPhaseGoalText();
@@ -696,19 +745,44 @@ private void drawPhaseOneEnding(Graphics2D g2) {
             && gp.phaseOneState != GamePanel.PhaseOneState.PHASE_1_DONE) {
         return;
     }
+    if (gp.zombieMode) return; // Don't draw over zombie mode
+
     int alpha = gp.phaseOneState == GamePanel.PhaseOneState.PHASE_1_DONE
             ? 255
             : Math.min(255, 40 + gp.phaseEndingTicks * 4);
     g2.setColor(new Color(0, 0, 0, alpha));
     g2.fillRect(0, 0, gp.screenWidth, gp.screenHeight);
     if (alpha > 210) {
-        g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 28));
-        g2.setColor(new Color(235, 240, 245));
-        String text = "END OF PHASE 1";
-        g2.drawString(text, getXForCenteredText(g2, text, 0, gp.screenWidth), gp.screenHeight / 2 - 10);
-        g2.setFont(arial_20);
-        text = "PHASE 2 TO BE IMPLEMENTED";
-        g2.drawString(text, getXForCenteredText(g2, text, 0, gp.screenWidth), gp.screenHeight / 2 + 30);
+        if (gp.phaseOneState == GamePanel.PhaseOneState.PHASE_1_DONE) {
+            // Zombie transition cutscene
+            int t = gp.zombieCutsceneTicks;
+            g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
+            g2.setColor(new Color(255, 60, 60));
+            String line1 = "ERROR: Flex Portal Infinite Loop Detected.";
+            g2.drawString(line1, getXForCenteredText(g2, line1, 0, gp.screenWidth), gp.screenHeight / 2 - 60);
+            if (t > 60) {
+                g2.setColor(new Color(255, 100, 100));
+                String line2 = "AI Lab containment failure. Campus lockdown.";
+                g2.drawString(line2, getXForCenteredText(g2, line2, 0, gp.screenWidth), gp.screenHeight / 2 - 20);
+            }
+            if (t > 120) {
+                g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 28));
+                g2.setColor(new Color(255, 200, 200));
+                String line3 = "ZOMBIE MODE";
+                g2.drawString(line3, getXForCenteredText(g2, line3, 0, gp.screenWidth), gp.screenHeight / 2 + 40);
+            }
+            if (t > 200) {
+                g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+                g2.setColor(new Color(180, 180, 180));
+                String line4 = "You wake up in the Library. Something is very wrong.";
+                g2.drawString(line4, getXForCenteredText(g2, line4, 0, gp.screenWidth), gp.screenHeight / 2 + 80);
+            }
+        } else {
+            g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 28));
+            g2.setColor(new Color(235, 240, 245));
+            String text = "END OF PHASE 1";
+            g2.drawString(text, getXForCenteredText(g2, text, 0, gp.screenWidth), gp.screenHeight / 2 - 10);
+        }
     }
 }
 
@@ -771,6 +845,8 @@ public void updateDialogueScreen() {
             } else if (phaseEndingAfterDialogue) {
                 phaseEndingAfterDialogue = false;
                 gp.startPhaseOneEnding();
+            } else if (gp.phaseTwoState == engine.GamePanel.PhaseTwoState.GAME_ENDING) {
+                gp.finalizeEnding();
             } else {
                 gp.gameState = gp.playState;
             }
@@ -1068,6 +1144,12 @@ public void updateDialogueScreen() {
 
         g2.setColor(new Color(178, 185, 190));
         drawFittedString(g2, "Enter select | Esc close", frameX + 24, frameY + frameH - 18, frameW - 48);
+    }
+
+    public void setLectureQueue(String[] queue, boolean triggersQuiz) {
+        this.lectureQueue = queue;
+        this.lectureQueueIndex = 0;
+        this.lectureQueueTriggersQuiz = triggersQuiz;
     }
 
     private void endQuizEncounterReset() {
@@ -1627,5 +1709,314 @@ public void drawQuizScreen(Graphics2D g2) {
         y = startY + (instructions.length * gp.tileSize) + gp.tileSize;
         g2.drawString(text, x, y);
         g2.drawString(">", x - gp.tileSize, y);
+    }
+
+    // ═══════════════════════════════════════════════
+    //  ZOMBIE MODE — Combat UI
+    // ═══════════════════════════════════════════════
+
+    private String combatEnemyName = "";
+    private int combatEnemyMaxHp = 50;
+    public int combatCommandNum = 0;
+    private String combatResultText = null;
+
+    public void startCombatUI(String enemyName, int maxHp) {
+        this.combatEnemyName = enemyName;
+        this.combatEnemyMaxHp = maxHp;
+        this.combatCommandNum = 0;
+        this.combatResultText = null;
+    }
+
+    public void showCombatResult(String msg) {
+        this.combatResultText = msg;
+    }
+
+    public int quizTicks = 0; // Timer in frames
+    
+    // Terminate Minigame Variables
+    private float terminateCursorX = 0;
+    private float terminateCursorSpeed = 5.0f;
+    private boolean terminateDirectionRight = true;
+    private int terminateTargetMin = 0;
+    private int terminateTargetMax = 0;
+
+    public void initTerminateMinigame() {
+        terminateCursorX = 0;
+        terminateCursorSpeed = 5.0f + (float)(Math.random() * 4.0);
+        terminateDirectionRight = true;
+        int center = 150 + (int)(Math.random() * 140); 
+        terminateTargetMin = center - 25;
+        terminateTargetMax = center + 25;
+        keyCooldown = 15;
+    }
+
+    public void updateCombatScreen() {
+        if (keyCooldown > 0) keyCooldown--;
+        if (combatResultText != null) {
+            // Show result, press Enter to continue
+            if ((gp.keyH.enterPressed || gp.keyH.ePressed) && keyCooldown == 0) {
+                combatResultText = null;
+                gp.keyH.enterPressed = false;
+                gp.keyH.ePressed = false;
+                keyCooldown = 10;
+            }
+            return;
+        }
+
+        if (gp.phaseTwoState == engine.GamePanel.PhaseTwoState.IN_QUIZ) {
+            if (gp.currentChallenge != null) {
+                if (quizTicks == 0) {
+                    quizTicks = gp.currentChallenge.getTimeLimit() * engine.GamePanel.FPS;
+                }
+                quizTicks--;
+                if (quizTicks <= 0) {
+                    gp.handleQuizAnswer(-1); // Auto fail
+                    return;
+                }
+            }
+            if (keyCooldown > 0) return;
+            if (gp.keyH.num1Pressed) { gp.keyH.num1Pressed = false; keyCooldown = 10; quizTicks = 0; gp.handleQuizAnswer(0); }
+            else if (gp.keyH.num2Pressed) { gp.keyH.num2Pressed = false; keyCooldown = 10; quizTicks = 0; gp.handleQuizAnswer(1); }
+            else if (gp.keyH.num3Pressed) { gp.keyH.num3Pressed = false; keyCooldown = 10; quizTicks = 0; gp.handleQuizAnswer(2); }
+            else if (gp.keyH.num4Pressed) { gp.keyH.num4Pressed = false; keyCooldown = 10; quizTicks = 0; gp.handleQuizAnswer(3); }
+            return;
+        }
+
+        if (gp.phaseTwoState == engine.GamePanel.PhaseTwoState.IN_TERMINATE_MINIGAME) {
+            int barWidth = 360;
+            if (terminateDirectionRight) {
+                terminateCursorX += terminateCursorSpeed;
+                if (terminateCursorX >= barWidth) { terminateCursorX = barWidth; terminateDirectionRight = false; }
+            } else {
+                terminateCursorX -= terminateCursorSpeed;
+                if (terminateCursorX <= 0) { terminateCursorX = 0; terminateDirectionRight = true; }
+            }
+
+            if ((gp.keyH.enterPressed || gp.keyH.ePressed) && keyCooldown == 0) {
+                gp.keyH.enterPressed = false;
+                gp.keyH.ePressed = false;
+                boolean passed = (terminateCursorX >= terminateTargetMin && terminateCursorX <= terminateTargetMax);
+                gp.handleTerminateMinigame(passed);
+            }
+            return;
+        }
+
+        if (keyCooldown > 0) return;
+        if (gp.keyH.num1Pressed) {
+            gp.keyH.num1Pressed = false;
+            keyCooldown = 10;
+            gp.handleCombatChoice(combat.CombatMove.DEBUG);
+        } else if (gp.keyH.num2Pressed) {
+            gp.keyH.num2Pressed = false;
+            keyCooldown = 10;
+            gp.handleCombatChoice(combat.CombatMove.TERMINATE);
+        }
+    }
+
+    private void drawCombatScreen(Graphics2D g2) {
+        // Dark overlay
+        g2.setColor(new Color(0, 0, 0, 180));
+        g2.fillRect(0, 0, gp.screenWidth, gp.screenHeight);
+
+        int boxW = 500, boxH = 300;
+        int boxX = (gp.screenWidth - boxW) / 2;
+        int boxY = (gp.screenHeight - boxH) / 2;
+
+        // Combat box
+        g2.setColor(new Color(30, 15, 15, 240));
+        g2.fillRoundRect(boxX, boxY, boxW, boxH, 15, 15);
+        g2.setColor(new Color(200, 50, 50));
+        g2.setStroke(new BasicStroke(3));
+        g2.drawRoundRect(boxX, boxY, boxW, boxH, 15, 15);
+
+        // Enemy name
+        g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 20));
+        g2.setColor(new Color(255, 80, 80));
+        String title = "⚔ COMBAT ENCOUNTER ⚔";
+        g2.drawString(title, getXForCenteredText(g2, title, boxX, boxW), boxY + 35);
+
+        g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
+        g2.setColor(Color.WHITE);
+        g2.drawString(combatEnemyName, getXForCenteredText(g2, combatEnemyName, boxX, boxW), boxY + 65);
+
+        // Enemy HP bar
+        int barX = boxX + 50, barY = boxY + 80, barW = boxW - 100, barH = 16;
+        g2.setColor(new Color(60, 20, 20));
+        g2.fillRect(barX, barY, barW, barH);
+        int enemyHp = gp.currentCombatEnemy != null ? gp.currentCombatEnemy.getHp() : 0;
+        float ratio = Math.max(0, (float) enemyHp / combatEnemyMaxHp);
+        g2.setColor(new Color(220, 50, 50));
+        g2.fillRect(barX, barY, (int)(barW * ratio), barH);
+        g2.setColor(Color.WHITE);
+        g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+        g2.drawString("HP: " + enemyHp + "/" + combatEnemyMaxHp, barX + 5, barY + 13);
+
+        if (combatResultText != null) {
+            // Show result message
+            g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+            g2.setColor(new Color(255, 200, 100));
+            String[] parts = combatResultText.split("\\|");
+            String msg = parts.length > 1 ? parts[1] : combatResultText;
+            drawFittedString(g2, msg, boxX + 30, boxY + 140, boxW - 60);
+            g2.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 12));
+            g2.setColor(new Color(150, 150, 150));
+            g2.drawString("[Press ENTER to continue]", getXForCenteredText(g2, "[Press ENTER to continue]", boxX, boxW), boxY + boxH - 20);
+        } else if (gp.phaseTwoState == engine.GamePanel.PhaseTwoState.IN_TERMINATE_MINIGAME) {
+            // Terminate Mini-Game UI
+            g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+            g2.setColor(new Color(255, 150, 150));
+            String titleStr = "Press ENTER when the cursor is in the GREEN zone!";
+            g2.drawString(titleStr, getXForCenteredText(g2, titleStr, boxX, boxW), boxY + 120);
+
+            int barWidth = 360;
+            int mgBarX = boxX + (boxW - barWidth) / 2;
+            int mgBarY = boxY + 150;
+            int mgBarH = 30;
+
+            // Background bar
+            g2.setColor(new Color(80, 80, 80));
+            g2.fillRect(mgBarX, mgBarY, barWidth, mgBarH);
+            g2.setColor(Color.WHITE);
+            g2.drawRect(mgBarX, mgBarY, barWidth, mgBarH);
+
+            // Target zone (Green)
+            g2.setColor(new Color(50, 200, 50));
+            g2.fillRect(mgBarX + terminateTargetMin, mgBarY, terminateTargetMax - terminateTargetMin, mgBarH);
+
+            // Moving Cursor
+            g2.setColor(Color.YELLOW);
+            g2.fillRect(mgBarX + (int)terminateCursorX - 2, mgBarY - 5, 4, mgBarH + 10);
+
+        } else if (gp.phaseTwoState == engine.GamePanel.PhaseTwoState.IN_QUIZ && gp.currentChallenge != null) {
+            // Quiz UI
+            g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+            g2.setColor(new Color(255, 230, 150));
+            String q = "Q: " + gp.currentChallenge.getQuestion();
+            drawFittedString(g2, q, boxX + 20, boxY + 110, boxW - 40);
+
+            // Options
+            g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+            g2.setColor(Color.WHITE);
+            String[] opts = gp.currentChallenge.getOptions();
+            for (int i = 0; i < opts.length; i++) {
+                int optY = boxY + 150 + (i * 28);
+                g2.drawString("[" + (i + 1) + "] " + opts[i], boxX + 30, optY);
+            }
+
+            // Timer and HP
+            int sec = quizTicks / engine.GamePanel.FPS;
+            g2.setColor(sec <= 5 ? Color.RED : Color.CYAN);
+            g2.drawString("Time: " + sec + "s", boxX + boxW - 100, boxY + boxH - 20);
+
+            g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+            g2.setColor(new Color(100, 200, 100));
+            int playerHp = gp.session.getPlayer().getHp();
+            int playerMaxHp = gp.session.getPlayer().getMaxHp();
+            g2.drawString("Your HP: " + playerHp + "/" + playerMaxHp, boxX + 20, boxY + boxH - 20);
+        } else {
+            // Choice buttons
+            g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
+            int btnY = boxY + 140;
+
+            // DEBUG option
+            g2.setColor(new Color(50, 150, 250));
+            g2.fillRoundRect(boxX + 40, btnY, boxW - 80, 40, 8, 8);
+            g2.setColor(Color.WHITE);
+            String dbg = "[1] DEBUG — Solve a logic challenge (Karma +10)";
+            g2.drawString(dbg, getXForCenteredText(g2, dbg, boxX + 40, boxW - 80), btnY + 26);
+
+            // TERMINATE option
+            g2.setColor(new Color(200, 50, 50));
+            g2.fillRoundRect(boxX + 40, btnY + 60, boxW - 80, 40, 8, 8);
+            g2.setColor(Color.WHITE);
+            String trm = "[2] TERMINATE — Brute force attack (Karma -5)";
+            g2.drawString(trm, getXForCenteredText(g2, trm, boxX + 40, boxW - 80), btnY + 86);
+
+            // Player HP
+            g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+            g2.setColor(new Color(100, 200, 100));
+            int playerHp = gp.session.getPlayer().getHp();
+            int playerMaxHp = gp.session.getPlayer().getMaxHp();
+            g2.drawString("Your HP: " + playerHp + "/" + playerMaxHp + "  |  Karma: " + gp.session.getPlayer().getStats().getKarma(),
+                    boxX + 50, boxY + boxH - 20);
+        }
+    }
+
+    // ═══════════════════════════════════════════════
+    //  ENDING SCREEN
+    // ═══════════════════════════════════════════════
+
+    private String endingType = "";
+    private String endingEpilogue = "";
+    private int endingKarma = 0;
+
+    public void showEndingScreen(String type, String epilogue, int karma) {
+        this.endingType = type;
+        this.endingEpilogue = epilogue;
+        this.endingKarma = karma;
+    }
+
+    private void drawEndingScreen(Graphics2D g2) {
+        g2.setColor(new Color(0, 0, 0, 250));
+        g2.fillRect(0, 0, gp.screenWidth, gp.screenHeight);
+
+        Color titleColor;
+        if (endingType.equals("PACIFIST")) titleColor = new Color(100, 255, 150);
+        else if (endingType.equals("EVIL")) titleColor = new Color(255, 60, 60);
+        else titleColor = new Color(200, 200, 100);
+
+        g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 36));
+        g2.setColor(titleColor);
+        String title = "CAMPUSFLEX";
+        g2.drawString(title, getXForCenteredText(g2, title, 0, gp.screenWidth), gp.screenHeight / 2 - 80);
+
+        g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
+        String endLabel = endingType + " ENDING";
+        g2.drawString(endLabel, getXForCenteredText(g2, endLabel, 0, gp.screenWidth), gp.screenHeight / 2 - 40);
+
+        g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 15));
+        g2.setColor(new Color(220, 220, 220));
+        drawWrappedString(g2, endingEpilogue, 50, gp.screenHeight / 2 - 20, gp.screenWidth - 100, 22, 12);
+
+        g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+        g2.setColor(new Color(150, 150, 150));
+        String karma = "Final Karma: " + endingKarma;
+        g2.drawString(karma, getXForCenteredText(g2, karma, 0, gp.screenWidth), gp.screenHeight / 2 + 50);
+
+        g2.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 12));
+        g2.setColor(new Color(120, 120, 120));
+        String credits = "24I-0608 Muhammad Dyen Asif | 24I-0574 Abdullah Aamir | 24I-0669 Danial Amin";
+        g2.drawString(credits, getXForCenteredText(g2, credits, 0, gp.screenWidth), gp.screenHeight / 2 + 100);
+    }
+
+    private void drawBossIntro(Graphics2D g2) {
+        int ticks = gp.bossIntroTicks;
+        int maxTicks = engine.GamePanel.FPS * 4;
+        
+        // Darken screen gradually
+        int alpha = Math.min(200, ticks * 2);
+        g2.setColor(new Color(50, 0, 50, alpha));
+        g2.fillRect(0, 0, gp.screenWidth, gp.screenHeight);
+
+        if (ticks > 30) {
+            g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 36));
+            g2.setColor(new Color(255, 50, 50));
+            String title = "WARNING: CORRUPTED AI DETECTED";
+            g2.drawString(title, getXForCenteredText(g2, title, 0, gp.screenWidth), gp.screenHeight / 2 - 40);
+        }
+
+        if (ticks > 90) {
+            g2.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 20));
+            g2.setColor(new Color(255, 200, 200));
+            String sub = "Deploying containment patch...";
+            g2.drawString(sub, getXForCenteredText(g2, sub, 0, gp.screenWidth), gp.screenHeight / 2 + 10);
+        }
+
+        if (ticks > 150) {
+            g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 28));
+            g2.setColor(Color.WHITE);
+            String ready = "PREPARE FOR COMBAT!";
+            g2.drawString(ready, getXForCenteredText(g2, ready, 0, gp.screenWidth), gp.screenHeight / 2 + 60);
+        }
     }
 }

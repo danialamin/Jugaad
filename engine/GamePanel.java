@@ -29,6 +29,18 @@ public class GamePanel extends JPanel implements Runnable {
         PHASE_1_DONE
     }
 
+    public enum PhaseTwoState {
+        CUTSCENE,       // Transition cutscene playing
+        EXPLORE,        // Free roam in zombie world
+        IN_COMBAT,      // Fighting a zombie
+        IN_QUIZ,        // Answering a quiz question
+        BOSS_INTRO,     // Final boss cutscene
+        BOSS_DODGE,     // Dodging boss projectiles
+        BOSS_FIGHT,     // Final boss in server room
+        IN_TERMINATE_MINIGAME, // Terminate attack timing game
+        GAME_ENDING     // Epilogue screen
+    }
+
     // SCREEN SETTINGS
     final int originalTileSize = 16;
     final int scale = 2;
@@ -72,15 +84,33 @@ public class GamePanel extends JPanel implements Runnable {
     public final int mapState = 7;
     public final int quizState = 8;
     public final int phoneState = 9;
-    public final int controlsState = 10; // NEW!
+    public final int controlsState = 10;
+    public final int combatState = 11;
+    public final int endingState = 12;
 
     public PhaseOneState phaseOneState = PhaseOneState.CS_CLASS_REQUIRED;
     public ZoneType activeLectureZone = null;
     public boolean prayedThisPhase = false;
     public int phaseEndingTicks = 0;
-    public boolean csClassroomLocked = false; // Permanently locks after leaving CS-101
-    public int libraryStudyStage = 0; // Progressive tiredness: 0=not started, 1-3=studying, 4=sleep
-    public int cafeteriaUncleStage = 0; // Progressive uncle dialogue: 0-4 stages
+    public boolean csClassroomLocked = false;
+    public int libraryStudyStage = 0;
+    public int cafeteriaUncleStage = 0;
+
+    // --- PHASE 2 (ZOMBIE MODE) STATE ---
+    public boolean zombieMode = false;
+    public PhaseTwoState phaseTwoState = PhaseTwoState.CUTSCENE;
+    public int zombieCutsceneTicks = 0;
+    public int bossIntroTicks = 0;
+    public int bossDodgeTicks = 0;
+    public entity.Furniture hiddenBoss = null;
+    public java.util.List<entity.Flare> flares = new java.util.concurrent.CopyOnWriteArrayList<>();
+    
+    public entity.Enemy currentCombatEnemy = null;
+    public String combatEnemyDisplayName = "";
+    public String combatEnemyInternalName = ""; // For tracking defeated zombies
+    public combat.CombatChallenge currentChallenge;
+    public controller.CombatController combatController = new controller.CombatController();
+    public java.util.Set<String> defeatedZombies = new java.util.HashSet<>();
 
     public void resetPhaseOneFlow() {
         phaseOneState = PhaseOneState.CS_CLASS_REQUIRED;
@@ -113,6 +143,23 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     public String getPhaseGoalText() {
+        if (zombieMode) {
+            switch (phaseTwoState) {
+                case EXPLORE:
+                    if (session.getPlayer().getInventory().hasItem(2)) {
+                        return "Goal: Use Server Card to unlock Server Room in D-Block!";
+                    } else if (session.getPlayer().getInventory().hasItem(1)) {
+                        return "Goal: Unlock Corridor (C-Block), defeat Senior for Server Card!";
+                    } else {
+                        return "Goal: Go to Walkway, defeat Gaming Guy for Corridor Key!";
+                    }
+                case IN_COMBAT: return "COMBAT: Press 1 (Debug) or 2 (Terminate)";
+                case IN_QUIZ: return "QUIZ: Press 1-4 to answer before time runs out!";
+                case BOSS_FIGHT: return "BOSS FIGHT: Defeat the Corrupted AI!";
+                case GAME_ENDING: return "";
+                default: return "";
+            }
+        }
         switch (phaseOneState) {
             case CS_CLASS_REQUIRED:
                 return "Goal: reach Sir Shehryrar's CS class";
@@ -126,6 +173,9 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     public String getPhaseHintText() {
+        if (zombieMode) {
+            return "Karma determines your ending. Choose wisely.";
+        }
         switch (phaseOneState) {
             case CS_CLASS_REQUIRED:
                 return "FAST-NU Islamabad waits for nobody.";
@@ -137,6 +187,8 @@ public class GamePanel extends JPanel implements Runnable {
                 return "";
         }
     }
+    // ─── DEBUG: Set to true to skip title + Phase 1 and jump straight to Zombie Mode ───
+    public static final boolean DEBUG_SKIP_TO_ZOMBIE = true;  // ← flip to false for normal game
 
     public GamePanel() {
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
@@ -147,6 +199,9 @@ public class GamePanel extends JPanel implements Runnable {
         
         session = new controller.GameSession();
         session.startNewGame();
+        
+        // SD-UC9/UC10/UC12: CombatController needs a Player reference
+        combatController.setPlayer(session.getPlayer());
         
         // Connect player back to panel and keyboard
         session.getPlayer().setEngineComponents(this, keyH);
@@ -161,7 +216,23 @@ public class GamePanel extends JPanel implements Runnable {
         // Play zone BGM Initially 
         soundM.playZoneMusic(currentZone);
 
-        gameState = titleState;
+        if (DEBUG_SKIP_TO_ZOMBIE) {
+            // Skip everything — jump straight into Zombie Mode for testing
+            phaseOneState = PhaseOneState.PHASE_1_DONE;
+            zombieMode = true;
+            phaseTwoState = PhaseTwoState.EXPLORE;
+            session.switchToZombieMode();
+            currentZone = ZoneType.LIBRARY;
+            tileM.loadMap();
+            objM.loadZombieLibraryObjects();
+            objM.filterDefeatedZombies(defeatedZombies);
+            session.getPlayer().xLocation = (maxScreenCol / 2) * tileSize;
+            session.getPlayer().yLocation = (maxScreenRow / 2) * tileSize;
+            gameState = playState;  // Skip title screen too
+            System.out.println("[DEBUG] Skipped to Zombie Mode in Library");
+        } else {
+            gameState = titleState;
+        }
     }
 
     public void startGameThread() {
@@ -203,20 +274,69 @@ public class GamePanel extends JPanel implements Runnable {
                     phaseOneState = PhaseOneState.PHASE_1_DONE;
                 }
                 clearKeys();
-            } else if (phaseOneState == PhaseOneState.PHASE_1_DONE) {
+            } else if (phaseOneState == PhaseOneState.PHASE_1_DONE && !zombieMode) {
+                // Transition to Zombie Mode after Phase 1 ending
+                zombieCutsceneTicks++;
+                if (zombieCutsceneTicks > FPS * 5) {
+                    // Cutscene over — enter zombie mode
+                    zombieMode = true;
+                    phaseTwoState = PhaseTwoState.EXPLORE;
+                    session.switchToZombieMode();
+                    // Spawn player in Library (where they fell asleep)
+                    currentZone = ZoneType.LIBRARY;
+                    tileM.loadMap();
+                    objM.loadZombieLibraryObjects();
+                    objM.filterDefeatedZombies(defeatedZombies);
+                    session.getPlayer().xLocation = (maxScreenCol / 2) * tileSize;
+                    session.getPlayer().yLocation = (maxScreenRow / 2) * tileSize;
+                    soundM.playZoneMusic(currentZone); // Will need zombie BGM later
+                }
                 clearKeys();
+            } else if (zombieMode && phaseTwoState == PhaseTwoState.GAME_ENDING) {
+                clearKeys(); // Ending screen handles itself
             } else if (keyH.escapePressed) {
                 gameState = pauseState;
                 keyH.escapePressed = false;
-            } else if (keyH.pPressed) {
-                // UC3: phone from Normal Mode gameplay (diagram: Player owns Phone).
+            } else if (keyH.pPressed && !zombieMode) {
                 keyH.pPressed = false;
                 session.getPlayer().getPhone().open();
                 gameUI.openPhoneMenu();
                 gameState = phoneState;
+            } else if (zombieMode && phaseTwoState == PhaseTwoState.BOSS_INTRO) {
+                bossIntroTicks++;
+                if (bossIntroTicks > FPS * 4) {
+                    phaseTwoState = PhaseTwoState.BOSS_DODGE;
+                    bossDodgeTicks = 0;
+                    flares.clear();
+                    gameUI.startDialogue("System|WARNING: Evasive Maneuvers Required! Survive the Corrupted AI's firewall attack!");
+                    gameState = dialogueState;
+                }
+            } else if (zombieMode && phaseTwoState == PhaseTwoState.BOSS_DODGE) {
+                session.getPlayer().update();
+                updateFlares();
+                bossDodgeTicks++;
+                if (bossDodgeTicks > FPS * 12) { // 12 seconds of dodging
+                    // End dodge phase
+                    flares.clear();
+                    phaseTwoState = PhaseTwoState.EXPLORE;
+                    if (hiddenBoss != null) {
+                        objM.furnitureList.add(hiddenBoss);
+                        hiddenBoss = null;
+                    }
+                    gameUI.startDialogue("System|Firewall breached! The Corrupted AI is rushing your location!");
+                    gameState = dialogueState;
+                }
             } else {
                 session.getPlayer().update();
                 checkZoneTransitions();
+                if (zombieMode) {
+                    // Update zombie chasing AI every frame
+                    int px = session.getPlayer().xLocation + tileSize / 2;
+                    int py = session.getPlayer().yLocation + tileSize / 2;
+                    objM.updateZombies(px, py);
+                    // Check if any zombie touched the player
+                    checkZombieTouchEncounters();
+                }
                 checkInteractions();
                 updateLiveLocation();
             }
@@ -237,6 +357,8 @@ public class GamePanel extends JPanel implements Runnable {
             gameUI.updateQuizScreen();
         } else if (gameState == phoneState) {
             gameUI.updatePhoneMenu(session);
+        } else if (gameState == combatState) {
+            gameUI.updateCombatScreen();
         }
     }
 
@@ -275,6 +397,23 @@ public class GamePanel extends JPanel implements Runnable {
                 return;
             }
         }
+
+        // Also check nearby furniture (zombies, NPCs, objects) for proximity labels
+        int pX = session.getPlayer().xLocation + tileSize / 2;
+        int pY = session.getPlayer().yLocation + tileSize / 2;
+        for (entity.Furniture f : objM.furnitureList) {
+            if (f.name == null || f.name.isEmpty()) continue;
+            int fCX = f.x + f.width / 2;
+            int fCY = f.y + f.height / 2;
+            if (Math.abs(pX - fCX) < tileSize * 3 && Math.abs(pY - fCY) < tileSize * 3) {
+                // Convert internal names to display names
+                String display = f.name.replace("_", " ");
+                if (f.name.startsWith("zombie_")) display = "\u26A0 " + display;
+                else if (f.name.equals("final_boss")) display = "\u26A0 FINAL BOSS";
+                nearbyDoorName = display;
+                return;
+            }
+        }
     }
 
     private void checkZoneTransitions() {
@@ -301,7 +440,43 @@ public class GamePanel extends JPanel implements Runnable {
                     if (dirMatch) {
                         ZoneType target = loc.getTargetZone();
 
-                        if (currentZone == ZoneType.CORRIDOR && target == ZoneType.CLASSROOM && loc.getName().equals("AI Lab")
+                        // ZOMBIE MODE: Skip all Phase 1 gating, apply zombie-specific blocks
+                        if (zombieMode) {
+                            // Block classrooms and cafeteria during zombie mode
+                            if (target == ZoneType.CLASSROOM || target == ZoneType.AI_LAB) {
+                                gameUI.startDialogue("System|ERROR: Academic zone sealed. Containment protocol active.");
+                                pushPlayerBack(loc.getRequiredDirection());
+                                gameState = dialogueState;
+                                clearKeys();
+                                return;
+                            }
+                            if (target == ZoneType.CAFETERIA || target == ZoneType.PRAYER_AREA) {
+                                gameUI.startDialogue("System|ERROR: This area has been overrun. Find another way.");
+                                pushPlayerBack(loc.getRequiredDirection());
+                                gameState = dialogueState;
+                                clearKeys();
+                                return;
+                            }
+                            // Key locks
+                            if (target == ZoneType.CORRIDOR && !session.getPlayer().getInventory().hasItem(1)) {
+                                gameUI.startDialogue("System|ACCESS DENIED. Requires: Corridor Keycard.");
+                                pushPlayerBack(loc.getRequiredDirection());
+                                gameState = dialogueState;
+                                clearKeys();
+                                return;
+                            }
+                            if (target == ZoneType.SERVER_ROOM && !session.getPlayer().getInventory().hasItem(2)) {
+                                gameUI.startDialogue("System|ACCESS DENIED. Requires: Server Access Card.");
+                                pushPlayerBack(loc.getRequiredDirection());
+                                gameState = dialogueState;
+                                clearKeys();
+                                return;
+                            }
+                            // Allow: GROUND, WALKWAY, CORRIDOR, LIBRARY, SERVER_ROOM
+                            // (fall through to zone transition below)
+                        }
+
+                        if (!zombieMode && currentZone == ZoneType.CORRIDOR && target == ZoneType.CLASSROOM && loc.getName().equals("AI Lab")
                                 && phaseOneState == PhaseOneState.AI_LAB_REQUIRED) {
                             target = ZoneType.AI_LAB;
                         }
@@ -379,13 +554,29 @@ public class GamePanel extends JPanel implements Runnable {
                         tileM.loadMap();
                         objM.clearObjects();
 
-                        if (currentZone == ZoneType.CAFETERIA) objM.loadCafeteriaObjects();
-                        if (currentZone == ZoneType.LIBRARY) objM.loadLibraryObjects();
-                        if (currentZone == ZoneType.CLASSROOM) objM.loadClassroomObjects();
-                        if (currentZone == ZoneType.PRAYER_AREA) objM.loadPrayerAreaObjects();
-                        if (currentZone == ZoneType.SERVER_ROOM) objM.loadServerRoomObjects();
-                        if (currentZone == ZoneType.AI_LAB) objM.loadAILabObjects();
-                        if (currentZone == ZoneType.GROUND) objM.loadGroundObjects();
+                        if (zombieMode) {
+                            // Load zombie versions of room objects
+                            if (currentZone == ZoneType.GROUND) objM.loadZombieGroundObjects();
+                            else if (currentZone == ZoneType.WALKWAY) objM.loadZombieWalkwayObjects();
+                            else if (currentZone == ZoneType.CORRIDOR) objM.loadZombieCorridorObjects();
+                            else if (currentZone == ZoneType.LIBRARY) objM.loadZombieLibraryObjects();
+                            else if (currentZone == ZoneType.SERVER_ROOM) objM.loadZombieServerRoomObjects();
+                            
+                            objM.filterDefeatedZombies(defeatedZombies);
+                            
+                            // Auto-trigger Final Boss if entering Server Room
+                            if (currentZone == ZoneType.SERVER_ROOM && !defeatedZombies.contains("final_boss")) {
+                                startFinalBoss();
+                            }
+                        } else {
+                            if (currentZone == ZoneType.CAFETERIA) objM.loadCafeteriaObjects();
+                            if (currentZone == ZoneType.LIBRARY) objM.loadLibraryObjects();
+                            if (currentZone == ZoneType.CLASSROOM) objM.loadClassroomObjects();
+                            if (currentZone == ZoneType.PRAYER_AREA) objM.loadPrayerAreaObjects();
+                            if (currentZone == ZoneType.SERVER_ROOM) objM.loadServerRoomObjects();
+                            if (currentZone == ZoneType.AI_LAB) objM.loadAILabObjects();
+                            if (currentZone == ZoneType.GROUND) objM.loadGroundObjects();
+                        }
                         
                         // >>> START NEW CODE
                         session.getPlayer().xLocation = (int)loc.getTargetSpawnPosition().getX();
@@ -396,7 +587,18 @@ public class GamePanel extends JPanel implements Runnable {
                         soundM.playZoneMusic(currentZone);
                         clearKeys();
 
-                        if (currentZone == ZoneType.CLASSROOM) {
+                        if (zombieMode && currentZone == ZoneType.SERVER_ROOM) {
+                            phaseTwoState = PhaseTwoState.BOSS_INTRO;
+                            bossIntroTicks = 0;
+                            currentCombatEnemy = null;
+                            
+                            // Remove physical boss so it doesn't try to attack during the cutscene
+                            hiddenBoss = null;
+                            for (entity.Furniture f : objM.furnitureList) {
+                                if ("final_boss".equals(f.name)) hiddenBoss = f;
+                            }
+                            if (hiddenBoss != null) objM.furnitureList.remove(hiddenBoss);
+                        } else if (currentZone == ZoneType.CLASSROOM) {
                             gameUI.startDialogue("Classroom|CS-101 with Shehryrar Rashid. Find an empty seat before the attendance portal becomes dramatic.");
                             gameState = dialogueState;
                         } else if (currentZone == ZoneType.AI_LAB) {
@@ -414,6 +616,20 @@ public class GamePanel extends JPanel implements Runnable {
     private void checkInteractions() {
         if (keyH.ePressed || keyH.enterPressed) {
             session.onInteract(); // Forward to session
+
+            // Hint Sign
+            entity.Furniture sign = findNearbyNamedFurniture("hint_sign", tileSize * 3); // Increased range
+            if (sign != null) {
+                if (zombieMode) {
+                    gameUI.startDialogue("Sign|CAMPUS SURVIVAL GUIDE: Use [1] DEBUG to solve logic puzzles and restore people (Karma +). Use [2] TERMINATE for brute force (Karma -). You need Keycards from 'The Gaming Guy' and 'The Senior' to reach the Server Room.");
+                } else {
+                    gameUI.startDialogue("Sign|Walkway Directory: C-Block ahead. Library South. Welcome to FAST-NU Islamabad.");
+                }
+                gameState = dialogueState;
+                keyH.ePressed = false;
+                keyH.enterPressed = false;
+                return;
+            }
 
             // Interacting with Cafe Counter (Top side)
             if (currentZone == ZoneType.CAFETERIA && session.getPlayer().yLocation < tileSize * 2) {
@@ -700,6 +916,293 @@ public class GamePanel extends JPanel implements Runnable {
         return null;
     }
 
+    // ═══════════════════════════════════════════════
+    //  ZOMBIE MODE — Combat encounter detection
+    // ═══════════════════════════════════════════════
+
+    private void checkZombieTouchEncounters() {
+        if (phaseTwoState != PhaseTwoState.EXPLORE) return;
+        
+        int pX = session.getPlayer().xLocation + tileSize / 2;
+        int pY = session.getPlayer().yLocation + tileSize / 2;
+        
+        entity.Furniture touchedZombie = objM.getZombieTouchingPlayer(
+            session.getPlayer().xLocation, session.getPlayer().yLocation, 
+            tileSize, tileSize
+        );
+        
+        if (touchedZombie != null) {
+            startZombieCombat(touchedZombie);
+        }
+    }
+
+    private void startZombieCombat(entity.Furniture zombieFurniture) {
+        String zombieName = zombieFurniture.name;
+        
+        // Create the enemy from the zombie types in Brainstorming.txt
+        int hp = 50;
+        String displayName = "Unknown Zombie";
+        if (zombieName.equals("zombie_chronically_online")) { displayName = "The Chronically Online Guy"; hp = 30; }
+        else if (zombieName.equals("zombie_gaming_guy")) { displayName = "The Gaming Guy"; hp = 50; }
+        else if (zombieName.equals("zombie_repeating_senior")) { displayName = "The Always-Repeating Senior"; hp = 60; }
+        else if (zombieName.equals("zombie_ta_cuts_marks")) { displayName = "The TA Who Cuts Marks"; hp = 70; }
+        else if (zombieName.equals("zombie_gpa_4.0")) { displayName = "The GPA 4.0 Silent Guy"; hp = 80; }
+        else if (zombieName.equals("zombie_librarian")) { displayName = "The Zombie Librarian"; hp = 40; }
+        
+        if (zombieName.equals("final_boss")) {
+            startFinalBoss();
+            return;
+        }
+
+        entity.ZombieEnemy enemy = new entity.ZombieEnemy(displayName, currentZone.ordinal(), hp);
+        
+        currentCombatEnemy = enemy;
+        combatEnemyDisplayName = displayName;
+        combatEnemyInternalName = zombieName; // Track for defeated set
+        combatController.initiateCombat(enemy);
+        phaseTwoState = PhaseTwoState.IN_COMBAT;
+        
+        // Remove the zombie from the map (they're being fought)
+        objM.furnitureList.remove(zombieFurniture);
+        
+        gameUI.startCombatUI(displayName, hp);
+        gameState = combatState;
+        clearKeys();
+    }
+
+    private void startFinalBoss() {
+        entity.FinalBoss boss = new entity.FinalBoss();
+        currentCombatEnemy = boss;
+        combatEnemyDisplayName = "CORRUPTED AI SYSTEM";
+        combatController.initiateCombat(boss);
+        
+        // Start with the Intro/Dodge sequence per user request
+        phaseTwoState = PhaseTwoState.BOSS_INTRO;
+        bossIntroTicks = 0;
+        
+        // Remove boss placeholder
+        for (entity.Furniture f : objM.furnitureList) {
+            if ("final_boss".equals(f.name)) { objM.furnitureList.remove(f); break; }
+        }
+        
+        gameUI.startCombatUI("CORRUPTED AI SYSTEM — Phase 1/3", 300);
+        gameState = combatState;
+        clearKeys();
+    }
+
+    public void handleCombatChoice(combat.CombatMove move) {
+        if (currentCombatEnemy == null) return;
+        
+        if (move == combat.CombatMove.DEBUG) {
+            // Start quiz phase
+            if (currentCombatEnemy instanceof entity.FinalBoss) {
+                currentChallenge = combat.CombatChallenge.forBossPhase(((entity.FinalBoss)currentCombatEnemy).getCurrentPhase());
+            } else {
+                currentChallenge = new combat.CombatChallenge(currentCombatEnemy.getHp() >= 70 ? 3 : currentCombatEnemy.getHp() >= 50 ? 2 : 1);
+            }
+            phaseTwoState = PhaseTwoState.IN_QUIZ;
+            return;
+        }
+
+        // TERMINATE execution - start minigame
+        if (move == combat.CombatMove.TERMINATE) {
+            phaseTwoState = PhaseTwoState.IN_TERMINATE_MINIGAME;
+            gameUI.initTerminateMinigame();
+            return;
+        }
+
+        executeCombatStrategy(move, false);
+    }
+
+    public void handleQuizAnswer(int index) {
+        if (currentChallenge == null || currentCombatEnemy == null) return;
+        boolean passed = currentChallenge.evaluate(index);
+        executeCombatStrategy(combat.CombatMove.DEBUG, passed);
+    }
+
+    public void handleTerminateMinigame(boolean passed) {
+        if (currentCombatEnemy == null) return;
+        executeCombatStrategy(combat.CombatMove.TERMINATE, passed);
+    }
+
+    private void executeCombatStrategy(combat.CombatMove move, boolean passedQuiz) {
+        // SD-UC9/UC10/UC12: GameSession → CombatController.executeCombatMove(move)
+        //   → CombatStrategyFactory.createStrategy() → Strategy.execute()
+        combatController.initiateCombat(currentCombatEnemy);
+        combat.CombatResult result = combatController.executeCombatMove(move, passedQuiz);
+        combatController.applyResult(result);
+        
+        // Apply karma
+        if (result.getKarmaChange() != 0) {
+            session.getPlayer().getStats().updateKarma(result.getKarmaChange());
+            String reason = result.wasDebugUsed() ? "Debug - Pacifist" : "Terminate - Brute Force";
+            if (result.getKarmaChange() > 0) {
+                session.getKarmaTracker().add(result.getKarmaChange(), reason);
+            } else {
+                session.getKarmaTracker().deduct(Math.abs(result.getKarmaChange()), reason);
+            }
+        }
+        
+        // Apply HP change
+        if (result.getHPChange() < 0) {
+            session.getPlayer().takeDamage(Math.abs(result.getHPChange()));
+        }
+        
+        if (result.isVictory()) {
+            // Check if final boss and needs phase escalation
+            if (currentCombatEnemy instanceof entity.FinalBoss) {
+                entity.FinalBoss boss = (entity.FinalBoss) currentCombatEnemy;
+                boss.escalatePhase();
+                if (boss.isMaxPhase()) {
+                    // Boss defeated! Deploy patch and resolve ending
+                    boss.deployPatch();
+                    resolveEnding();
+                    return;
+                } else {
+                    // Next phase
+                    boss.resetHp();
+                    gameUI.startCombatUI("CORRUPTED AI — Phase " + boss.getCurrentPhase() + "/3", boss.getHp());
+                    phaseTwoState = PhaseTwoState.BOSS_FIGHT;
+                    return;
+                }
+            }
+            
+            // Normal zombie defeated
+            String victoryMsg = result.wasDebugUsed() 
+                ? "You|You solved the challenge. " + combatEnemyDisplayName + " fades back to normal. Karma +" + result.getKarmaChange()
+                : "You|You terminated " + combatEnemyDisplayName + " by force. Karma " + result.getKarmaChange();
+            
+            // Check for key item drops
+            checkZombieDrops(combatEnemyDisplayName);
+            
+            // Permanently mark this zombie as defeated
+            defeatedZombies.add(combatEnemyInternalName);
+            
+            currentCombatEnemy = null;
+            combatEnemyInternalName = "";
+            phaseTwoState = PhaseTwoState.EXPLORE;
+            gameUI.startDialogue(victoryMsg);
+            gameState = dialogueState;
+        } else {
+            // Player failed — show result and let them try again
+            String failMsg = result.wasDebugUsed()
+                ? "You|Wrong answer! " + combatEnemyDisplayName + " attacks! HP -" + Math.abs(result.getHPChange())
+                : "You|" + combatEnemyDisplayName + " is still standing! They hit back! HP -" + Math.abs(result.getHPChange());
+            gameUI.showCombatResult(failMsg);
+            
+            if (!session.getPlayer().isAlive()) {
+                session.getPlayer().respawn();
+                currentCombatEnemy = null;
+                phaseTwoState = PhaseTwoState.EXPLORE;
+                gameUI.startDialogue("You|Everything goes dark... You wake up at the library entrance.");
+                currentZone = ZoneType.LIBRARY;
+                tileM.loadMap();
+                objM.loadZombieLibraryObjects();
+                objM.filterDefeatedZombies(defeatedZombies);
+                session.getPlayer().xLocation = (maxScreenCol / 2) * tileSize;
+                session.getPlayer().yLocation = (maxScreenRow / 2) * tileSize;
+                gameState = dialogueState;
+            } else {
+                phaseTwoState = PhaseTwoState.IN_COMBAT;
+            }
+        }
+    }
+
+    private void checkZombieDrops(String zombieName) {
+        if (zombieName.contains("Gaming Guy")) {
+            session.getPlayer().getInventory().addItem(new inventory.KeyItem(1, "Corridor Keycard", "Unlocks the Corridor in zombie mode"));
+            gameUI.startDialogue("System|ITEM OBTAINED: Corridor Keycard");
+            gameState = dialogueState;
+        } else if (zombieName.contains("Repeating Senior")) {
+            session.getPlayer().getInventory().addItem(new inventory.KeyItem(2, "Server Access Card", "Grants access to the Server Room"));
+            gameUI.startDialogue("System|ITEM OBTAINED: Server Access Card");
+            gameState = dialogueState;
+        }
+    }
+
+    private void pushPlayerBack(String dir) {
+        int pushDist = tileSize / 2;
+        if (dir.equals("up")) session.getPlayer().yLocation += pushDist;
+        if (dir.equals("down")) session.getPlayer().yLocation -= pushDist;
+        if (dir.equals("left")) session.getPlayer().xLocation += pushDist;
+        if (dir.equals("right")) session.getPlayer().xLocation -= pushDist;
+    }
+
+    private void resolveEnding() {
+        phaseTwoState = PhaseTwoState.GAME_ENDING;
+        
+        // Final narrative wrap-up dialogue
+        String[] endingQueue = new String[] {
+            "You|The containment patch is deployed. The flickering lights in the server room stabilize.",
+            "System|ALARM DEACTIVATED. HEURISTIC STABILITY RESTORED. CAMPUS NETWORK REBOOTING...",
+            "You|It is over. The zombies... they are just students and TAs again, probably wondering why they are sleeping on the library floor.",
+            "You|Time to go home. Or maybe just sleep for real this time. FAST Islamabad speedrun complete."
+        };
+        gameUI.setLectureQueue(endingQueue, false);
+        
+        // When dialogue ends, show ending screen
+        gameUI.startDialogue(endingQueue[0]);
+        gameState = dialogueState;
+        currentCombatEnemy = null;
+    }
+
+    public void finalizeEnding() {
+        state.EndingResolver resolver = new state.EndingResolver();
+        state.EndingResolver.EndingType ending = resolver.resolve(session.getKarmaTracker());
+        String epilogue = resolver.buildEpilogueText(ending);
+        gameUI.showEndingScreen(ending.name(), epilogue, session.getKarmaTracker().getTotal());
+        gameState = endingState;
+    }
+
+    private void updateFlares() {
+        if (Math.random() < 0.10) { // Spawn rate
+            float sx = (maxScreenCol / 2.0f) * tileSize;
+            float sy = tileSize * 5.0f;
+            float targetX = session.getPlayer().xLocation + tileSize / 2.0f;
+            float targetY = session.getPlayer().yLocation + tileSize / 2.0f;
+            float dx = targetX - sx;
+            float dy = targetY - sy;
+            float len = (float)Math.sqrt(dx*dx + dy*dy);
+            if (len > 0) {
+                dx = (dx/len) * 5.0f;
+                dy = (dy/len) * 5.0f;
+            } else {
+                dy = 5.0f;
+            }
+            flares.add(new entity.Flare(sx, sy, dx, dy));
+        }
+        
+        java.awt.geom.Rectangle2D.Float pRect = new java.awt.geom.Rectangle2D.Float(
+            session.getPlayer().xLocation + 8, session.getPlayer().yLocation + 8, tileSize - 16, tileSize - 16
+        );
+        
+        for (entity.Flare f : flares) {
+            f.update();
+            if (f.x < 0 || f.x > screenWidth || f.y < 0 || f.y > screenHeight) {
+                flares.remove(f);
+            } else if (f.getBounds().intersects(pRect)) {
+                flares.remove(f);
+                session.getPlayer().takeDamage(5);
+                
+                if (!session.getPlayer().isAlive()) {
+                    session.getPlayer().respawn();
+                    flares.clear();
+                    hiddenBoss = null;
+                    phaseTwoState = PhaseTwoState.EXPLORE;
+                    gameUI.startDialogue("You|The firewall incinerated you... You wake up at the library entrance.");
+                    currentZone = ZoneType.LIBRARY;
+                    tileM.loadMap();
+                    objM.loadZombieLibraryObjects();
+                    objM.filterDefeatedZombies(defeatedZombies);
+                    session.getPlayer().xLocation = (maxScreenCol / 2) * tileSize;
+                    session.getPlayer().yLocation = (maxScreenRow / 2) * tileSize;
+                    gameState = dialogueState;
+                    break;
+                }
+            }
+        }
+    }
+
     @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -711,6 +1214,15 @@ public class GamePanel extends JPanel implements Runnable {
             tileM.draw(g2);
             objM.draw(g2);
             session.getPlayer().draw(g2);
+            for (entity.Flare f : flares) {
+                f.draw(g2);
+            }
+            
+            // Draw boss manually if hidden but we are in dodge phase
+            if (zombieMode && phaseTwoState == PhaseTwoState.BOSS_DODGE && hiddenBoss != null) {
+                hiddenBoss.draw(g2);
+            }
+            
             gameUI.draw(g2);
         }
         

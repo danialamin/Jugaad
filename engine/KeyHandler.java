@@ -6,7 +6,7 @@ import java.awt.event.KeyListener;
 public class KeyHandler implements KeyListener {
 
     public boolean upPressed, downPressed, leftPressed, rightPressed, ePressed, enterPressed, escapePressed;
-    public boolean mPressed, num1Pressed, num2Pressed, num3Pressed;
+    public boolean mPressed, num1Pressed, num2Pressed, num3Pressed, num4Pressed;
     /** UC3 Use Phone — open phone overlay from gameplay. */
     public boolean pPressed;
 
@@ -52,6 +52,9 @@ public class KeyHandler implements KeyListener {
         if(code == KeyEvent.VK_3) {
             num3Pressed = true;
         }
+        if(code == KeyEvent.VK_4) {
+            num4Pressed = true;
+        }
         if (code == KeyEvent.VK_P) {
             pPressed = true;
         }
@@ -93,6 +96,9 @@ public class KeyHandler implements KeyListener {
         }
         if(code == KeyEvent.VK_3) {
             num3Pressed = false;
+        }
+        if(code == KeyEvent.VK_4) {
+            num4Pressed = false;
         }
         if (code == KeyEvent.VK_P) {
             pPressed = false;

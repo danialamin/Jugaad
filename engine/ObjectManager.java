@@ -549,4 +549,116 @@ public class ObjectManager {
             }
         }
     }
+
+    // ═══════════════════════════════════════════════
+    //  ZOMBIE MODE — Placeholder objects per zone
+    // ═══════════════════════════════════════════════
+
+    private static final Color ZOMBIE_RED = new Color(180, 40, 40, 200);
+    private static final Color NPC_GREEN = new Color(40, 160, 60, 200);
+    private static final Color BOSS_PURPLE = new Color(120, 30, 180, 220);
+    private static final Color OBSTACLE_ORANGE = new Color(200, 120, 30, 200);
+    private static final Color HINT_CYAN = new Color(40, 180, 200, 200);
+
+    /** Creates a zombie placeholder with chasing AI. */
+    private Furniture makeZombie(String name, int x, int y, Color color, float speed, int detectRadius) {
+        int ts = gp.tileSize;
+        Furniture f = new Furniture(null, x, y, (int)(ts * 1.2), (int)(ts * 1.2));
+        f.name = name;
+        f.placeholderColor = color;
+        f.moveSpeed = speed;
+        f.detectionRadius = detectRadius;
+        return f;
+    }
+
+    /** Creates a static NPC/object placeholder (no chasing). */
+    private Furniture makeStatic(String name, int x, int y, int w, int h, Color color) {
+        Furniture f = new Furniture(null, x, y, w, h);
+        f.name = name;
+        f.placeholderColor = color;
+        return f;
+    }
+
+    /** Call every frame to update zombie AI movement. */
+    public void updateZombies(int playerX, int playerY) {
+        for (Furniture f : furnitureList) {
+            f.updateAI(playerX, playerY);
+        }
+    }
+
+    /** Find the zombie touching the player, if any. */
+    public Furniture getZombieTouchingPlayer(int px, int py, int pw, int ph) {
+        for (Furniture f : furnitureList) {
+            if (f.defeated || f.moveSpeed <= 0) continue;
+            if (f.name == null) continue;
+            if (!f.name.startsWith("zombie_") && !f.name.equals("final_boss")) continue;
+            if (f.isTouchingPlayer(px, py, pw, ph)) return f;
+        }
+        return null;
+    }
+
+    // ─── Per-zone zombie loading ───
+
+    public void loadZombieLibraryObjects() {
+        furnitureList.clear();
+        int ts = gp.tileSize;
+        // Atmosphere
+        if (libClockImg != null) {
+            furnitureList.add(new Furniture((gp.maxScreenCol / 2) * ts - (ts/2), ts, libClockImg, 0.5));
+        }
+        // Zombie Librarian — easy, slow chaser
+        furnitureList.add(makeZombie("zombie_librarian", 4 * ts, 5 * ts, ZOMBIE_RED, 0.8f, ts * 3));
+        // GPA 4.0 Silent Guy — hard, faster chaser
+        furnitureList.add(makeZombie("zombie_gpa_4.0", 15 * ts, 10 * ts, ZOMBIE_RED, 1.2f, ts * 4));
+    }
+
+    public void loadZombieWalkwayObjects() {
+        furnitureList.clear();
+        int ts = gp.tileSize;
+        // The Gaming Guy — medium, drops "Corridor Keycard"
+        furnitureList.add(makeZombie("zombie_gaming_guy", 10 * ts, 8 * ts, ZOMBIE_RED, 1.0f, ts * 3));
+        // Hint sign
+        furnitureList.add(makeStatic("hint_sign", 3 * ts, 3 * ts, ts * 2, ts, HINT_CYAN));
+    }
+
+    public void loadZombieGroundObjects() {
+        furnitureList.clear();
+        int ts = gp.tileSize;
+        // Chronically Online Guy — easy, slow
+        furnitureList.add(makeZombie("zombie_chronically_online", 8 * ts, 8 * ts, ZOMBIE_RED, 0.7f, ts * 2));
+        // Haider Ramzan — friendly NPC (green, static)
+        furnitureList.add(makeStatic("npc_haider", 14 * ts, 4 * ts, (int)(ts * 1.2), (int)(ts * 1.2), NPC_GREEN));
+    }
+
+    public void loadZombieCorridorObjects() {
+        furnitureList.clear();
+        int ts = gp.tileSize;
+        // Repeating Senior — medium, drops "Server Access Card"
+        furnitureList.add(makeZombie("zombie_repeating_senior", 12 * ts, 5 * ts, ZOMBIE_RED, 1.0f, ts * 3));
+        // TA Who Cuts Marks — hard, aggressive chaser
+        furnitureList.add(makeZombie("zombie_ta_cuts_marks", 4 * ts, 12 * ts, ZOMBIE_RED, 1.3f, ts * 4));
+    }
+
+    public void loadZombieServerRoomObjects() {
+        furnitureList.clear();
+        int ts = gp.tileSize;
+        // Atmosphere — server racks
+        if (serverImg != null) {
+            int serverW = 200, serverH = 110;
+            furnitureList.add(new Furniture(serverImg, (gp.screenWidth - serverW) / 2, ts + 10, serverW, serverH));
+        }
+        // FINAL BOSS — The Corrupted AI (large, aggressive, menacing)
+        Furniture boss = makeZombie("final_boss", 8 * ts, 6 * ts, BOSS_PURPLE, 1.8f, ts * 15);
+        boss.width = ts * 2;
+        boss.height = ts * 2;
+        furnitureList.add(boss);
+    }
+
+    /**
+     * Removes any furniture whose name is in the defeated set.
+     * Called after each zone load to prevent dead zombies from respawning.
+     */
+    public void filterDefeatedZombies(java.util.Set<String> defeated) {
+        furnitureList.removeIf(f -> defeated.contains(f.name));
+    }
 }

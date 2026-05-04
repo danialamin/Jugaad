@@ -19,9 +19,12 @@ public class EndingResolver {
 
     public String buildEpilogueText(EndingType type) {
         switch (type) {
-            case PACIFIST: return "You saved the campus!";
-            case EVIL: return "You destroyed everything!";
-            default: return "You survived.";
+            case PACIFIST: 
+                return "The Corrupted AI's firewall shatters, but rather than destroying it, you deployed a logical patch. The infected systems slowly reboot. The red emergency lights fade back to a calm fluorescent white. You saved the campus through intellect and patience, preserving both the hardware and the students' sanity. The University honors you as a true engineer.";
+            case EVIL: 
+                return "You brute-forced your way through every problem, tearing down the AI's core. Sparks shower the server room as the mainframes violently crash. The zombies collapse, but the entire FAST-NU infrastructure is destroyed. Student records, grades, and the campus network are gone forever. You survived, but at what cost?";
+            default: 
+                return "You managed to defeat the Corrupted AI using a mix of force and logic. The campus is safe, but several servers require heavy maintenance. The administration is relieved, though questions remain about the long-term stability of the network. A solid, if imperfect, victory.";
         }
     }
 }

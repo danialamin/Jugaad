@@ -12,6 +12,18 @@ public class CombatController {
     private Enemy currentEnemy;
     private ICombatStrategy strategy;
 
+    public CombatController() {
+        // Deferred player binding — setPlayer() called after session init
+    }
+
+    public CombatController(Player player) {
+        this.player = player;
+    }
+
+    public void setPlayer(Player player) {
+        this.player = player;
+    }
+
     public void initiateCombat(Enemy enemy) {
         this.currentEnemy = enemy;
     }
@@ -20,20 +32,26 @@ public class CombatController {
         this.strategy = s;
     }
 
-    public CombatResult executeCombatMove(CombatMove move) {
-        // Gray-structure placeholder: wire strategy selection and combat flow here.
+    public CombatResult executeCombatMove(CombatMove move, boolean passedMinigame) {
         CombatStrategyFactory factory = new CombatStrategyFactory();
         this.strategy = factory.createStrategy(move.name());
-        return null;
+        
+        if (this.strategy instanceof combat.DebugStrategy) {
+            ((combat.DebugStrategy) this.strategy).setPassed(passedMinigame);
+        } else if (this.strategy instanceof combat.TerminateStrategy) {
+            ((combat.TerminateStrategy) this.strategy).setPassed(passedMinigame);
+        }
+        
+        return this.strategy.execute(player, currentEnemy);
     }
 
-    public CombatResult executeCombatMove() {
-        // Backward-compatible overload; prefer executeCombatMove(CombatMove).
-        return executeCombatMove(CombatMove.TERMINATE);
+    public CombatResult executeCombatMove(CombatMove move) {
+        return executeCombatMove(move, false);
     }
 
     public void applyResult(CombatResult result) {
-        // Gray-structure placeholder: apply HP/karma and state transition effects here.
+        // Results are currently applied dynamically by the GamePanel logic 
+        // to handle UI state transitions and map updates immediately.
     }
 
     public boolean isPlayerAlive() {

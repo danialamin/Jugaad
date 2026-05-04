@@ -166,7 +166,7 @@ public class SoundManager {
 
     public void playTextSound() {
         if (!sfxOn) return;
-        if (textClip != null && textClip.isRunning()) return; 
+        if (textClip != null) return; 
         try {
             File file = new File("assets/sound/textOut.wav");
             if (file.exists()) {

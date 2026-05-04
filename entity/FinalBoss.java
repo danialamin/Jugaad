@@ -14,11 +14,11 @@ public class FinalBoss extends Enemy {
     }
 
     public void escalatePhase() {
-        if (phase < maxPhases) phase++;
+        phase++;
     }
 
     public boolean isMaxPhase() {
-        return phase == maxPhases;
+        return phase > maxPhases;
     }
 
     public void deployPatch() {

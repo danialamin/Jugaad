@@ -14,6 +14,10 @@ public abstract class Enemy {
         if (hp < 0) hp = 0;
     }
 
+    public void resetHp() {
+        hp = maxHp;
+    }
+
     public boolean isDefeated() {
         return hp <= 0;
     }
