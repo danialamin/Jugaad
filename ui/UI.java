@@ -1877,7 +1877,7 @@ public void updateQuizScreen() {
     }
 
     private int getEnemySpawnRate(String t) {
-        if ("zombie_faizan".equals(t) || "zombie_ta_cuts_marks".equals(t)) return 14;
+        if ("zombie_faizan".equals(t) || "zombie_ahmad".equals(t)) return 14;
         if ("zombie_javeria".equals(t)) return 16;
         if ("zombie_librarian".equals(t)) return 22;
         return 20;
@@ -1905,7 +1905,7 @@ public void updateQuizScreen() {
             else if (edge == 1) { bx = dodgeBoxX + dodgeBoxW + 28; by = dodgeBoxY + quizBoltRng.nextFloat() * dodgeBoxH; vx = -speed; vy = 0; }
             else if (edge == 2) { bx = dodgeBoxX + quizBoltRng.nextFloat() * dodgeBoxW; by = dodgeBoxY - 26; vx = 0; vy = speed; }
             else { bx = dodgeBoxX + quizBoltRng.nextFloat() * dodgeBoxW; by = dodgeBoxY + dodgeBoxH + 26; vx = 0; vy = -speed; }
-        } else if ("zombie_ta_cuts_marks".equals(t)) {
+        } else if ("zombie_ahmad".equals(t)) {
             int edge = quizBoltRng.nextInt(4);
             float s2 = speed * 1.6f;
             if (edge == 0) { bx = dodgeBoxX - 28; by = dodgeBoxY + quizBoltRng.nextFloat() * dodgeBoxH; vx = s2; vy = 0; }

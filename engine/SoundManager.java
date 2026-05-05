@@ -78,12 +78,21 @@ public class SoundManager {
             case "zombie_cafe_uncle":          path = "assets/sound/FightCafeUncle.wav"; break;
             case "zombie_faizan":              path = "assets/sound/FightFaizan.wav"; break;
             case "zombie_javeria":             path = "assets/sound/FightJaveria.wav"; break;
-            case "zombie_student_a":           path = "assets/sound/FightStudent.wav"; break;
-            case "zombie_student_b":           path = "assets/sound/FightStudent.wav"; break;
-            case "zombie_student_c":           path = "assets/sound/FightStudent.wav"; break;
+            case "zombie_waseed":              path = "assets/sound/FightStudent.wav"; break;
+            case "zombie_dyen":                path = "assets/sound/FightStudent.wav"; break;
+            case "zombie_ahmad":               path = "assets/sound/FightStudent.wav"; break;
+            case "zombie_hooud":               path = "assets/sound/FightStudent.wav"; break;
             case "final_boss":                 path = "assets/sound/FightFinalBoss.wav"; break;
             default:                           path = "assets/sound/FightDefault.wav"; break;
         }
+
+        // --- BULLETPROOF SILENT FALLBACK ---
+        File fileCheck = new File(path);
+        if (!fileCheck.exists()) {
+            System.err.println("[SoundManager] MISSING FIGHT AUDIO: " + path + ". Falling back to Default.");
+            path = "assets/sound/FightDefault.wav"; // attempt a fallback
+        }
+        
         playCustomMusic(path);
     }
 
@@ -173,10 +182,11 @@ public class SoundManager {
                 bgmClip.loop(Clip.LOOP_CONTINUOUSLY); // LOOP INFINITELY
                 System.out.println("[SoundManager] Playing custom music: " + relativeFilePath);
             } else {
+                // DON'T Crash or hang the game loop, just print quietly!
                 System.err.println("[SoundManager] CUSTOM AUDIO NOT FOUND! Looking at exact path: " + file.getAbsolutePath());
             }
         } catch (Exception e) {
-            System.err.println("[SoundManager] Error playing custom music: " + e.getMessage());
+            System.err.println("[SoundManager] Error playing custom music. Skipping without crash: " + e.getMessage());
         }
     }
 
