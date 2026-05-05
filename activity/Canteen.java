@@ -34,10 +34,11 @@ public class Canteen implements IInteractable {
     }
 
     public IStatModifier buildFoodModifier() {
-        return new StatModifierImpl(0, 50, -10, 5);
+        // SD-UC4: food restores HP (handled at call site) and reduces stress
+        return new StatModifierImpl(0, -10, 0);
     }
 
     public boolean canEat(PlayerStats stats) {
-        return stats.getEnergy() < 100;
+        return true; // HP check handled at the interaction call site
     }
 }

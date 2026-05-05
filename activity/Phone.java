@@ -15,12 +15,13 @@ public class Phone {
 
     /** UC3 outside-quiz use: stress drops, but wasting time still costs Karma. */
     public IStatModifier buildSocialMediaModifier() {
-        return new StatModifierImpl(0.0, 0, -5, -5);
+        return new StatModifierImpl(0.0, -5, -5);
     }
 
     /** UC3 quiz extension: phone use during a quiz is cheating. */
     public IStatModifier buildCheatModifier() {
-        return new StatModifierImpl(0.0, 0, 25, -15);
+        // SD-UC3: gpaDelta=0, stressDelta=0, karmaDelta=-15
+        return new StatModifierImpl(0.0, 0, -15);
     }
 
     /** True while the Classroom/Quiz flow is active per SD-UC3. */

@@ -134,7 +134,7 @@ public class CombatChallenge {
     }
 
     public IStatModifier buildPenaltyModifier() {
-        return new StatModifierImpl(0, -10, 5, 0);
+        return new StatModifierImpl(0, 5, 0);
     }
 
     // Getters

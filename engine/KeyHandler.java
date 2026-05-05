@@ -9,6 +9,8 @@ public class KeyHandler implements KeyListener {
     public boolean mPressed, num1Pressed, num2Pressed, num3Pressed, num4Pressed;
     /** UC3 Use Phone — open phone overlay from gameplay. */
     public boolean pPressed;
+    /** Leave / close context menus (e.g. Cafe Menu). */
+    public boolean lPressed;
 
     @Override
     public void keyTyped(KeyEvent e) {
@@ -58,6 +60,9 @@ public class KeyHandler implements KeyListener {
         if (code == KeyEvent.VK_P) {
             pPressed = true;
         }
+        if (code == KeyEvent.VK_L) {
+            lPressed = true;
+        }
     }
 
     @Override
@@ -102,6 +107,9 @@ public class KeyHandler implements KeyListener {
         }
         if (code == KeyEvent.VK_P) {
             pPressed = false;
+        }
+        if (code == KeyEvent.VK_L) {
+            lPressed = false;
         }
     }
 }

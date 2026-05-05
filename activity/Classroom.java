@@ -29,12 +29,12 @@ public class Classroom implements IInteractable {
         return currentHour == scheduledHour && !isAttended;
     }
 
-    public void startLecture(Player player) {
+    public Quiz startLecture(Player player) {
+        // SD-UC2 line 32-34: classroom.startLecture(player) → generateQuiz() → return quiz to caller
         System.out.println("Attending lecture: " + subject);
         Quiz quiz = generateQuiz();
-        System.out.println("A quiz has started!");
-        player.getStats().applyModifier(quiz.buildResultModifier(true)); // Placeholder auto-win
-        markAttended();
+        System.out.println("Quiz generated for: " + subject);
+        return quiz;
     }
 
     public Quiz generateQuiz() {

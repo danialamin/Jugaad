@@ -35,6 +35,7 @@ together {
             + loadFromSave(saveId : int) : void
             + handleSystemEvent(event : String) : void
             + switchToZombieMode() : void
+            + showGameOver() : void
             + getCurrentMode() : GameModeType
             + getPlayer() : Player
             + getCampusMap() : CampusMap
@@ -165,25 +166,19 @@ together {
 
         class PlayerStats {
             - gpa : double
-            - energy : int
             - stress : int
             - karma : int
-            - maxEnergy : int = 100
             + applyModifier(mod : IStatModifier) : void
             + updateGPA(delta : double) : void
-            + updateEnergy(delta : int) : void
             + updateStress(delta : int) : void
             + updateKarma(delta : int) : void
-            + isEnergyFull() : boolean
             + getGPA() : double
-            + getEnergy() : int
             + getStress() : int
             + getKarma() : int
         }
 
         class StatModifierImpl {
             - gpaDelta : double
-            - energyDelta : int
             - stressDelta : int
             - karmaDelta : int
             + apply(stats : PlayerStats) : void
@@ -290,8 +285,18 @@ together {
 
         class SavePoint {
             - savePointId : int
+            - zoneId : int
             + onInteract(player : Player, session : GameSession) : void
             + isActive() : boolean
+            + activate() : void
+        }
+
+        class EasterEgg {
+            - eggId : int
+            - triggerNpcId : int
+            - eggText : String
+            + trigger() : void
+            + getText() : String
         }
 
         class Obstacle {

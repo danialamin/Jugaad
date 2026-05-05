@@ -87,6 +87,7 @@ public class GamePanel extends JPanel implements Runnable {
     public final int controlsState = 10;
     public final int combatState = 11;
     public final int endingState = 12;
+    public final int gameOverState = 13;
 
     public PhaseOneState phaseOneState = PhaseOneState.CS_CLASS_REQUIRED;
     public ZoneType activeLectureZone = null;
@@ -95,6 +96,15 @@ public class GamePanel extends JPanel implements Runnable {
     public boolean csClassroomLocked = false;
     public int libraryStudyStage = 0;
     public int cafeteriaUncleStage = 0;
+    public boolean cafeUncleDefeated = false;
+    public boolean faizanDefeated = false;
+    public boolean javeriaDefeated = false;
+    public boolean serverRoomUnlocked = false;
+    public boolean loreComputerRead = false;
+    public boolean easterEggTriggered = false;
+    public int haiderInteractionCount = 0;
+    // Phase 2 intro state
+    public int phase2IntroPart = 0; // 0=not started, 1=woke up, 2=scream, 3=lobby, 4=done
 
     // --- PHASE 2 (ZOMBIE MODE) STATE ---
     public boolean zombieMode = false;
@@ -147,34 +157,34 @@ public class GamePanel extends JPanel implements Runnable {
             switch (phaseTwoState) {
                 case EXPLORE:
                     if (session.getPlayer().getInventory().hasItem(2)) {
-                        return "Goal: Use Server Card to unlock Server Room in D-Block!";
+                        return "Use Server Card at Server Room";
                     } else if (session.getPlayer().getInventory().hasItem(1)) {
-                        return "Goal: Unlock Corridor (C-Block), defeat Senior for Server Card!";
+                        return "Corridor: defeat TA for Server Card";
+                    } else if (javeriaDefeated) {
+                        return "Corridor: find the Server Card";
+                    } else if (faizanDefeated) {
+                        return "Defeat Miss Javeria (CS classroom)";
                     } else {
-                        return "Goal: Go to Walkway, defeat Gaming Guy for Corridor Key!";
+                        return "Go to CS classroom in Corridor";
                     }
-                case IN_COMBAT: return "COMBAT: Press 1 (Debug) or 2 (Terminate)";
-                case IN_QUIZ: return "QUIZ: Press 1-4 to answer before time runs out!";
-                case BOSS_FIGHT: return "BOSS FIGHT: Defeat the Corrupted AI!";
+                case IN_COMBAT: return "COMBAT: 1=Debug  2=Terminate";
+                case IN_QUIZ: return "QUIZ: press 1, 2, 3 or 4";
+                case BOSS_FIGHT: return "BOSS: Defeat the Corrupted AI";
                 case GAME_ENDING: return "";
                 default: return "";
             }
         }
         switch (phaseOneState) {
-            case CS_CLASS_REQUIRED:
-                return "Goal: reach Sir Shehryrar's CS class";
-            case AI_LAB_REQUIRED:
-                return "Goal: go to AI Lab with Sir Shams Farooq";
-            case FREE_ROAM_OPTIONAL:
-                return "Optional: pray, then study in the library";
-            default:
-                return "";
+            case CS_CLASS_REQUIRED:  return "Go to CS class (Sir Shehryar)";
+            case AI_LAB_REQUIRED:    return "Go to AI Lab (Sir Shams)";
+            case FREE_ROAM_OPTIONAL: return "Optional: pray / study in library";
+            default: return "";
         }
     }
 
     public String getPhaseHintText() {
         if (zombieMode) {
-            return "Karma determines your ending. Choose wisely.";
+            return "Your choices define how this ends. Choose wisely.";
         }
         switch (phaseOneState) {
             case CS_CLASS_REQUIRED:
@@ -188,7 +198,7 @@ public class GamePanel extends JPanel implements Runnable {
         }
     }
     // ─── DEBUG: Set to true to skip title + Phase 1 and jump straight to Zombie Mode ───
-    public static final boolean DEBUG_SKIP_TO_ZOMBIE = true;  // ← flip to false for normal game
+    public static final boolean DEBUG_SKIP_TO_ZOMBIE = false;  // ← flip to true to skip to Phase 2 for testing
 
     public GamePanel() {
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
@@ -275,21 +285,21 @@ public class GamePanel extends JPanel implements Runnable {
                 }
                 clearKeys();
             } else if (phaseOneState == PhaseOneState.PHASE_1_DONE && !zombieMode) {
-                // Transition to Zombie Mode after Phase 1 ending
                 zombieCutsceneTicks++;
                 if (zombieCutsceneTicks > FPS * 5) {
-                    // Cutscene over — enter zombie mode
                     zombieMode = true;
-                    phaseTwoState = PhaseTwoState.EXPLORE;
+                    phase2IntroPart = 1;
+                    phaseTwoState = PhaseTwoState.CUTSCENE;
                     session.switchToZombieMode();
-                    // Spawn player in Library (where they fell asleep)
+                    soundM.setZombieMode(true);
                     currentZone = ZoneType.LIBRARY;
                     tileM.loadMap();
                     objM.loadZombieLibraryObjects();
                     objM.filterDefeatedZombies(defeatedZombies);
                     session.getPlayer().xLocation = (maxScreenCol / 2) * tileSize;
                     session.getPlayer().yLocation = (maxScreenRow / 2) * tileSize;
-                    soundM.playZoneMusic(currentZone); // Will need zombie BGM later
+                    soundM.playZoneMusic(currentZone);
+                    startPhase2IntroSequence();
                 }
                 clearKeys();
             } else if (zombieMode && phaseTwoState == PhaseTwoState.GAME_ENDING) {
@@ -305,26 +315,9 @@ public class GamePanel extends JPanel implements Runnable {
             } else if (zombieMode && phaseTwoState == PhaseTwoState.BOSS_INTRO) {
                 bossIntroTicks++;
                 if (bossIntroTicks > FPS * 4) {
-                    phaseTwoState = PhaseTwoState.BOSS_DODGE;
-                    bossDodgeTicks = 0;
-                    flares.clear();
-                    gameUI.startDialogue("System|WARNING: Evasive Maneuvers Required! Survive the Corrupted AI's firewall attack!");
-                    gameState = dialogueState;
-                }
-            } else if (zombieMode && phaseTwoState == PhaseTwoState.BOSS_DODGE) {
-                session.getPlayer().update();
-                updateFlares();
-                bossDodgeTicks++;
-                if (bossDodgeTicks > FPS * 12) { // 12 seconds of dodging
-                    // End dodge phase
-                    flares.clear();
-                    phaseTwoState = PhaseTwoState.EXPLORE;
-                    if (hiddenBoss != null) {
-                        objM.furnitureList.add(hiddenBoss);
-                        hiddenBoss = null;
-                    }
-                    gameUI.startDialogue("System|Firewall breached! The Corrupted AI is rushing your location!");
-                    gameState = dialogueState;
+                    phaseTwoState = PhaseTwoState.BOSS_FIGHT;
+                    gameUI.startCombatUI("CORRUPTED AI SYSTEM — Phase 1/3", 300);
+                    gameState = combatState;
                 }
             } else {
                 session.getPlayer().update();
@@ -354,11 +347,27 @@ public class GamePanel extends JPanel implements Runnable {
         } else if (gameState == dialogueState || gameState == introDialogueState) {
             gameUI.updateDialogueScreen();
         } else if (gameState == quizState) {
-            gameUI.updateQuizScreen();
+            // SD-UC2 line 36-37 / SD-UC3: player may open phone DURING quiz (cheat path)
+            if (keyH.pPressed && session.isLectureQuizActive()) {
+                keyH.pPressed = false;
+                session.getPlayer().getPhone().open();
+                // Phone used during quiz: isDuringQuiz=true → cheat penalty applied via beginAiAssistSubphase
+                gameUI.openPhoneMenu();
+                gameState = phoneState;
+            } else {
+                gameUI.updateQuizScreen();
+            }
         } else if (gameState == phoneState) {
             gameUI.updatePhoneMenu(session);
         } else if (gameState == combatState) {
             gameUI.updateCombatScreen();
+        } else if (gameState == gameOverState) {
+            if (keyH.enterPressed || keyH.ePressed || keyH.escapePressed) {
+                keyH.enterPressed = false;
+                keyH.ePressed = false;
+                keyH.escapePressed = false;
+                gameState = titleState;
+            }
         }
     }
 
@@ -374,6 +383,7 @@ public class GamePanel extends JPanel implements Runnable {
         keyH.num3Pressed = false;
         keyH.mPressed = false;
         keyH.pPressed = false;
+        keyH.lPressed = false;
     }
 
     private void updateLiveLocation() {
@@ -442,20 +452,36 @@ public class GamePanel extends JPanel implements Runnable {
 
                         // ZOMBIE MODE: Skip all Phase 1 gating, apply zombie-specific blocks
                         if (zombieMode) {
-                            // Block classrooms and cafeteria during zombie mode
-                            if (target == ZoneType.CLASSROOM || target == ZoneType.AI_LAB) {
-                                gameUI.startDialogue("System|ERROR: Academic zone sealed. Containment protocol active.");
+                            // Phase 2 intro: intercept first lobby exit to show blood decals then pull back
+                            if (phase2IntroPart == 2 && (target == ZoneType.GROUND || target == ZoneType.WALKWAY)) {
+                                currentZone = target;
+                                tileM.loadMap();
+                                objM.loadZombieGroundObjects();
+                                session.getPlayer().xLocation = (int) loc.getTargetSpawnPosition().getX();
+                                session.getPlayer().yLocation = (int) loc.getTargetSpawnPosition().getY();
+                                phase2IntroPart = 3;
+                                gameUI.startPhase2LobbyBloodSequence();
+                                gameState = dialogueState;
+                                clearKeys();
+                                return;
+                            }
+                            // Block AI Lab only (Classroom and Cafe are accessible)
+                            if (target == ZoneType.AI_LAB) {
+                                gameUI.startDialogue("You|The AI Lab is locked tight. Something's wrong in there.");
                                 pushPlayerBack(loc.getRequiredDirection());
                                 gameState = dialogueState;
                                 clearKeys();
                                 return;
                             }
-                            if (target == ZoneType.CAFETERIA || target == ZoneType.PRAYER_AREA) {
-                                gameUI.startDialogue("System|ERROR: This area has been overrun. Find another way.");
+                            if (target == ZoneType.PRAYER_AREA) {
+                                gameUI.startDialogue("You|The prayer area is in ruins. I shouldn't go in there.");
                                 pushPlayerBack(loc.getRequiredDirection());
                                 gameState = dialogueState;
                                 clearKeys();
                                 return;
+                            }
+                            if (target == ZoneType.CAFETERIA) {
+                                // Cafe is OPEN in zombie mode
                             }
                             // Key locks
                             if (target == ZoneType.CORRIDOR && !session.getPlayer().getInventory().hasItem(1)) {
@@ -471,6 +497,9 @@ public class GamePanel extends JPanel implements Runnable {
                                 gameState = dialogueState;
                                 clearKeys();
                                 return;
+                            }
+                            if (target == ZoneType.CLASSROOM) {
+                                // Zombie classroom is unlocked (only CS-101)
                             }
                             // Allow: GROUND, WALKWAY, CORRIDOR, LIBRARY, SERVER_ROOM
                             // (fall through to zone transition below)
@@ -527,7 +556,11 @@ public class GamePanel extends JPanel implements Runnable {
                         if ((currentZone == ZoneType.CLASSROOM || currentZone == ZoneType.AI_LAB) && target == ZoneType.CORRIDOR) {
                             if ((currentZone == ZoneType.CLASSROOM && phaseOneState == PhaseOneState.CS_CLASS_REQUIRED)
                                     || (currentZone == ZoneType.AI_LAB && phaseOneState == PhaseOneState.AI_LAB_REQUIRED)) {
-                                gameUI.startDialogue("You|Leaving before class? Bold plan. Terrible plan.");
+                                // SD-UC2 line 110-120: skip-class penalty: gpa-0.1, karma-10
+                                entity.StatModifierImpl skipModifier = new entity.StatModifierImpl(-0.1, 0, -10);
+                                session.getPlayer().getStats().applyModifier(skipModifier);
+                                session.getKarmaTracker().deduct(10, "Skipped class");
+                                gameUI.startDialogue("You|Leaving before class? Bold plan. Terrible plan. GPA takes the hit.");
                                 gameState = dialogueState;
                                 clearKeys();
                                 return;
@@ -555,18 +588,18 @@ public class GamePanel extends JPanel implements Runnable {
                         objM.clearObjects();
 
                         if (zombieMode) {
-                            // Load zombie versions of room objects
                             if (currentZone == ZoneType.GROUND) objM.loadZombieGroundObjects();
                             else if (currentZone == ZoneType.WALKWAY) objM.loadZombieWalkwayObjects();
                             else if (currentZone == ZoneType.CORRIDOR) objM.loadZombieCorridorObjects();
                             else if (currentZone == ZoneType.LIBRARY) objM.loadZombieLibraryObjects();
                             else if (currentZone == ZoneType.SERVER_ROOM) objM.loadZombieServerRoomObjects();
-                            
+                            else if (currentZone == ZoneType.CAFETERIA) objM.loadZombieCafeObjects();
+                            else if (currentZone == ZoneType.CLASSROOM) objM.loadZombieClassroomObjects();
+
                             objM.filterDefeatedZombies(defeatedZombies);
-                            
-                            // Auto-trigger Final Boss if entering Server Room
+
                             if (currentZone == ZoneType.SERVER_ROOM && !defeatedZombies.contains("final_boss")) {
-                                startFinalBoss();
+                                // Boss fight triggered by lore_computer interaction, not auto
                             }
                         } else {
                             if (currentZone == ZoneType.CAFETERIA) objM.loadCafeteriaObjects();
@@ -598,11 +631,24 @@ public class GamePanel extends JPanel implements Runnable {
                                 if ("final_boss".equals(f.name)) hiddenBoss = f;
                             }
                             if (hiddenBoss != null) objM.furnitureList.remove(hiddenBoss);
-                        } else if (currentZone == ZoneType.CLASSROOM) {
-                            gameUI.startDialogue("Classroom|CS-101 with Shehryrar Rashid. Find an empty seat before the attendance portal becomes dramatic.");
+                        } else if (!zombieMode && currentZone == ZoneType.CLASSROOM) {
+                            gameUI.startDialogue("Classroom|CS-101 with Sir Shehryrar Rashid. Find an empty seat.");
                             gameState = dialogueState;
-                        } else if (currentZone == ZoneType.AI_LAB) {
-                            gameUI.startDialogue("AI Lab|Welcome to Artificial Intelligence. Grab a seat quickly.");
+                        } else if (!zombieMode && currentZone == ZoneType.AI_LAB) {
+                            gameUI.startDialogue("AI Lab|AI Lab with Sir Shams Farooq. Grab a seat.");
+                            gameState = dialogueState;
+                        } else if (zombieMode && currentZone == ZoneType.CAFETERIA) {
+                            if (!cafeUncleDefeated) {
+                                gameUI.startZombieCafeIntroSequence();
+                                gameState = dialogueState;
+                            }
+                        } else if (zombieMode && currentZone == ZoneType.CLASSROOM) {
+                            if (!faizanDefeated) {
+                                gameUI.startZombieClassroomIntroSequence();
+                                gameState = dialogueState;
+                            }
+                        } else if (zombieMode && currentZone == ZoneType.SERVER_ROOM) {
+                            gameUI.startServerRoomArrivalSequence();
                             gameState = dialogueState;
                         }
 
@@ -617,24 +663,61 @@ public class GamePanel extends JPanel implements Runnable {
         if (keyH.ePressed || keyH.enterPressed) {
             session.onInteract(); // Forward to session
 
-            // Hint Sign
-            entity.Furniture sign = findNearbyNamedFurniture("hint_sign", tileSize * 3); // Increased range
-            if (sign != null) {
-                if (zombieMode) {
-                    gameUI.startDialogue("Sign|CAMPUS SURVIVAL GUIDE: Use [1] DEBUG to solve logic puzzles and restore people (Karma +). Use [2] TERMINATE for brute force (Karma -). You need Keycards from 'The Gaming Guy' and 'The Senior' to reach the Server Room.");
-                } else {
-                    gameUI.startDialogue("Sign|Walkway Directory: C-Block ahead. Library South. Welcome to FAST-NU Islamabad.");
-                }
-                gameState = dialogueState;
+            // Checkpoint interaction
+            entity.Furniture cpF = findNearbyNamedFurniture("checkpoint", tileSize * 2);
+            if (cpF != null) {
+                checkpointSave();
                 keyH.ePressed = false;
                 keyH.enterPressed = false;
                 return;
             }
 
-            // Interacting with Cafe Counter (Top side)
-            if (currentZone == ZoneType.CAFETERIA && session.getPlayer().yLocation < tileSize * 2) {
-                gameState = cafeMenuState;
-                gameUI.commandNum = 0;
+            // Cafe counter (zombie mode food, normal mode menu)
+            if (currentZone == ZoneType.CAFETERIA) {
+                entity.Furniture counter = findNearbyNamedFurniture("cafe_counter", tileSize * 3);
+                if (counter != null && zombieMode) {
+                    if (cafeUncleDefeated) {
+                        int healed = 30;
+                        session.getPlayer().heal(healed);
+                        session.getPlayer().getStats().updateStress(-5);
+                        gameUI.startDialogue("You|Food left on the counter. You eat quickly. (+" + healed + " HP)");
+                    } else {
+                        gameUI.startDialogue("You|Something's blocking the counter...");
+                    }
+                    gameState = dialogueState;
+                    keyH.ePressed = false;
+                    keyH.enterPressed = false;
+                    return;
+                }
+                if (!zombieMode && session.getPlayer().yLocation < tileSize * 2) {
+                    gameState = cafeMenuState;
+                    gameUI.commandNum = 0;
+                }
+            }
+
+            // Lore computer in server room
+            if (currentZone == ZoneType.SERVER_ROOM && zombieMode) {
+                entity.Furniture lore = findNearbyNamedFurniture("lore_computer", tileSize * 2);
+                if (lore != null) {
+                    if (!loreComputerRead) {
+                        loreComputerRead = true;
+                        gameUI.startLoreComputerSequence();
+                    } else {
+                        gameUI.startDialogue("System|FAST-FLEX AI v2.1 — logs already read.");
+                    }
+                    gameState = dialogueState;
+                    keyH.ePressed = false;
+                    keyH.enterPressed = false;
+                    return;
+                }
+                entity.Furniture terminal = findNearbyNamedFurniturePrefixed("server_terminal_", tileSize * 2);
+                if (terminal != null) {
+                    gameUI.startDialogue("Terminal|This workstation is locked. No response.");
+                    gameState = dialogueState;
+                    keyH.ePressed = false;
+                    keyH.enterPressed = false;
+                    return;
+                }
             }
 
             if ((currentZone == ZoneType.CLASSROOM && phaseOneState == PhaseOneState.CS_CLASS_REQUIRED)
@@ -656,34 +739,28 @@ public class GamePanel extends JPanel implements Runnable {
                                 }
                                 gameState = dialogueState;
                             } else if (f.name.startsWith("student_desk_")) {
-                                String indexStr = f.name.replace("student_desk_", "");
-                                int index = Integer.parseInt(indexStr);
+                                String rawName = f.name.replace("student_desk_", "").replace("_", " ");
                                 String[] studentDialogues = {
-                                    "Student|Bhai, seat taken. My GPA is already on life support.",
-                                    "Student|Did you understand the assignment? I understood the font.",
-                                    "Student|Careful, my laptop is compiling and I am emotionally involved.",
-                                    "Student|Quiz already? I opened the slides in spirit.",
-                                    "Student|Flex is slow again. Tradition is alive.",
-                                    "Student|Move along, please. This chair is reserved for stress.",
-                                    "Student|I slept two hours. If I blink, wake me after finals.",
-                                    "Student|The TA said it is easy, which means it is not.",
-                                    "Student|Cafe biryani sold out. Campus morale is down 30 percent.",
-                                    "Student|I just followed the crowd and hoped it was my class."
+                                    rawName + "|Bhai, seat taken. My GPA is already on life support.",
+                                    rawName + "|Did you understand the assignment? I understood the font.",
+                                    rawName + "|Careful, my laptop is compiling and I am emotionally involved.",
+                                    rawName + "|Quiz already? I opened the slides in spirit.",
+                                    rawName + "|Flex is slow again. Tradition is alive.",
+                                    rawName + "|Move along. This chair is reserved for stress.",
+                                    rawName + "|I slept two hours. If I blink, wake me after finals.",
+                                    rawName + "|The TA said it is easy. Classic.",
+                                    rawName + "|Cafe biryani sold out. Campus morale: critical.",
+                                    rawName + "|I just followed the crowd and hoped it was my class."
                                 };
                                 String[] postCsDialogues = {
-                                    "Student|AI Lab next. First door on the top side. Very treasure-hunt energy.",
-                                    "Student|Sir Shams is waiting. Take the AI Lab door before it gets crowded.",
-                                    "Student|CS survived. AI Lab now. My brain has filed a complaint.",
-                                    "Student|Go to AI Lab, bhai. First door on the top side.",
-                                    "Student|I am going to pretend I revised search algorithms.",
-                                    "Student|Sir Shehryrar said AI Lab. I am not arguing with attendance.",
-                                    "Student|The AI Lab door is open now. Campus logic is beautiful.",
-                                    "Student|See you in AI Lab. Bring whatever confidence is left."
+                                    rawName + "|AI Lab next. First door on the top side.",
+                                    rawName + "|Sir Shams is waiting. Go before it gets crowded.",
+                                    rawName + "|CS survived. AI Lab now. My brain has filed a complaint.",
+                                    rawName + "|Go to AI Lab, bhai. Top side, first door."
                                 };
-                                String[] lines = currentZone == ZoneType.AI_LAB ? studentDialogues : studentDialogues;
-                                if (phaseOneState == PhaseOneState.AI_LAB_REQUIRED) lines = postCsDialogues;
-                                String msg = (index < lines.length) ? lines[index] : "Student|Find an empty seat, bhai.";
-                                gameUI.startDialogue(msg);
+                                String[] lines = (phaseOneState == PhaseOneState.AI_LAB_REQUIRED) ? postCsDialogues : studentDialogues;
+                                int idx = Math.abs(rawName.hashCode()) % lines.length;
+                                gameUI.startDialogue(lines[idx]);
                                 gameState = dialogueState;
                             } else if (f.name.equals("empty_desk")) {
                                 int ts = tileSize;
@@ -739,6 +816,11 @@ public class GamePanel extends JPanel implements Runnable {
             // Haider Ramzan interaction in Ground/Walkway
             if (currentZone == ZoneType.GROUND || currentZone == ZoneType.WALKWAY) {
                 interactWithHaiderRamzan();
+            }
+
+            // Zombie mode zombie-specific interactions
+            if (zombieMode) {
+                checkZombieInteractables();
             }
 
             // Cafeteria Uncle interaction
@@ -811,12 +893,9 @@ public class GamePanel extends JPanel implements Runnable {
     private void interactWithLibraryStudySpot() {
         entity.Furniture f = findNearbyNamedFurniture("library_study_spot", tileSize * 2);
         if (f == null) return;
-
-        // Use lecture queue system like classroom lectures
         gameUI.startLibrarySleepSequence();
-        session.getPlayer().getStats().updateEnergy(-30); // Total energy drain from studying
-        session.getPlayer().getStats().updateStress(-5);  // Stress relief from resting
-        gameUI.queuePhaseOneEnding(); // Queue phase ending after the sequence
+        session.getPlayer().getStats().updateStress(-5);
+        gameUI.queuePhaseOneEnding();
         gameState = dialogueState;
     }
 
@@ -840,23 +919,28 @@ public class GamePanel extends JPanel implements Runnable {
     private void interactWithHaiderRamzan() {
         entity.Furniture f = findNearbyNamedFurniture("haider_ramzan", tileSize * 3);
         if (f == null) return;
-        String[] haiderDialogues = {
-            "Haider Ramzan|Yo! Just grinding some code on my laptop. The floor is surprisingly comfortable once your legs go numb.",
-            "Haider Ramzan|Have you seen the new commits on the class repo? Someone actually documented their code. Legend.",
-            "Haider Ramzan|I'm skipping the next class. Not to sleep, just... strategic energy management.",
-            "Haider Ramzan|My laptop battery is at 15%. This is my villain origin story.",
-            "Haider Ramzan|Bro, help me with this assignment. I'll buy you biryani from the cafe. Deal?"
-        };
-        int index = (int)(Math.random() * haiderDialogues.length);
-        gameUI.startDialogue(haiderDialogues[index]);
+        haiderInteractionCount++;
+        if (!easterEggTriggered && haiderInteractionCount >= 6) {
+            easterEggTriggered = true;
+            gameUI.startEasterEggDialogue("Haider Ramzan");
+        } else {
+            String[] haiderDialogues = {
+                "Haider Ramzan|Yo! Just grinding some code. The floor is surprisingly comfortable once your legs go numb.",
+                "Haider Ramzan|Have you seen the class repo? Someone documented their code. Legend.",
+                "Haider Ramzan|I'm skipping next class. Strategic energy management.",
+                "Haider Ramzan|Laptop battery at 15%. This is my villain origin story.",
+                "Haider Ramzan|Help me with this assignment. I'll buy you biryani. Deal?"
+            };
+            int idx = (int)(Math.random() * haiderDialogues.length);
+            gameUI.startDialogue(haiderDialogues[idx]);
+        }
         gameState = dialogueState;
     }
 
     private void interactWithCafeteriaUncle() {
+        if (zombieMode) return; // Zombie mode cafe handled separately
         entity.Furniture f = findNearbyNamedFurniture("cafeteria_uncle", tileSize * 3);
         if (f == null) return;
-
-        // Use lecture queue system like classroom lectures for Iran-US war backstory
         gameUI.startCafeteriaUncleSequence();
         gameState = dialogueState;
     }
@@ -938,36 +1022,86 @@ public class GamePanel extends JPanel implements Runnable {
 
     private void startZombieCombat(entity.Furniture zombieFurniture) {
         String zombieName = zombieFurniture.name;
-        
-        // Create the enemy from the zombie types in Brainstorming.txt
-        int hp = 50;
-        String displayName = "Unknown Zombie";
-        if (zombieName.equals("zombie_chronically_online")) { displayName = "The Chronically Online Guy"; hp = 30; }
-        else if (zombieName.equals("zombie_gaming_guy")) { displayName = "The Gaming Guy"; hp = 50; }
-        else if (zombieName.equals("zombie_repeating_senior")) { displayName = "The Always-Repeating Senior"; hp = 60; }
-        else if (zombieName.equals("zombie_ta_cuts_marks")) { displayName = "The TA Who Cuts Marks"; hp = 70; }
-        else if (zombieName.equals("zombie_gpa_4.0")) { displayName = "The GPA 4.0 Silent Guy"; hp = 80; }
-        else if (zombieName.equals("zombie_librarian")) { displayName = "The Zombie Librarian"; hp = 40; }
-        
+
         if (zombieName.equals("final_boss")) {
             startFinalBoss();
             return;
         }
 
+        int hp;
+        String displayName;
+        switch (zombieName) {
+            case "zombie_librarian":          displayName = "Mam Hafsa (Librarian)";         hp = 60;  break;
+            case "zombie_waseed":            displayName = "Waseed E Mustafa (Zombie)";     hp = 80;  break;
+            case "zombie_dyen":              displayName = "Dyen Asif (Zombie)";            hp = 80;  break;
+            case "zombie_ahmad":             displayName = "Ahmad Hussain — The Grader";    hp = 120; break;
+            case "zombie_hooud":             displayName = "Hooud Bin Jawad (Zombie)";      hp = 50;  break;
+            case "zombie_cafe_uncle":          displayName = "Cafeteria Uncle (Zombie)";      hp = 90;  break;
+            case "zombie_faizan":              displayName = "Faizan — TA (Zombie)";          hp = 100; break;
+            case "zombie_javeria":             displayName = "Miss Javeria Imtiaz (Zombie)";  hp = 130; break;
+            default:                           displayName = "Unknown Zombie";                hp = 70;  break;
+        }
+
         entity.ZombieEnemy enemy = new entity.ZombieEnemy(displayName, currentZone.ordinal(), hp);
-        
         currentCombatEnemy = enemy;
         combatEnemyDisplayName = displayName;
-        combatEnemyInternalName = zombieName; // Track for defeated set
+        combatEnemyInternalName = zombieName;
         combatController.initiateCombat(enemy);
         phaseTwoState = PhaseTwoState.IN_COMBAT;
-        
-        // Remove the zombie from the map (they're being fought)
         objM.furnitureList.remove(zombieFurniture);
-        
-        gameUI.startCombatUI(displayName, hp);
-        gameState = combatState;
+        soundM.playFightMusic(zombieName);
+        gameUI.startPreFightDialogue(zombieName, hp);
+        gameState = dialogueState;
         clearKeys();
+    }
+
+    public void beginActualCombat() {
+        if (currentCombatEnemy == null) return;
+        gameUI.startCombatUI(currentCombatEnemy.getName(), currentCombatEnemy.getMaxHp());
+        gameState = combatState;
+    }
+
+    public void startPhase2IntroSequence() {
+        gameUI.startPhase2WakeUpSequence();
+        gameState = dialogueState;
+    }
+
+    public void beginJaveriaFight() {
+        entity.Furniture javeria = null;
+        for (entity.Furniture f : objM.furnitureList) {
+            if ("zombie_javeria".equals(f.name)) { javeria = f; break; }
+        }
+        if (javeria != null) {
+            startZombieCombat(javeria);
+        } else {
+            phaseTwoState = PhaseTwoState.EXPLORE;
+            gameState = playState;
+        }
+    }
+
+    public void completedPhase2WakeupDialogue() {
+        phase2IntroPart = 2;
+        phaseTwoState = PhaseTwoState.EXPLORE;
+        gameState = playState;
+    }
+
+    public void completedPhase2LobbyDialogue() {
+        currentZone = ZoneType.LIBRARY;
+        tileM.loadMap();
+        objM.loadZombieLibraryObjects();
+        objM.filterDefeatedZombies(defeatedZombies);
+        session.getPlayer().xLocation = (maxScreenCol / 2) * tileSize;
+        session.getPlayer().yLocation = (maxScreenRow / 2) * tileSize;
+        soundM.playZoneMusic(currentZone);
+        phase2IntroPart = 4;
+        gameUI.startDialogue("You|What am I doing out there. Something is still in the library. I need to deal with it first.");
+        gameState = dialogueState;
+    }
+
+    public void checkpointSave() {
+        session.getSaveStrategy().save(session.buildCurrentGameState());
+        gameUI.startDialogue("System|Checkpoint reached. Progress saved.");
+        gameState = dialogueState;
     }
 
     private void startFinalBoss() {
@@ -985,9 +1119,14 @@ public class GamePanel extends JPanel implements Runnable {
             if ("final_boss".equals(f.name)) { objM.furnitureList.remove(f); break; }
         }
         
-        gameUI.startCombatUI("CORRUPTED AI SYSTEM — Phase 1/3", 300);
-        gameState = combatState;
+        soundM.playFightMusic("final_boss");
+        gameUI.startPreFightDialogue("final_boss", 300);
+        gameState = dialogueState;
         clearKeys();
+    }
+
+    public void startFinalBossAfterLore() {
+        startFinalBoss();
     }
 
     public void handleCombatChoice(combat.CombatMove move) {
@@ -1029,7 +1168,8 @@ public class GamePanel extends JPanel implements Runnable {
         // SD-UC9/UC10/UC12: GameSession → CombatController.executeCombatMove(move)
         //   → CombatStrategyFactory.createStrategy() → Strategy.execute()
         combatController.initiateCombat(currentCombatEnemy);
-        combat.CombatResult result = combatController.executeCombatMove(move, passedQuiz);
+        boolean isBoss = currentCombatEnemy instanceof entity.FinalBoss;
+        combat.CombatResult result = combatController.executeCombatMove(move, passedQuiz, isBoss);
         combatController.applyResult(result);
         
         // Apply karma
@@ -1041,11 +1181,6 @@ public class GamePanel extends JPanel implements Runnable {
             } else {
                 session.getKarmaTracker().deduct(Math.abs(result.getKarmaChange()), reason);
             }
-        }
-        
-        // Apply HP change
-        if (result.getHPChange() < 0) {
-            session.getPlayer().takeDamage(Math.abs(result.getHPChange()));
         }
         
         if (result.isVictory()) {
@@ -1068,55 +1203,60 @@ public class GamePanel extends JPanel implements Runnable {
             }
             
             // Normal zombie defeated
-            String victoryMsg = result.wasDebugUsed() 
-                ? "You|You solved the challenge. " + combatEnemyDisplayName + " fades back to normal. Karma +" + result.getKarmaChange()
-                : "You|You terminated " + combatEnemyDisplayName + " by force. Karma " + result.getKarmaChange();
-            
-            // Check for key item drops
-            checkZombieDrops(combatEnemyDisplayName);
-            
+            String victoryMsg = result.wasDebugUsed()
+                ? "You|You solved the challenge. " + combatEnemyDisplayName + " fades back to normal."
+                : "You|You overpowered " + combatEnemyDisplayName + " by force.";
+
+            String internalNameCopy = combatEnemyInternalName;
+            // Check for key item drops (use internal name — was previously bugged)
+            checkZombieDrops(internalNameCopy);
+
             // Permanently mark this zombie as defeated
-            defeatedZombies.add(combatEnemyInternalName);
-            
+            defeatedZombies.add(internalNameCopy);
+
             currentCombatEnemy = null;
             combatEnemyInternalName = "";
             phaseTwoState = PhaseTwoState.EXPLORE;
-            gameUI.startDialogue(victoryMsg);
-            gameState = dialogueState;
-        } else {
-            // Player failed — show result and let them try again
-            String failMsg = result.wasDebugUsed()
-                ? "You|Wrong answer! " + combatEnemyDisplayName + " attacks! HP -" + Math.abs(result.getHPChange())
-                : "You|" + combatEnemyDisplayName + " is still standing! They hit back! HP -" + Math.abs(result.getHPChange());
-            gameUI.showCombatResult(failMsg);
-            
-            if (!session.getPlayer().isAlive()) {
-                session.getPlayer().respawn();
-                currentCombatEnemy = null;
-                phaseTwoState = PhaseTwoState.EXPLORE;
-                gameUI.startDialogue("You|Everything goes dark... You wake up at the library entrance.");
-                currentZone = ZoneType.LIBRARY;
-                tileM.loadMap();
-                objM.loadZombieLibraryObjects();
-                objM.filterDefeatedZombies(defeatedZombies);
-                session.getPlayer().xLocation = (maxScreenCol / 2) * tileSize;
-                session.getPlayer().yLocation = (maxScreenRow / 2) * tileSize;
+
+            // Special post-fight sequences
+            if (internalNameCopy.equals("zombie_librarian")) {
+                gameUI.startLibrarianLootSequence();
+                gameState = dialogueState;
+            } else if (internalNameCopy.equals("zombie_faizan")) {
+                // Javeria taunts, then her fight starts automatically
+                gameUI.startJaveriaTauntSequence();
                 gameState = dialogueState;
             } else {
-                phaseTwoState = PhaseTwoState.IN_COMBAT;
+                gameUI.startDialogue(victoryMsg);
+                gameState = dialogueState;
             }
+        } else {
+            // Player failed — enemy counter-attacks via dodge phase
+            String failMsg = result.wasDebugUsed()
+                ? "You|Wrong answer. " + combatEnemyDisplayName + " is counter-attacking — dodge!"
+                : "You|" + combatEnemyDisplayName + " is still standing. Brace for their counter-attack!";
+            gameUI.combatDodgeEnemyType = combatEnemyInternalName;
+            gameUI.combatDodgePending = true;
+            gameUI.showCombatResult(failMsg);
+            phaseTwoState = PhaseTwoState.IN_COMBAT;
         }
     }
 
-    private void checkZombieDrops(String zombieName) {
-        if (zombieName.contains("Gaming Guy")) {
-            session.getPlayer().getInventory().addItem(new inventory.KeyItem(1, "Corridor Keycard", "Unlocks the Corridor in zombie mode"));
-            gameUI.startDialogue("System|ITEM OBTAINED: Corridor Keycard");
-            gameState = dialogueState;
-        } else if (zombieName.contains("Repeating Senior")) {
-            session.getPlayer().getInventory().addItem(new inventory.KeyItem(2, "Server Access Card", "Grants access to the Server Room"));
-            gameUI.startDialogue("System|ITEM OBTAINED: Server Access Card");
-            gameState = dialogueState;
+    private void checkZombieDrops(String internalName) {
+        switch (internalName) {
+            case "zombie_waseed":
+                session.getPlayer().getInventory().addItem(new inventory.KeyItem(1, "Corridor Keycard", "Unlocks the Corridor"));
+                break;
+            case "zombie_javeria":
+                session.getPlayer().getInventory().addItem(new inventory.KeyItem(2, "Server Access Card", "Grants access to the Server Room"));
+                javeriaDefeated = true;
+                break;
+            case "zombie_faizan":
+                faizanDefeated = true;
+                break;
+            case "zombie_cafe_uncle":
+                cafeUncleDefeated = true;
+                break;
         }
     }
 
@@ -1128,22 +1268,68 @@ public class GamePanel extends JPanel implements Runnable {
         if (dir.equals("right")) session.getPlayer().xLocation -= pushDist;
     }
 
+    private void checkZombieInteractables() {
+        // nothing extra needed — lore_computer and server_terminal handled above
+    }
+
+    private entity.Furniture findNearbyNamedFurniturePrefixed(String prefix, int radius) {
+        int px = session.getPlayer().xLocation + tileSize / 2;
+        int py = session.getPlayer().yLocation + tileSize / 2;
+        for (entity.Furniture f : objM.furnitureList) {
+            if (f.name != null && f.name.startsWith(prefix)) {
+                int fx = f.x + f.width / 2;
+                int fy = f.y + f.height / 2;
+                if (Math.abs(px - fx) < radius && Math.abs(py - fy) < radius) return f;
+            }
+        }
+        return null;
+    }
+
     private void resolveEnding() {
         phaseTwoState = PhaseTwoState.GAME_ENDING;
-        
-        // Final narrative wrap-up dialogue
-        String[] endingQueue = new String[] {
-            "You|The containment patch is deployed. The flickering lights in the server room stabilize.",
-            "System|ALARM DEACTIVATED. HEURISTIC STABILITY RESTORED. CAMPUS NETWORK REBOOTING...",
-            "You|It is over. The zombies... they are just students and TAs again, probably wondering why they are sleeping on the library floor.",
-            "You|Time to go home. Or maybe just sleep for real this time. FAST Islamabad speedrun complete."
-        };
+        int karma = session.getKarmaTracker().getTotal();
+        String endingType = karma >= 70 ? "PACIFIST" : karma >= 30 ? "MIXED" : "BAD";
+        String[] endingQueue;
+        if (endingType.equals("PACIFIST")) {
+            endingQueue = new String[] {
+                "You|The containment patch deploys cleanly. The lights stabilize.",
+                "System|ALARM DEACTIVATED. HEURISTIC STABILITY RESTORED. CAMPUS NETWORK REBOOTING...",
+                "You|The corridors fill with confused students and staff. Everyone is alive.",
+                "You|Miss Javeria is grading in the corridor. Haider is making chai. The librarian is back at her desk.",
+                "You|FAST-NU Islamabad is chaotic again. And that means it is okay."
+            };
+        } else if (endingType.equals("MIXED")) {
+            endingQueue = new String[] {
+                "You|The patch goes through. Warnings still flicker on the terminal.",
+                "System|PARTIAL RECOVERY. Some nodes remain unstable.",
+                "You|Miss Javeria and a TA are conscious, sitting silently in the classroom.",
+                "You|The rest of the campus is quiet. Maybe too quiet."
+            };
+        } else {
+            endingQueue = new String[] {
+                "You|The patch deploys but the system keeps spitting errors.",
+                "System|CRITICAL INSTABILITY. RECOVERY INCOMPLETE.",
+                "You|The campus is empty. A sign on the third classroom door says something odd.",
+                "You|It reads: 'They were never here. You were never here. GPA: 0.0.'"
+            };
+            soundM.setBadEndingMode(true);
+            soundM.playZoneMusic(currentZone); // triggers badEnding.wav immediately
+        }
         gameUI.setLectureQueue(endingQueue, false);
-        
-        // When dialogue ends, show ending screen
         gameUI.startDialogue(endingQueue[0]);
         gameState = dialogueState;
         currentCombatEnemy = null;
+
+        // Set ending screen data for finalizeEnding
+        String epilogue;
+        if (endingType.equals("PACIFIST")) {
+            epilogue = "You chose mercy at every turn. The campus remembers. Karma: " + karma;
+        } else if (endingType.equals("MIXED")) {
+            epilogue = "A mix of force and compassion. Some recovered, some did not. Karma: " + karma;
+        } else {
+            epilogue = "Force was your answer to everything. The campus paid for it. Karma: " + karma;
+        }
+        gameUI.showEndingScreen(endingType, epilogue, karma);
     }
 
     public void finalizeEnding() {
@@ -1183,20 +1369,9 @@ public class GamePanel extends JPanel implements Runnable {
             } else if (f.getBounds().intersects(pRect)) {
                 flares.remove(f);
                 session.getPlayer().takeDamage(5);
-                
                 if (!session.getPlayer().isAlive()) {
-                    session.getPlayer().respawn();
                     flares.clear();
-                    hiddenBoss = null;
-                    phaseTwoState = PhaseTwoState.EXPLORE;
-                    gameUI.startDialogue("You|The firewall incinerated you... You wake up at the library entrance.");
-                    currentZone = ZoneType.LIBRARY;
-                    tileM.loadMap();
-                    objM.loadZombieLibraryObjects();
-                    objM.filterDefeatedZombies(defeatedZombies);
-                    session.getPlayer().xLocation = (maxScreenCol / 2) * tileSize;
-                    session.getPlayer().yLocation = (maxScreenRow / 2) * tileSize;
-                    gameState = dialogueState;
+                    gameState = gameOverState;
                     break;
                 }
             }
@@ -1224,6 +1399,10 @@ public class GamePanel extends JPanel implements Runnable {
             }
             
             gameUI.draw(g2);
+        }
+
+        if (gameState == gameOverState) {
+            gameUI.drawGameOver(g2);
         }
         
         g2.dispose();

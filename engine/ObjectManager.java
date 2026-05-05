@@ -18,6 +18,44 @@ public class ObjectManager {
 
     GamePanel gp;
     public List<Furniture> furnitureList = new CopyOnWriteArrayList<>();
+
+    public static final String[] STUDENT_NAMES = {
+        "Muhammad Fasih Ul Mubashir", "Fatima Hashmat", "Hooud Bin Jawad",
+        "Zunnoon Bin Jawad", "Waseed E Mustafa", "Raja Shehryar Ameer",
+        "Muhammad Saad", "Abdullah Aamir", "Muhammad Hanzalah Aman",
+        "Aminullah Khan", "Muhammad Dyen Asif", "Hassan Rizwan",
+        "Huzaifa Amin", "Muhammad Taha Nasim", "Ahmad Hussain",
+        "Muhammad Arham Manzoor", "Alina Farooq", "Haleema Sadia",
+        "Muhammad Huzaifa Tayyab", "Ali Ather", "Ayaan Aman",
+        "Muhammad Danial Amin", "Jawwad Najeeb", "Saad Ahmed",
+        "Muhammad Ammar", "Muhammad Sohaib Saeed", "Kumail Raza",
+        "Muhammad Saim Nawaz", "Hanzla Zafran", "Talha Iftikhar Abbasi",
+        "Muhammad Ahmed", "Arwa Javed", "Muhammad Hamza Saeed",
+        "Zainab Nisar", "Sabia Munir", "Aon Mohammad Awan",
+        "Muhammad Hassaan Ul Mustafa", "Abdullah Malik", "Fatima Mazhar"
+    };
+
+    public static final String[] USED_NAMES = new String[39];
+    private static int usedCount = 0;
+
+    public static String pickUnusedName(int seed) {
+        if (usedCount >= STUDENT_NAMES.length) usedCount = 0;
+        int idx = (seed * 7 + 3) % STUDENT_NAMES.length;
+        for (int attempt = 0; attempt < STUDENT_NAMES.length; attempt++) {
+            boolean taken = false;
+            for (int u = 0; u < usedCount; u++) {
+                if (STUDENT_NAMES[idx].equals(USED_NAMES[u])) { taken = true; break; }
+            }
+            if (!taken) {
+                if (usedCount < USED_NAMES.length) USED_NAMES[usedCount++] = STUDENT_NAMES[idx];
+                return STUDENT_NAMES[idx];
+            }
+            idx = (idx + 1) % STUDENT_NAMES.length;
+        }
+        return STUDENT_NAMES[seed % STUDENT_NAMES.length];
+    }
+
+    public static void resetUsedNames() { usedCount = 0; }
     
     private BufferedImage tableImg;
     private BufferedImage chairImg;
@@ -206,6 +244,8 @@ public class ObjectManager {
                 }
             }
         }
+        // Phase 1 save checkpoint — far bottom-right corner
+        furnitureList.add(makeStatic("checkpoint", (gp.maxScreenCol - 2) * ts, (gp.maxScreenRow - 3) * ts, ts, ts, CHECKPOINT_TEAL));
     }
 
     public void loadLibraryObjects() {
@@ -298,20 +338,20 @@ public class ObjectManager {
         if (libChestImg != null) {
             furnitureList.add(new Furniture((gp.maxScreenCol - 4) * tileSize, 2 * tileSize, libChestImg, scale));
         }
+        // Phase 1 save checkpoint — far bottom-left corner
+        furnitureList.add(makeStatic("checkpoint", 2 * tileSize, (gp.maxScreenRow - 3) * tileSize, tileSize, tileSize, CHECKPOINT_TEAL));
     }
 
     public void loadClassroomObjects() {
         furnitureList.clear();
-        
-        int tileSize = gp.tileSize; // 32
-        
-        // Teacher's Desk at top center (target width ~ 3 tiles = 96 pixels)
+        resetUsedNames();
+        int tileSize = gp.tileSize;
+
         if (teacherDeskImg != null) {
             double teacherScale = 96.0 / teacherDeskImg.getWidth();
             furnitureList.add(new Furniture((gp.maxScreenCol / 2) * tileSize - 48, 2 * tileSize, teacherDeskImg, teacherScale));
         }
-        
-        // Teacher Box Sprite
+
         BufferedImage teacherImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2Img = teacherImg.createGraphics();
         g2Img.setColor(Color.RED);
@@ -323,26 +363,23 @@ public class ObjectManager {
         teacherNPC.name = "teacher";
         furnitureList.add(teacherNPC);
 
-        // Student desks in a grid (target width ~ 2 tiles = 64 pixels)
         int startX = 4 * tileSize;
         int startY = 6 * tileSize;
         int gapX = 5 * tileSize;
         int gapY = 3 * tileSize;
-        
+
         int studentIndex = 0;
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 4; col++) {
                 int deskX = startX + (col * gapX);
                 int deskY = startY + (row * gapY);
-                
-                // DE-RANDOMIZED Mix empty and full desks (Pattern based)
                 BufferedImage deskImg = (row % 2 == 0 || col % 2 == 0) ? studentDeskImg : emptyStudentDeskImg;
-                
                 if (deskImg != null) {
-                    double deskScale = 31.5 / deskImg.getWidth(); // Reduced by another 30% (from 45)
+                    double deskScale = 31.5 / deskImg.getWidth();
                     Furniture f = new Furniture(deskX, deskY, deskImg, deskScale);
                     if (deskImg == studentDeskImg) {
-                        f.name = "student_desk_" + studentIndex;
+                        String sName = pickUnusedName(studentIndex + 1);
+                        f.name = "student_desk_" + sName.replace(" ", "_");
                         studentIndex++;
                     } else {
                         f.name = "empty_desk";
@@ -351,6 +388,8 @@ public class ObjectManager {
                 }
             }
         }
+        // Phase 1 save checkpoint — far bottom-left corner
+        furnitureList.add(makeStatic("checkpoint", 2 * tileSize, (gp.maxScreenRow - 3) * tileSize, tileSize, tileSize, CHECKPOINT_TEAL));
     }
 
     public void clearObjects() {
@@ -418,6 +457,8 @@ public class ObjectManager {
                 }
             }
         }
+        // Phase 1 save checkpoint — far top-right corner
+        furnitureList.add(makeStatic("checkpoint", (gp.maxScreenCol - 2) * ts, 2 * ts, ts, ts, CHECKPOINT_TEAL));
     }
 
     public void loadServerRoomObjects() {
@@ -477,18 +518,18 @@ public class ObjectManager {
 
         // DE-RANDOMIZED crap wires scattered (Fixed positions with a seeded random for consistency)
         if (cableCrapImg != null) {
-            // Using a fixed seed so it always generates the exact same positions every time it loads!
             java.util.Random rng = new java.util.Random(12345);
             for (int i = 0; i < 10; i++) {
                 int cableW = 30;
                 int cableH = 24;
                 int cx = 2 * ts + rng.nextInt(gp.screenWidth - 6 * ts);
                 int cy = 2 * ts + rng.nextInt(gp.screenHeight - 5 * ts);
-                // Skip if too close to exit door on right wall
                 if (cx > gp.screenWidth - 4 * ts && Math.abs(cy - (gp.maxScreenRow / 2) * ts) < 3 * ts) continue;
                 furnitureList.add(new Furniture(cableCrapImg, cx, cy, cableW, cableH));
             }
         }
+        // Phase 1 save checkpoint — far top-left corner
+        furnitureList.add(makeStatic("checkpoint", 2 * ts, 2 * ts, ts, ts, CHECKPOINT_TEAL));
     }
 
     public void loadGroundObjects() {
@@ -503,15 +544,17 @@ public class ObjectManager {
         g2Haider.setColor(Color.WHITE);
         g2Haider.drawRect(0, 0, 31, 31);
         g2Haider.dispose();
-        // Place Haider in the main lobby area (near the center-right)
         Furniture haider = new Furniture(haiderImg, 16 * ts, 10 * ts, 32, 32);
         haider.name = "haider_ramzan";
         furnitureList.add(haider);
+        // Phase 1 save checkpoint — far top-left corner (opposite of Haider)
+        furnitureList.add(makeStatic("checkpoint", 2 * ts, 2 * ts, ts, ts, CHECKPOINT_TEAL));
     }
 
     public void loadAILabObjects() {
         furnitureList.clear();
-        int ts = gp.tileSize; // 32
+        resetUsedNames();
+        int ts = gp.tileSize;
 
         BufferedImage teacherImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2Img = teacherImg.createGraphics();
@@ -525,29 +568,31 @@ public class ObjectManager {
         furnitureList.add(teacherNPC);
 
         if (aiDeskImg != null) {
-            int deskW = 100;
-            int deskH = 65;
-            int gapX = 20;
-            int gapY = 15;
-            
-            int cols = 4;
-            int rows = 3;
+            int deskW = 100, deskH = 65, gapX = 20, gapY = 15;
+            int cols = 4, rows = 3;
             int totalGridW = cols * deskW + (cols - 1) * gapX;
             int startX = (gp.screenWidth - totalGridW) / 2;
             int startY = 2 * ts;
-
+            int studentIndex = 0;
             for (int row = 0; row < rows; row++) {
                 for (int col = 0; col < cols; col++) {
-                    // DE-RANDOMIZED (Checkerboard)
                     BufferedImage deskToUse = (aiDeskPersonImg != null && (row + col) % 2 == 0) ? aiDeskPersonImg : aiDeskImg;
                     int dx = startX + col * (deskW + gapX);
                     int dy = startY + row * (deskH + gapY + ts);
                     Furniture desk = new Furniture(deskToUse, dx, dy, deskW, deskH);
-                    desk.name = deskToUse == aiDeskImg ? "empty_desk" : "student_desk_" + (row * cols + col);
+                    if (deskToUse == aiDeskImg) {
+                        desk.name = "empty_desk";
+                    } else {
+                        String sName = pickUnusedName(studentIndex + 5);
+                        desk.name = "student_desk_" + sName.replace(" ", "_");
+                        studentIndex++;
+                    }
                     furnitureList.add(desk);
                 }
             }
         }
+        // Phase 1 save checkpoint — far bottom-right corner
+        furnitureList.add(makeStatic("checkpoint", (gp.maxScreenCol - 2) * ts, (gp.maxScreenRow - 3) * ts, ts, ts, CHECKPOINT_TEAL));
     }
 
     // ═══════════════════════════════════════════════
@@ -558,7 +603,7 @@ public class ObjectManager {
     private static final Color NPC_GREEN = new Color(40, 160, 60, 200);
     private static final Color BOSS_PURPLE = new Color(120, 30, 180, 220);
     private static final Color OBSTACLE_ORANGE = new Color(200, 120, 30, 200);
-    private static final Color HINT_CYAN = new Color(40, 180, 200, 200);
+    private static final Color CHECKPOINT_TEAL = new Color(50, 220, 180, 200);
 
     /** Creates a zombie placeholder with chasing AI. */
     private Furniture makeZombie(String name, int x, int y, Color color, float speed, int detectRadius) {
@@ -602,56 +647,106 @@ public class ObjectManager {
     public void loadZombieLibraryObjects() {
         furnitureList.clear();
         int ts = gp.tileSize;
-        // Atmosphere
         if (libClockImg != null) {
             furnitureList.add(new Furniture((gp.maxScreenCol / 2) * ts - (ts/2), ts, libClockImg, 0.5));
         }
-        // Zombie Librarian — easy, slow chaser
+        // Zombie Librarian — the ONLY entity inside the library (Library Isolation Rule)
         furnitureList.add(makeZombie("zombie_librarian", 4 * ts, 5 * ts, ZOMBIE_RED, 0.8f, ts * 3));
-        // GPA 4.0 Silent Guy — hard, faster chaser
-        furnitureList.add(makeZombie("zombie_gpa_4.0", 15 * ts, 10 * ts, ZOMBIE_RED, 1.2f, ts * 4));
+        // Checkpoint in far corner (bottom-right)
+        furnitureList.add(makeStatic("checkpoint", (gp.maxScreenCol - 2) * ts, (gp.maxScreenRow - 3) * ts, ts, ts, new Color(50, 220, 180, 200)));
     }
 
     public void loadZombieWalkwayObjects() {
         furnitureList.clear();
         int ts = gp.tileSize;
-        // The Gaming Guy — medium, drops "Corridor Keycard"
-        furnitureList.add(makeZombie("zombie_gaming_guy", 10 * ts, 8 * ts, ZOMBIE_RED, 1.0f, ts * 3));
-        // Hint sign
-        furnitureList.add(makeStatic("hint_sign", 3 * ts, 3 * ts, ts * 2, ts, HINT_CYAN));
+        // Waseed E Mustafa — drops Corridor Keycard
+        furnitureList.add(makeZombie("zombie_waseed", 10 * ts, 8 * ts, ZOMBIE_RED, 1.0f, ts * 3));
+        // Checkpoint
+        furnitureList.add(makeStatic("checkpoint", 3 * ts, (gp.maxScreenRow - 3) * ts, ts, ts, new Color(50, 220, 180, 200)));
     }
 
     public void loadZombieGroundObjects() {
         furnitureList.clear();
         int ts = gp.tileSize;
-        // Chronically Online Guy — easy, slow
-        furnitureList.add(makeZombie("zombie_chronically_online", 8 * ts, 8 * ts, ZOMBIE_RED, 0.7f, ts * 2));
+        // Hooud Bin Jawad — easy, slow
+        furnitureList.add(makeZombie("zombie_hooud", 8 * ts, 8 * ts, ZOMBIE_RED, 0.7f, ts * 2));
         // Haider Ramzan — friendly NPC (green, static)
         furnitureList.add(makeStatic("npc_haider", 14 * ts, 4 * ts, (int)(ts * 1.2), (int)(ts * 1.2), NPC_GREEN));
+        // Checkpoint near entry
+        furnitureList.add(makeStatic("checkpoint", 18 * ts, (gp.maxScreenRow / 2) * ts, ts, ts, new Color(50, 220, 180, 200)));
     }
 
     public void loadZombieCorridorObjects() {
         furnitureList.clear();
         int ts = gp.tileSize;
-        // Repeating Senior — medium, drops "Server Access Card"
-        furnitureList.add(makeZombie("zombie_repeating_senior", 12 * ts, 5 * ts, ZOMBIE_RED, 1.0f, ts * 3));
-        // TA Who Cuts Marks — hard, aggressive chaser
-        furnitureList.add(makeZombie("zombie_ta_cuts_marks", 4 * ts, 12 * ts, ZOMBIE_RED, 1.3f, ts * 4));
+        // Dyen Asif — medium blocker
+        furnitureList.add(makeZombie("zombie_dyen", 12 * ts, 5 * ts, ZOMBIE_RED, 1.0f, ts * 3));
+        // Ahmad Hussain — The Strict Grader, hard, aggressive chaser
+        furnitureList.add(makeZombie("zombie_ahmad", 4 * ts, 12 * ts, ZOMBIE_RED, 1.3f, ts * 4));
+        // Checkpoint near exit to library
+        furnitureList.add(makeStatic("checkpoint", (gp.maxScreenCol / 2) * ts, (gp.maxScreenRow - 3) * ts, ts, ts, new Color(50, 220, 180, 200)));
     }
 
     public void loadZombieServerRoomObjects() {
         furnitureList.clear();
         int ts = gp.tileSize;
-        // Atmosphere — server racks
         if (serverImg != null) {
             int serverW = 200, serverH = 110;
             furnitureList.add(new Furniture(serverImg, (gp.screenWidth - serverW) / 2, ts + 10, serverW, serverH));
         }
-        // FINAL BOSS — The Corrupted AI (large, aggressive, menacing)
+        // Interactive server terminal — lore
+        if (aiDeskImg != null) {
+            int deskW = 100, deskH = 65;
+            int startX = (gp.screenWidth - (4 * deskW + 3 * 25)) / 2;
+            for (int col = 0; col < 4; col++) {
+                Furniture desk = new Furniture(aiDeskImg, startX + col * (deskW + 25), 5 * ts, deskW, deskH);
+                desk.name = "server_terminal_" + col;
+                furnitureList.add(desk);
+            }
+        }
+        // Lore computer (glowing, interactable)
+        furnitureList.add(makeStatic("lore_computer", (gp.maxScreenCol / 2) * ts - ts, 3 * ts, ts * 2, ts * 2, new Color(0, 180, 255, 200)));
+        // FINAL BOSS — The Corrupted AI
         Furniture boss = makeZombie("final_boss", 8 * ts, 6 * ts, BOSS_PURPLE, 1.8f, ts * 15);
         boss.width = ts * 2;
         boss.height = ts * 2;
         furnitureList.add(boss);
+    }
+
+    public void loadZombieCafeObjects() {
+        furnitureList.clear();
+        int ts = gp.tileSize;
+        // Zombie Cafe Uncle — ambush enemy, only appears if not yet defeated
+        BufferedImage uncleImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = uncleImg.createGraphics();
+        g2.setColor(new Color(160, 60, 20));
+        g2.fillRect(0, 0, 32, 32);
+        g2.setColor(Color.WHITE);
+        g2.drawRect(0, 0, 31, 31);
+        g2.dispose();
+        Furniture uncle = makeZombie("zombie_cafe_uncle", (gp.maxScreenCol / 2) * ts - 16, ts + 10, new Color(160, 60, 20, 220), 1.2f, ts * 8);
+        uncle.width = 32; uncle.height = 32;
+        furnitureList.add(uncle);
+        // Food pickup spot using same counter name as normal mode (for interaction consistency)
+        furnitureList.add(makeStatic("cafe_counter", (gp.maxScreenCol / 2) * ts - 16, ts + 10, 32, 32, new Color(160, 60, 20, 0)));
+        // Checkpoint near cafe entrance
+        furnitureList.add(makeStatic("checkpoint", 3 * ts, (gp.maxScreenRow - 3) * ts, ts, ts, CHECKPOINT_TEAL));
+    }
+
+    public void loadZombieClassroomObjects() {
+        furnitureList.clear();
+        int ts = gp.tileSize;
+        // Faizan the TA — first fight in classroom
+        Furniture faizan = makeZombie("zombie_faizan", (gp.maxScreenCol / 2) * ts - 3 * ts, 4 * ts, new Color(200, 100, 30, 220), 1.1f, ts * 5);
+        furnitureList.add(faizan);
+        // Miss Javeria — second fight, drops library server room key
+        Furniture javeria = makeZombie("zombie_javeria", (gp.maxScreenCol / 2) * ts + ts, 4 * ts, new Color(180, 50, 120, 220), 1.3f, ts * 5);
+        furnitureList.add(javeria);
+        // Teacher desk visual
+        if (teacherDeskImg != null) {
+            double teacherScale = 96.0 / teacherDeskImg.getWidth();
+            furnitureList.add(new Furniture((gp.maxScreenCol / 2) * ts - 48, 2 * ts, teacherDeskImg, teacherScale));
+        }
     }
 
     /**

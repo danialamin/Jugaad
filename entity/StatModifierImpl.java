@@ -4,13 +4,11 @@ import interfaces.IStatModifier;
 
 public class StatModifierImpl implements IStatModifier {
     private double gpaDelta;
-    private int energyDelta;
     private int stressDelta;
     private int karmaDelta;
 
-    public StatModifierImpl(double gpaDelta, int energyDelta, int stressDelta, int karmaDelta) {
+    public StatModifierImpl(double gpaDelta, int stressDelta, int karmaDelta) {
         this.gpaDelta = gpaDelta;
-        this.energyDelta = energyDelta;
         this.stressDelta = stressDelta;
         this.karmaDelta = karmaDelta;
     }
@@ -18,7 +16,6 @@ public class StatModifierImpl implements IStatModifier {
     @Override
     public void apply(PlayerStats stats) {
         stats.updateGPA(gpaDelta);
-        stats.updateEnergy(energyDelta);
         stats.updateStress(stressDelta);
         stats.updateKarma(karmaDelta);
     }

@@ -33,8 +33,13 @@ public class CombatController {
     }
 
     public CombatResult executeCombatMove(CombatMove move, boolean passedMinigame) {
+        return executeCombatMove(move, passedMinigame, false);
+    }
+
+    /** @param isBossFight SD-UC12: Terminate against boss uses -15 karma instead of -10. */
+    public CombatResult executeCombatMove(CombatMove move, boolean passedMinigame, boolean isBossFight) {
         CombatStrategyFactory factory = new CombatStrategyFactory();
-        this.strategy = factory.createStrategy(move.name());
+        this.strategy = factory.createStrategy(move.name(), isBossFight);
         
         if (this.strategy instanceof combat.DebugStrategy) {
             ((combat.DebugStrategy) this.strategy).setPassed(passedMinigame);
@@ -46,7 +51,7 @@ public class CombatController {
     }
 
     public CombatResult executeCombatMove(CombatMove move) {
-        return executeCombatMove(move, false);
+        return executeCombatMove(move, false, false);
     }
 
     public void applyResult(CombatResult result) {

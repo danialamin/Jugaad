@@ -26,6 +26,14 @@ public abstract class Enemy {
         return hp;
     }
 
+    public int getMaxHp() {
+        return maxHp;
+    }
+
+    public String getName() {
+        return name;
+    }
+
     public void attack(Player player) {
         player.takeDamage(10);
     }

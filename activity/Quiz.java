@@ -24,9 +24,11 @@ public class Quiz {
 
     public IStatModifier buildResultModifier(boolean correct) {
         if (correct) {
-            return new StatModifierImpl(0.5, -5, -10, 10);
+            // SD-UC2: gpaDelta=+0.3, stressDelta=0, karmaDelta=+5
+            return new StatModifierImpl(0.3, 0, 5);
         } else {
-            return new StatModifierImpl(-0.5, -10, 20, -5);
+            // SD-UC2: gpaDelta=+0.1, stressDelta=0, karmaDelta=0
+            return new StatModifierImpl(0.1, 0, 0);
         }
     }
 

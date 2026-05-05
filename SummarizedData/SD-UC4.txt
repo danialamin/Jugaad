@@ -28,27 +28,31 @@ activate playerEntity
 playerEntity --> canteen: statsRef
 deactivate playerEntity
 
-canteen -> playerStats: isEnergyFull()
-activate playerStats
-playerStats --> canteen: energyFull
-deactivate playerStats
+canteen -> playerEntity: getHp()
+activate playerEntity
+playerEntity --> canteen: currentHp
+deactivate playerEntity
 
-canteen -> canteen: canEat(stats)
+canteen -> canteen: canEat(player)
 
-alt Energy is BELOW max (canEat = true)
+alt Player HP is BELOW max (canEat = true)
     canteen -> canteen: showMenu()
     
     alt Player selects food
         [-> gameSession: handleSystemEvent("selectFood")
         gameSession -> canteen: buildFoodModifier()
         
-        canteen -> statModifierImpl **: create(gpaDelta=0, energyDelta=+40, stressDelta=-10, karmaDelta=0)
+        canteen -> statModifierImpl **: create(gpaDelta=0, hpDelta=+30, stressDelta=-10, karmaDelta=0)
         statModifierImpl --> canteen: foodModifier
         canteen --> gameSession: foodModifier
         
+        gameSession -> playerEntity: heal(hpDelta)
+        activate playerEntity
+        playerEntity --> gameSession: healed
+        deactivate playerEntity
+        
         gameSession -> playerStats: applyModifier(foodModifier)
         activate playerStats
-        playerStats -> playerStats: updateEnergy(+40)
         playerStats -> playerStats: updateStress(-10)
         playerStats --> gameSession
         deactivate playerStats

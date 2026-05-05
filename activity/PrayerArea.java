@@ -30,7 +30,8 @@ public class PrayerArea implements IInteractable {
     }
 
     public IStatModifier buildPrayerModifier() {
-        return new StatModifierImpl(0, 10, -50, 20);
+        // SD-UC5: gpaDelta=0, stressDelta=0, karmaDelta=+20
+        return new StatModifierImpl(0, 0, 20);
     }
 
     public void resetCycle() {

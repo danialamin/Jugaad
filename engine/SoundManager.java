@@ -33,25 +33,86 @@ public class SoundManager {
     /**
      * Get local file path for ZoneType music
      */
+    private boolean zombieMode = false;
+    private boolean badEndingMode = false;
+
+    public void setZombieMode(boolean zombie) {
+        this.zombieMode = zombie;
+    }
+
+    public void setBadEndingMode(boolean active) {
+        this.badEndingMode = active;
+    }
+
     private String getMusicFilePathForZone(ZoneType zone) {
-        String path = "";
-        switch (zone) {
-            case LIBRARY: path = "assets/sound/LibraryTheme.wav"; break;
-            case PRAYER_AREA: path = "assets/sound/PrayerArea.wav"; break;
-            case CAFETERIA: path = "assets/sound/Cafe.wav"; break;
-            case GROUND: path = "assets/sound/Ground.wav"; break;
-            case CORRIDOR: path = "assets/sound/Corridor.wav"; break;
-            case CLASSROOM: path = "assets/sound/Classroom.wav"; break;
-            case SERVER_ROOM: path = "assets/sound/ServerRoom.wav"; break;
-            case AI_LAB: path = "assets/sound/AILab.wav"; break;
-            case WALKWAY: path = "assets/sound/Walkway.wav"; break;
-            default: path = "assets/sound/startMenu.wav"; break; // Fallback
+        if (zombieMode) {
+            switch (zone) {
+                case LIBRARY:     return "assets/sound/ZombieLibrary.wav";
+                case GROUND:      return "assets/sound/ZombieGround.wav";
+                case WALKWAY:     return "assets/sound/ZombieWalkway.wav";
+                case CORRIDOR:    return "assets/sound/ZombieCorridor.wav";
+                case SERVER_ROOM: return "assets/sound/ZombieServerRoom.wav";
+                case CAFETERIA:   return "assets/sound/ZombieCafe.wav";
+                case CLASSROOM:   return "assets/sound/ZombieClassroom.wav";
+                default:          return "assets/sound/ZombieGround.wav";
+            }
         }
-        return path;
+        switch (zone) {
+            case LIBRARY: return "assets/sound/LibraryTheme.wav";
+            case PRAYER_AREA: return "assets/sound/PrayerArea.wav";
+            case CAFETERIA: return "assets/sound/Cafe.wav";
+            case GROUND: return "assets/sound/Ground.wav";
+            case CORRIDOR: return "assets/sound/Corridor.wav";
+            case CLASSROOM: return "assets/sound/Classroom.wav";
+            case SERVER_ROOM: return "assets/sound/ServerRoom.wav";
+            case AI_LAB: return "assets/sound/AILab.wav";
+            case WALKWAY: return "assets/sound/Walkway.wav";
+            default: return "assets/sound/startMenu.wav";
+        }
+    }
+
+    public void playFightMusic(String enemyInternalName) {
+        String path;
+        switch (enemyInternalName) {
+            case "zombie_librarian":           path = "assets/sound/FightLibrarian.wav"; break;
+            case "zombie_cafe_uncle":          path = "assets/sound/FightCafeUncle.wav"; break;
+            case "zombie_faizan":              path = "assets/sound/FightFaizan.wav"; break;
+            case "zombie_javeria":             path = "assets/sound/FightJaveria.wav"; break;
+            case "zombie_student_a":           path = "assets/sound/FightStudent.wav"; break;
+            case "zombie_student_b":           path = "assets/sound/FightStudent.wav"; break;
+            case "zombie_student_c":           path = "assets/sound/FightStudent.wav"; break;
+            case "final_boss":                 path = "assets/sound/FightFinalBoss.wav"; break;
+            default:                           path = "assets/sound/FightDefault.wav"; break;
+        }
+        playCustomMusic(path);
     }
 
     public void playZoneMusic(ZoneType zone) {
         if (!musicOn) return;
+
+        // Bad ending overrides all zone music with a single looping track
+        if (badEndingMode) {
+            if ("assets/sound/badEnding.wav".equals(currentCustomPath)) return;
+            stopMusic();
+            currentCustomPath = "assets/sound/badEnding.wav";
+            currentMusicZone = null;
+            try {
+                File file = new File("assets/sound/badEnding.wav");
+                if (file.exists()) {
+                    AudioInputStream ais = AudioSystem.getAudioInputStream(file.getAbsoluteFile());
+                    bgmClip = AudioSystem.getClip();
+                    bgmClip.open(ais);
+                    FloatControl gainControl = (FloatControl) bgmClip.getControl(FloatControl.Type.MASTER_GAIN);
+                    gainControl.setValue(musicVolume);
+                    bgmClip.loop(Clip.LOOP_CONTINUOUSLY);
+                } else {
+                    System.err.println("[SoundManager] badEnding.wav not found: " + file.getAbsolutePath());
+                }
+            } catch (Exception e) {
+                System.err.println("[SoundManager] Could not load badEnding.wav: " + e.getMessage());
+            }
+            return;
+        }
 
         // ANTI-SPAM LOCK: Even if the file fails to load, we record that we *tried* to play this zone. 
         // This stops it from retrying 60 times a second and lagging the game!

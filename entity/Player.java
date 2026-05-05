@@ -93,7 +93,6 @@ public class Player {
 
     public void respawn() {
         hp = maxHp;
-        stats.updateEnergy(100);
     }
 
     public entity.PlayerStats getStats() { return stats; }
@@ -267,7 +266,7 @@ public class Player {
     
     // Fallback for UI if it still expects getters directly from Player
     public double getGpa() { return stats != null ? stats.getGPA() : 4.0; }
-    public int getEnergy() { return stats != null ? stats.getEnergy() : 100; }
+    public int getEnergy() { return 0; }
     public int getStress() { return stats != null ? stats.getStress() : 0; }
     public int getKarma() { return stats != null ? stats.getKarma() : 50; }
     public int getId() { return 1; }

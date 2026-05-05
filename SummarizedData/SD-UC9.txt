@@ -89,9 +89,11 @@ else Player HP hits ZERO during fight
     combatController -> playerEntity: takeDamage(amount)
     activate playerEntity
     playerEntity -> playerEntity: isAlive()
-    
-    combatController -> playerEntity: respawn()
+    playerEntity --> combatController: isAlive = false
     deactivate playerEntity
+    
+    combatController -> gameSession: handleSystemEvent("playerDied")
+    gameSession -> gameSession: showGameOver()
 end
 
 deactivate combatController
