@@ -396,7 +396,7 @@ public class ObjectManager {
             // Scale up librarian to match massive teachers (~96x96)
             double libScale = (teacher1Img != null) ? 96.0 / 128.0 : 3.0;
             // Position shifted drastically UP so he stands properly behind the table
-            Furniture librarian = new Furniture(deskX + 35, deskY - 70, librarianImg, libScale);
+            Furniture librarian = new Furniture(deskX + 35, deskY - 110, librarianImg, libScale);
             librarian.name = "librarian";
             furnitureList.add(librarian);
         }
@@ -727,8 +727,8 @@ public class ObjectManager {
     private Furniture makeZombie(String name, int x, int y, Color color, float speed, int detectRadius) {
         int ts = gp.tileSize;
         int spriteIdx = getZombieSpriteIndex(name);
-        // MASSIVE SIZE: regular zombies ~112x112 (3.5 tiles), skeleton 128x128 (4.0 tiles)
-        int drawSize = (spriteIdx == 4) ? (int)(ts * 4.0) : (int)(ts * 3.5);
+        // MASSIVE SIZE: regular zombies ~112x112 (3.5 tiles), skeleton slightly smaller than regular zombies (3.2 tiles)
+        int drawSize = (spriteIdx == 4) ? (int)(ts * 3.2) : (int)(ts * 3.5);
         Furniture f = new Furniture(null, x, y, drawSize, drawSize);
         f.name = name;
         f.placeholderColor = color; // Fallback if sprites fail to load
@@ -752,9 +752,9 @@ public class ObjectManager {
     private int getZombieSpriteIndex(String name) {
         switch (name) {
             case "zombie_librarian":  case "zombie_cafe_uncle": return 0; // Zombie_1
-            case "zombie_dyen":       case "zombie_faizan":     return 1; // Zombie_2 (SWAPPED: dyen is now here)
-            case "zombie_hooud":      case "zombie_javeria":    return 2; // Zombie_3
-            case "zombie_waseed":                               return 3; // Zombie_4 (SWAPPED: waseed is now here)
+            case "zombie_dyen":       case "zombie_javeria":    return 1; // Zombie_2 (SWAPPED: javeria is now here)
+            case "zombie_hooud":      case "zombie_faizan":     return 2; // Zombie_3 (SWAPPED: faizan/TA is now here)
+            case "zombie_waseed":                               return 3; // Zombie_4
             case "zombie_ahmad":                                return 4; // Zombie_5 (skeleton)
             default:                                            return 0;
         }
@@ -814,8 +814,23 @@ public class ObjectManager {
         int ts = gp.tileSize;
         // Hooud Bin Jawad — easy, slow
         furnitureList.add(makeZombie("zombie_hooud", 8 * ts, 8 * ts, ZOMBIE_RED, 0.7f, ts * 2));
-        // Haider Ramzan — friendly NPC (green, static)
-        furnitureList.add(makeStatic("npc_haider", 14 * ts, 4 * ts, (int)(ts * 1.2), (int)(ts * 1.2), NPC_GREEN));
+        // Haider Ramzan — friendly NPC (Using Teacher2 sprite as an NPC placeholder)
+        BufferedImage haiderImg;
+        if (teacher2Img != null) {
+            haiderImg = teacher2Img;
+        } else {
+            haiderImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2Haider = haiderImg.createGraphics();
+            g2Haider.setColor(new Color(60, 120, 180)); // Blue shirt
+            g2Haider.fillRect(0, 0, 32, 32);
+            g2Haider.setColor(Color.WHITE);
+            g2Haider.drawRect(0, 0, 31, 31);
+            g2Haider.dispose();
+        }
+        double haiderScale = (teacher2Img != null) ? 96.0 / 128.0 : 3.0;
+        Furniture haider = new Furniture(14 * ts, 4 * ts - 30, haiderImg, haiderScale);
+        haider.name = "npc_haider";
+        furnitureList.add(haider);
         // Checkpoint near entry
         furnitureList.add(makeStatic("checkpoint", 18 * ts, (gp.maxScreenRow / 2) * ts, ts, ts, new Color(50, 220, 180, 200)));
     }

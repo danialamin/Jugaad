@@ -21,6 +21,7 @@ public class Player {
 
     public int xLocation, yLocation;
     public int speed;
+    public boolean isImmortal = true;
 
     private String name = "Student";
     private int hp;
@@ -78,6 +79,7 @@ public class Player {
     }
 
     public void takeDamage(int amount) {
+        if (isImmortal) return;
         hp -= amount;
         if (hp < 0) hp = 0;
     }
