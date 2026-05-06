@@ -1965,8 +1965,15 @@ public void updateQuizScreen() {
         g2.fillRect((int)dodgeBoxX + 3, (int)dodgeBoxY + 3, (int)dodgeBoxW - 6, (int)dodgeBoxH - 6);
 
         g2.setColor(new Color(255, 200, 0));
-        for (QuizBolt b : quizBolts) {
-            if (!b.dead) g2.fillRoundRect(Math.round(b.x), Math.round(b.y), 11, 12, 2, 2);
+        for (int i = 0; i < quizBolts.size(); i++) {
+            try {
+                QuizBolt b = quizBolts.get(i);
+                if (b != null && !b.dead) {
+                    g2.fillRoundRect(Math.round(b.x), Math.round(b.y), 11, 12, 2, 2);
+                }
+            } catch (IndexOutOfBoundsException e) {
+                break; // List shrunk during iteration, just break
+            }
         }
 
         Rectangle2D s = rectangleAroundSoul();
