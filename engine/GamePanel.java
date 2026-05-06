@@ -499,88 +499,99 @@ public class GamePanel extends JPanel implements Runnable {
                                 return;
                             }
                             if (target == ZoneType.CLASSROOM) {
-                                // Zombie classroom is unlocked (only CS-101)
+                                // Enforce killing librarian before entering CS-101
+                                if (loc.getName().equals("CS-101 Classroom")) {
+                                    if (!defeatedZombies.contains("zombie_librarian")) {
+                                        gameUI.startDialogue("You|The door is jammed. Maybe the Librarian back in the Library dropped something useful.");
+                                        pushPlayerBack(loc.getRequiredDirection());
+                                        gameState = dialogueState;
+                                        clearKeys();
+                                        return;
+                                    }
+                                }
                             }
                             // Allow: GROUND, WALKWAY, CORRIDOR, LIBRARY, SERVER_ROOM
                             // (fall through to zone transition below)
-                        }
+                        } else {
+                            // ─── NORMAL MODE (Phase 1) ONLY GATING ───
+                            
+                            if (currentZone == ZoneType.CORRIDOR && target == ZoneType.CLASSROOM && loc.getName().equals("AI Lab")
+                                    && phaseOneState == PhaseOneState.AI_LAB_REQUIRED) {
+                                target = ZoneType.AI_LAB;
+                            }
 
-                        if (!zombieMode && currentZone == ZoneType.CORRIDOR && target == ZoneType.CLASSROOM && loc.getName().equals("AI Lab")
-                                && phaseOneState == PhaseOneState.AI_LAB_REQUIRED) {
-                            target = ZoneType.AI_LAB;
-                        }
+                            if (currentZone == ZoneType.CORRIDOR && phaseOneState == PhaseOneState.CS_CLASS_REQUIRED) {
+                                if (target == ZoneType.CLASSROOM && loc.getName().equals("CS-101 Classroom")) {
+                                    gameUI.showGoal = false;
+                                } else if (target == ZoneType.CLASSROOM) {
+                                    gameUI.startDialogue("You|Wrong room. Sir Shehryrar's CS class is the one you need right now.");
+                                    gameState = dialogueState;
+                                    clearKeys();
+                                    return;
+                                }
+                            }
 
-                        if (currentZone == ZoneType.CORRIDOR && phaseOneState == PhaseOneState.CS_CLASS_REQUIRED) {
-                            if (target == ZoneType.CLASSROOM && loc.getName().equals("CS-101 Classroom")) {
-                                gameUI.showGoal = false;
-                            } else if (target == ZoneType.CLASSROOM) {
-                                gameUI.startDialogue("You|Wrong room. Sir Shehryrar's CS class is the one you need right now.");
+                            if (currentZone == ZoneType.CORRIDOR && phaseOneState == PhaseOneState.AI_LAB_REQUIRED) {
+                                if (target == ZoneType.AI_LAB) {
+                                    // AI Lab is now open for the lecture.
+                                } else if (target == ZoneType.CLASSROOM && loc.getName().equals("CS-101 Classroom")) {
+                                    gameUI.startDialogue("You|CS-101 is over. That door has entered post-class lockdown.");
+                                    gameState = dialogueState;
+                                    clearKeys();
+                                    return;
+                                } else if (target == ZoneType.CLASSROOM) {
+                                    gameUI.startDialogue("You|Not this one. Sir Shams Farooq's AI Lab is the first classroom door.");
+                                    gameState = dialogueState;
+                                    clearKeys();
+                                    return;
+                                }
+                            }
+
+                            if (phaseOneState == PhaseOneState.CS_CLASS_REQUIRED
+                                    && (target == ZoneType.CAFETERIA || target == ZoneType.PRAYER_AREA || target == ZoneType.LIBRARY || target == ZoneType.SERVER_ROOM || target == ZoneType.AI_LAB)) {
+                                gameUI.startDialogue("You|Tempting, but no. Sir Shehryrar's class is already starting.");
                                 gameState = dialogueState;
                                 clearKeys();
                                 return;
                             }
-                        }
 
-                        if (currentZone == ZoneType.CORRIDOR && phaseOneState == PhaseOneState.AI_LAB_REQUIRED) {
-                            if (target == ZoneType.AI_LAB) {
-                                // AI Lab is now open for the lecture.
-                            } else if (target == ZoneType.CLASSROOM && loc.getName().equals("CS-101 Classroom")) {
-                                gameUI.startDialogue("You|CS-101 is over. That door has entered post-class lockdown.");
-                                gameState = dialogueState;
-                                clearKeys();
-                                return;
-                            } else if (target == ZoneType.CLASSROOM) {
-                                gameUI.startDialogue("You|Not this one. Sir Shams Farooq's AI Lab is the first classroom door.");
+                            if (phaseOneState == PhaseOneState.AI_LAB_REQUIRED
+                                    && (target == ZoneType.CAFETERIA || target == ZoneType.PRAYER_AREA || target == ZoneType.LIBRARY || target == ZoneType.SERVER_ROOM)) {
+                                gameUI.startDialogue("You|After CS-101, the AI Lab is next. Freedom is scheduled after Sir Shams.");
                                 gameState = dialogueState;
                                 clearKeys();
                                 return;
                             }
-                        }
 
-                        if (phaseOneState == PhaseOneState.CS_CLASS_REQUIRED
-                                && (target == ZoneType.CAFETERIA || target == ZoneType.PRAYER_AREA || target == ZoneType.LIBRARY || target == ZoneType.SERVER_ROOM || target == ZoneType.AI_LAB)) {
-                            gameUI.startDialogue("You|Tempting, but no. Sir Shehryrar's class is already starting.");
-                            gameState = dialogueState;
-                            clearKeys();
-                            return;
-                        }
+                            if ((currentZone == ZoneType.CLASSROOM || currentZone == ZoneType.AI_LAB) && target == ZoneType.CORRIDOR) {
+                                if ((currentZone == ZoneType.CLASSROOM && phaseOneState == PhaseOneState.CS_CLASS_REQUIRED)
+                                        || (currentZone == ZoneType.AI_LAB && phaseOneState == PhaseOneState.AI_LAB_REQUIRED)) {
+                                    // SD-UC2 line 110-120: skip-class penalty: gpa-0.1, karma-10
+                                    entity.StatModifierImpl skipModifier = new entity.StatModifierImpl(-0.1, 0, -10);
+                                    session.getPlayer().getStats().applyModifier(skipModifier);
+                                    session.getKarmaTracker().deduct(10, "Skipped class");
+                                    gameUI.startDialogue("You|Leaving before class? Bold plan. Terrible plan. GPA takes the hit.");
+                                    gameState = dialogueState;
+                                    clearKeys();
+                                    return;
+                                }
+                            }
 
-                        if (phaseOneState == PhaseOneState.AI_LAB_REQUIRED
-                                && (target == ZoneType.CAFETERIA || target == ZoneType.PRAYER_AREA || target == ZoneType.LIBRARY || target == ZoneType.SERVER_ROOM)) {
-                            gameUI.startDialogue("You|After CS-101, the AI Lab is next. Freedom is scheduled after Sir Shams.");
-                            gameState = dialogueState;
-                            clearKeys();
-                            return;
-                        }
+                            if ((currentZone == ZoneType.CLASSROOM || currentZone == ZoneType.AI_LAB) && target != currentZone) {
+                                session.getPlayer().setSeatedInClass(false);
+                                // Lock CS classroom permanently after leaving (if lecture was completed)
+                                if (currentZone == ZoneType.CLASSROOM && phaseOneState == PhaseOneState.AI_LAB_REQUIRED) {
+                                    csClassroomLocked = true;
+                                }
+                            }
 
-                        if ((currentZone == ZoneType.CLASSROOM || currentZone == ZoneType.AI_LAB) && target == ZoneType.CORRIDOR) {
-                            if ((currentZone == ZoneType.CLASSROOM && phaseOneState == PhaseOneState.CS_CLASS_REQUIRED)
-                                    || (currentZone == ZoneType.AI_LAB && phaseOneState == PhaseOneState.AI_LAB_REQUIRED)) {
-                                // SD-UC2 line 110-120: skip-class penalty: gpa-0.1, karma-10
-                                entity.StatModifierImpl skipModifier = new entity.StatModifierImpl(-0.1, 0, -10);
-                                session.getPlayer().getStats().applyModifier(skipModifier);
-                                session.getKarmaTracker().deduct(10, "Skipped class");
-                                gameUI.startDialogue("You|Leaving before class? Bold plan. Terrible plan. GPA takes the hit.");
+                            // Block re-entry to locked CS classroom
+                            if (target == ZoneType.CLASSROOM && csClassroomLocked) {
+                                gameUI.startDialogue("You|CS-101 is over. That classroom has entered post-class lockdown. You cannot go back.");
                                 gameState = dialogueState;
                                 clearKeys();
                                 return;
                             }
-                        }
-
-                        if ((currentZone == ZoneType.CLASSROOM || currentZone == ZoneType.AI_LAB) && target != currentZone) {
-                            session.getPlayer().setSeatedInClass(false);
-                            // Lock CS classroom permanently after leaving (if lecture was completed)
-                            if (currentZone == ZoneType.CLASSROOM && phaseOneState == PhaseOneState.AI_LAB_REQUIRED) {
-                                csClassroomLocked = true;
-                            }
-                        }
-
-                        // Block re-entry to locked CS classroom
-                        if (target == ZoneType.CLASSROOM && csClassroomLocked) {
-                            gameUI.startDialogue("You|CS-101 is over. That classroom has entered post-class lockdown. You cannot go back.");
-                            gameState = dialogueState;
-                            clearKeys();
-                            return;
                         }
 
                         currentZone = target;

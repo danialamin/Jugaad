@@ -92,6 +92,18 @@ public class ObjectManager {
     private BufferedImage serverImg;
     private BufferedImage cableCrapImg;
 
+    // Teacher sprites (single frame extracted from idle sheet)
+    private BufferedImage teacher1Img; // Sir Shehryrar
+    private BufferedImage teacher2Img; // Sir Shams
+
+    // Zombie sprite frames [zombieTypeIndex][frameIndex]
+    private BufferedImage[][] zombieIdleFrames = new BufferedImage[5][];
+    private BufferedImage[][] zombieWalkFrames = new BufferedImage[5][];
+
+    // Boss sprite frames
+    private BufferedImage[] bossIdleFrames;
+    private BufferedImage[] bossWalkFrames;
+
     public ObjectManager(GamePanel gp) {
         this.gp = gp;
         loadObjectImages();
@@ -178,6 +190,79 @@ public class ObjectManager {
             cableCrapImg = cropImage(ImageIO.read(new File("assets/ServerRoom/cablecrap.png")), 0, 0, -1, -1);
             System.out.println("Loaded cablecrap.png: " + cableCrapImg.getWidth() + "x" + cableCrapImg.getHeight());
         } catch (Exception e) { System.err.println("Failed to load cablecrap: " + e.getMessage()); }
+
+        // ─── TEACHER SPRITES ───
+        // Each sheet is 896x128 with 7 frames of 128x128. Extract frame 0.
+        try {
+            BufferedImage t1Sheet = ImageIO.read(new File("assets/Teachers/Teacher1/Idle.png"));
+            teacher1Img = t1Sheet.getSubimage(0, 0, 128, 128);
+            System.out.println("Loaded Teacher1 sprite: 128x128 from " + t1Sheet.getWidth() + "x" + t1Sheet.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load Teacher1: " + e.getMessage()); }
+        try {
+            BufferedImage t2Sheet = ImageIO.read(new File("assets/Teachers/Teacher2/Idle.png"));
+            teacher2Img = t2Sheet.getSubimage(0, 0, 128, 128);
+            System.out.println("Loaded Teacher2 sprite: 128x128 from " + t2Sheet.getWidth() + "x" + t2Sheet.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load Teacher2: " + e.getMessage()); }
+
+        // ─── ZOMBIE SPRITES (1-4): Sprite sheets, 128px per frame ───
+        for (int z = 1; z <= 4; z++) {
+            String dir = "assets/ZombieAssets/zombies/Zombie_" + z;
+            try {
+                BufferedImage idleSheet = ImageIO.read(new File(dir + "/Idle.png"));
+                int idleCols = idleSheet.getWidth() / 128;
+                zombieIdleFrames[z - 1] = new BufferedImage[idleCols];
+                for (int i = 0; i < idleCols; i++) {
+                    zombieIdleFrames[z - 1][i] = idleSheet.getSubimage(i * 128, 0, 128, 128);
+                }
+                BufferedImage walkSheet = ImageIO.read(new File(dir + "/Walk.png"));
+                int walkCols = walkSheet.getWidth() / 128;
+                zombieWalkFrames[z - 1] = new BufferedImage[walkCols];
+                for (int i = 0; i < walkCols; i++) {
+                    zombieWalkFrames[z - 1][i] = walkSheet.getSubimage(i * 128, 0, 128, 128);
+                }
+                System.out.println("Loaded Zombie_" + z + ": " + idleCols + " idle, " + walkCols + " walk frames");
+            } catch (Exception e) { System.err.println("Failed to load Zombie_" + z + ": " + e.getMessage()); }
+        }
+
+        // ─── ZOMBIE 5 (Skeleton): Individual PNGs, ~241x222 per frame ───
+        try {
+            String z5Dir = "assets/ZombieAssets/zombies/Zombie_5";
+            // Count idle frames (skeleton-idle_0 to skeleton-idle_16 = 17 frames)
+            java.util.List<BufferedImage> z5Idle = new java.util.ArrayList<>();
+            for (int i = 0; i <= 16; i++) {
+                File f = new File(z5Dir + "/skeleton-idle_" + i + ".png");
+                if (f.exists()) z5Idle.add(ImageIO.read(f));
+            }
+            zombieIdleFrames[4] = z5Idle.toArray(new BufferedImage[0]);
+            // Move frames (skeleton-move_0 to skeleton-move_16 = 17 frames)
+            java.util.List<BufferedImage> z5Move = new java.util.ArrayList<>();
+            for (int i = 0; i <= 16; i++) {
+                File f = new File(z5Dir + "/skeleton-move_" + i + ".png");
+                if (f.exists()) z5Move.add(ImageIO.read(f));
+            }
+            zombieWalkFrames[4] = z5Move.toArray(new BufferedImage[0]);
+            System.out.println("Loaded Zombie_5 (skeleton): " + z5Idle.size() + " idle, " + z5Move.size() + " walk frames");
+        } catch (Exception e) { System.err.println("Failed to load Zombie_5: " + e.getMessage()); }
+
+        // ─── ZOMBIE BOSS: Individual PNGs, ~244x412 per frame ───
+        try {
+            String bossDir = "assets/ZombieAssets/ZombieBoss";
+            // Idle: Idle1-Idle4
+            java.util.List<BufferedImage> bIdle = new java.util.ArrayList<>();
+            for (int i = 1; i <= 4; i++) {
+                File f = new File(bossDir + "/Idle" + i + ".png");
+                if (f.exists()) bIdle.add(ImageIO.read(f));
+            }
+            bossIdleFrames = bIdle.toArray(new BufferedImage[0]);
+            // Walk: Walk1-Walk6
+            java.util.List<BufferedImage> bWalk = new java.util.ArrayList<>();
+            for (int i = 1; i <= 6; i++) {
+                File f = new File(bossDir + "/Walk" + i + ".png");
+                if (f.exists()) bWalk.add(ImageIO.read(f));
+            }
+            bossWalkFrames = bWalk.toArray(new BufferedImage[0]);
+            System.out.println("Loaded ZombieBoss: " + bIdle.size() + " idle, " + bWalk.size() + " walk frames");
+        } catch (Exception e) { System.err.println("Failed to load ZombieBoss: " + e.getMessage()); }
     }
 
     /**
@@ -295,15 +380,23 @@ public class ObjectManager {
             int deskY = gp.maxScreenRow / 2 * tileSize - 20;
             furnitureList.add(new Furniture(deskX, deskY, libDeskImg, scale));
 
-            // Librarian NPC behind the counter
-            BufferedImage librarianImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g2Librarian = librarianImg.createGraphics();
-            g2Librarian.setColor(new Color(139, 69, 19)); // Brown uniform
-            g2Librarian.fillRect(0, 0, 32, 32);
-            g2Librarian.setColor(Color.WHITE);
-            g2Librarian.drawRect(0, 0, 31, 31);
-            g2Librarian.dispose();
-            Furniture librarian = new Furniture(deskX + 40, deskY - 25, librarianImg, 1.0);
+            // Librarian NPC behind the counter (Using Teacher1 sprite as Librarian)
+            BufferedImage librarianImg;
+            if (teacher1Img != null) {
+                librarianImg = teacher1Img;
+            } else {
+                librarianImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g2Librarian = librarianImg.createGraphics();
+                g2Librarian.setColor(new Color(139, 69, 19)); // Brown uniform
+                g2Librarian.fillRect(0, 0, 32, 32);
+                g2Librarian.setColor(Color.WHITE);
+                g2Librarian.drawRect(0, 0, 31, 31);
+                g2Librarian.dispose();
+            }
+            // Scale up librarian to match larger teachers (~48x48)
+            double libScale = (teacher1Img != null) ? 48.0 / 128.0 : 1.5;
+            // Position shifted slightly down so he isn't floating
+            Furniture librarian = new Furniture(deskX + 35, deskY - 15, librarianImg, libScale);
             librarian.name = "librarian";
             furnitureList.add(librarian);
         }
@@ -352,14 +445,23 @@ public class ObjectManager {
             furnitureList.add(new Furniture((gp.maxScreenCol / 2) * tileSize - 48, 2 * tileSize, teacherDeskImg, teacherScale));
         }
 
-        BufferedImage teacherImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2Img = teacherImg.createGraphics();
-        g2Img.setColor(Color.RED);
-        g2Img.fillRect(0, 0, 32, 32);
-        g2Img.setColor(Color.WHITE);
-        g2Img.drawRect(0, 0, 31, 31);
-        g2Img.dispose();
-        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * tileSize - 16, 2 * tileSize - 20, teacherImg, 1.0);
+        // Teacher NPC — use real sprite if available, fallback to placeholder
+        BufferedImage teacherImg;
+        if (teacher1Img != null) {
+            teacherImg = teacher1Img; // 128x128 frame from Teacher1/Idle.png
+        } else {
+            teacherImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2Img = teacherImg.createGraphics();
+            g2Img.setColor(Color.RED);
+            g2Img.fillRect(0, 0, 32, 32);
+            g2Img.setColor(Color.WHITE);
+            g2Img.drawRect(0, 0, 31, 31);
+            g2Img.dispose();
+        }
+        // Scale 128x128 sprite to ~48x48 (much bigger)
+        double teacherNpcScale = (teacher1Img != null) ? 48.0 / 128.0 : 1.5;
+        // Shift position LEFT (-64) and DOWN (+10) so he stands beside the desk
+        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * tileSize - 64, 2 * tileSize - 10, teacherImg, teacherNpcScale);
         teacherNPC.name = "teacher";
         furnitureList.add(teacherNPC);
 
@@ -556,14 +658,23 @@ public class ObjectManager {
         resetUsedNames();
         int ts = gp.tileSize;
 
-        BufferedImage teacherImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2Img = teacherImg.createGraphics();
-        g2Img.setColor(new Color(70, 110, 190));
-        g2Img.fillRect(0, 0, 32, 32);
-        g2Img.setColor(Color.WHITE);
-        g2Img.drawRect(0, 0, 31, 31);
-        g2Img.dispose();
-        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * ts - 16, ts + 8, teacherImg, 1.0);
+        // AI Lab Teacher NPC — use real sprite if available
+        BufferedImage teacherImg;
+        if (teacher2Img != null) {
+            teacherImg = teacher2Img; // 128x128 frame from Teacher2/Idle.png
+        } else {
+            teacherImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2Img = teacherImg.createGraphics();
+            g2Img.setColor(new Color(70, 110, 190));
+            g2Img.fillRect(0, 0, 32, 32);
+            g2Img.setColor(Color.WHITE);
+            g2Img.drawRect(0, 0, 31, 31);
+            g2Img.dispose();
+        }
+        // Scale 128x128 sprite to ~48x48 (much bigger)
+        double aiTeacherScale = (teacher2Img != null) ? 48.0 / 128.0 : 1.5;
+        // Shift position LEFT and slightly DOWN to stand beside the AI setup
+        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * ts - 60, ts + 15, teacherImg, aiTeacherScale);
         teacherNPC.name = "teacher";
         furnitureList.add(teacherNPC);
 
@@ -605,15 +716,41 @@ public class ObjectManager {
     private static final Color OBSTACLE_ORANGE = new Color(200, 120, 30, 200);
     private static final Color CHECKPOINT_TEAL = new Color(50, 220, 180, 200);
 
-    /** Creates a zombie placeholder with chasing AI. */
+    /** Creates a zombie with animated sprites and chasing AI. */
     private Furniture makeZombie(String name, int x, int y, Color color, float speed, int detectRadius) {
         int ts = gp.tileSize;
-        Furniture f = new Furniture(null, x, y, (int)(ts * 1.2), (int)(ts * 1.2));
+        int spriteIdx = getZombieSpriteIndex(name);
+        // INCREASED SIZE: regular zombies ~64x64 (2 tiles wide/tall), skeleton slightly bigger
+        int drawSize = (spriteIdx == 4) ? (int)(ts * 2.2) : (int)(ts * 2.0);
+        Furniture f = new Furniture(null, x, y, drawSize, drawSize);
         f.name = name;
-        f.placeholderColor = color;
+        f.placeholderColor = color; // Fallback if sprites fail to load
         f.moveSpeed = speed;
         f.detectionRadius = detectRadius;
+        // Assign sprite frames
+        if (spriteIdx >= 0 && spriteIdx < zombieIdleFrames.length
+                && zombieIdleFrames[spriteIdx] != null) {
+            f.idleFrames = zombieIdleFrames[spriteIdx];
+            f.walkFrames = zombieWalkFrames[spriteIdx];
+            f.image = f.idleFrames[0]; // Fallback static image
+        }
         return f;
+    }
+
+    /**
+     * Maps zombie internal names to sprite type indices (0-4).
+     * Zombie_1=0, Zombie_2=1, Zombie_3=2, Zombie_4=3, Zombie_5(skeleton)=4.
+     * All 5 types are used across the zones.
+     */
+    private int getZombieSpriteIndex(String name) {
+        switch (name) {
+            case "zombie_librarian":  case "zombie_cafe_uncle": return 0; // Zombie_1
+            case "zombie_dyen":       case "zombie_faizan":     return 1; // Zombie_2 (SWAPPED: dyen is now here)
+            case "zombie_hooud":      case "zombie_javeria":    return 2; // Zombie_3
+            case "zombie_waseed":                               return 3; // Zombie_4 (SWAPPED: waseed is now here)
+            case "zombie_ahmad":                                return 4; // Zombie_5 (skeleton)
+            default:                                            return 0;
+        }
     }
 
     /** Creates a static NPC/object placeholder (no chasing). */
@@ -706,10 +843,16 @@ public class ObjectManager {
         }
         // Lore computer (glowing, interactable)
         furnitureList.add(makeStatic("lore_computer", (gp.maxScreenCol / 2) * ts - ts, 3 * ts, ts * 2, ts * 2, new Color(0, 180, 255, 200)));
-        // FINAL BOSS — The Corrupted AI
+        // FINAL BOSS — The Corrupted AI (with animated boss sprites)
         Furniture boss = makeZombie("final_boss", 8 * ts, 6 * ts, BOSS_PURPLE, 1.8f, ts * 15);
-        boss.width = ts * 2;
-        boss.height = ts * 2;
+        boss.width = ts * 2;       // 64px wide
+        boss.height = (int)(ts * 3.4); // 108px tall (proportional to ~244x412 source)
+        // Assign boss-specific sprites (overrides generic zombie frames)
+        if (bossIdleFrames != null && bossIdleFrames.length > 0) {
+            boss.idleFrames = bossIdleFrames;
+            boss.walkFrames = bossWalkFrames;
+            boss.image = bossIdleFrames[0];
+        }
         furnitureList.add(boss);
     }
 

@@ -87,6 +87,40 @@ public class TileManager {
             tile[16] = new Tile();
             try { tile[16].image = ImageIO.read(new File("assets/PrayerRoom/floor.jpg")); } catch (Exception e) {}
 
+            // ─── Zombie Mode Tiles ───
+            // Tile 17: Zombie Floor (crop 128x128 from brick texture, pre-scale to 32x32)
+            File zFloorFile = new File("assets/ZombieAssets/ZombieFloor.png");
+            if (zFloorFile.exists()) {
+                BufferedImage zFloorFull = ImageIO.read(zFloorFile);
+                tile[17] = new Tile();
+                BufferedImage zCrop = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+                java.awt.Graphics2D gc = zCrop.createGraphics();
+                gc.drawImage(zFloorFull, 0, 0, 32, 32, 200, 150, 328, 278, null);
+                gc.dispose();
+                tile[17].image = zCrop;
+            }
+
+            // Tile 18: Zombie Wall/Border (48x48 dark red accent)
+            File zWallFile = new File("assets/ZombieAssets/ZombieFloor2.png");
+            if (zWallFile.exists()) {
+                tile[18] = new Tile();
+                tile[18].image = ImageIO.read(zWallFile);
+                tile[18].collision = true;
+            }
+
+            // Tile 19: Bloody Zombie Floor (composite: zombie floor + blood spatter)
+            File bloodFile = new File("assets/ZombieAssets/Blood spatter.png");
+            if (bloodFile.exists() && tile[17] != null && tile[17].image != null) {
+                BufferedImage blood = ImageIO.read(bloodFile);
+                BufferedImage composite = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+                java.awt.Graphics2D gc2 = composite.createGraphics();
+                gc2.drawImage(tile[17].image, 0, 0, 32, 32, null);
+                gc2.drawImage(blood, 0, 0, 32, 32, null);
+                gc2.dispose();
+                tile[19] = new Tile();
+                tile[19].image = composite;
+            }
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -128,6 +162,46 @@ public class TileManager {
             loadAILabMap();
         } else if (gp.currentZone == ZoneType.WALKWAY) {
             loadWalkwayMap();
+        }
+
+        // Apply zombie-mode tile overrides (deterministic, no randomization)
+        if (gp.zombieMode) {
+            zombifyCurrentMap();
+        }
+    }
+
+    /**
+     * Deterministically replaces floor/wall tiles with zombie variants.
+     * ~70% of floor tiles become zombie floor, ~30% keep room vibe.
+     * Walls become ZombieFloor2. Doors are NEVER touched.
+     * Blood spatters at fixed positions.
+     */
+    private void zombifyCurrentMap() {
+        int zombieFloor = 17;
+        int zombieWall = 18;
+        int bloodyFloor = 19;
+        int doorTile = 11;
+
+        for (int col = 0; col < gp.maxScreenCol; col++) {
+            for (int row = 0; row < gp.maxScreenRow; row++) {
+                int current = mapTileNum[col][row];
+                if (current == doorTile) continue; // Never touch doors
+
+                boolean isBorder = (row == 0 || row == gp.maxScreenRow - 1 ||
+                                    col == 0 || col == gp.maxScreenCol - 1);
+
+                if (isBorder) {
+                    mapTileNum[col][row] = zombieWall;
+                } else {
+                    // Deterministic mix: keep ~30% original room tiles for vibe
+                    boolean keepOriginal = ((col * 3 + row * 7) % 10 < 3);
+                    if (!keepOriginal) {
+                        // Blood at specific fixed positions (deterministic pattern)
+                        boolean bloodHere = ((col * 7 + row * 13) % 23 == 0);
+                        mapTileNum[col][row] = bloodHere ? bloodyFloor : zombieFloor;
+                    }
+                }
+            }
         }
     }
 

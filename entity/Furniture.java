@@ -22,6 +22,13 @@ public class Furniture {
     public boolean isChasing = false;
     public boolean defeated = false;   // If true, don't draw or update
 
+    // ─── Animation Support ───
+    public BufferedImage[] idleFrames;   // frames for idle/patrol
+    public BufferedImage[] walkFrames;   // frames for chasing
+    private int animFrame = 0;
+    private int animTick = 0;
+    private static final int ANIM_SPEED = 8; // game ticks per frame advance
+
     public Furniture(int x, int y, BufferedImage image) {
         this(x, y, image, 1.0);
     }
@@ -88,7 +95,17 @@ public class Furniture {
             worldX += (dx * 0.03);
             worldY += (dy * 0.03);
         }
-        
+
+        // Advance animation
+        animTick++;
+        if (animTick >= ANIM_SPEED) {
+            animTick = 0;
+            BufferedImage[] frames = (moveSpeed > 0 && walkFrames != null && walkFrames.length > 0) ? walkFrames : idleFrames;
+            if (frames != null && frames.length > 0) {
+                animFrame = (animFrame + 1) % frames.length;
+            }
+        }
+
         // Sync integer coordinates for drawing and collision
         this.x = (int)worldX;
         this.y = (int)worldY;
@@ -104,6 +121,20 @@ public class Furniture {
 
     public void draw(Graphics2D g2) {
         if (defeated) return;
+
+        // Animated sprite rendering — use walk anim for any moving entity (patrol or chase)
+        boolean useWalk = moveSpeed > 0 && walkFrames != null && walkFrames.length > 0;
+        BufferedImage[] activeFrames = useWalk ? walkFrames : idleFrames;
+        if (activeFrames != null && activeFrames.length > 0) {
+            BufferedImage frame = activeFrames[Math.abs(animFrame) % activeFrames.length];
+            g2.drawImage(frame, x, y, width, height, null);
+            if (isChasing) {
+                g2.setColor(java.awt.Color.RED);
+                g2.setFont(new java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.BOLD, 18));
+                g2.drawString("!", x + width / 2 - 4, y - 5);
+            }
+            return;
+        }
 
         if (image != null) {
             g2.drawImage(image, x, y, width, height, null);
