@@ -395,8 +395,8 @@ public class ObjectManager {
             }
             // Scale up librarian to match massive teachers (~96x96)
             double libScale = (teacher1Img != null) ? 96.0 / 128.0 : 3.0;
-            // Position shifted slightly down so he isn't floating
-            Furniture librarian = new Furniture(deskX + 35, deskY - 15, librarianImg, libScale);
+            // Position shifted drastically UP so he stands properly behind the table
+            Furniture librarian = new Furniture(deskX + 35, deskY - 70, librarianImg, libScale);
             librarian.name = "librarian";
             furnitureList.add(librarian);
         }
@@ -638,15 +638,22 @@ public class ObjectManager {
         furnitureList.clear();
         int ts = gp.tileSize;
 
-        // Haider Ramzan - friend sitting on floor with laptop
-        BufferedImage haiderImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2Haider = haiderImg.createGraphics();
-        g2Haider.setColor(new Color(60, 120, 180)); // Blue shirt
-        g2Haider.fillRect(0, 0, 32, 32);
-        g2Haider.setColor(Color.WHITE);
-        g2Haider.drawRect(0, 0, 31, 31);
-        g2Haider.dispose();
-        Furniture haider = new Furniture(haiderImg, 16 * ts, 10 * ts, 32, 32);
+        // Haider Ramzan - using Teacher2 sprite as an NPC placeholder
+        BufferedImage haiderImg;
+        if (teacher2Img != null) {
+            haiderImg = teacher2Img;
+        } else {
+            haiderImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2Haider = haiderImg.createGraphics();
+            g2Haider.setColor(new Color(60, 120, 180)); // Blue shirt
+            g2Haider.fillRect(0, 0, 32, 32);
+            g2Haider.setColor(Color.WHITE);
+            g2Haider.drawRect(0, 0, 31, 31);
+            g2Haider.dispose();
+        }
+        double haiderScale = (teacher2Img != null) ? 96.0 / 128.0 : 3.0;
+        // Shift him slightly up to accommodate the massive 96x96 sprite
+        Furniture haider = new Furniture(16 * ts, 10 * ts - 30, haiderImg, haiderScale);
         haider.name = "haider_ramzan";
         furnitureList.add(haider);
         // Phase 1 save checkpoint — far top-left corner (opposite of Haider)

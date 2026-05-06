@@ -2071,10 +2071,11 @@ public void drawQuizScreen(Graphics2D g2) {
     int textY = frameY + 188;
     int rowH = 40;
 
+    int safeRound = Math.min(currentQuizRound, quizRoundIndices.length - 1);
     for (int i = 0; i < quizOptions.length; i++) {
         boolean isAILab = (gp.activeLectureZone == map.ZoneType.AI_LAB);
-        int correctIdx = isAILab ? AI_QUIZ_CORRECT[quizRoundIndices[currentQuizRound]]
-                                  : HARD_QUIZ_CORRECT[quizRoundIndices[currentQuizRound]];
+        int correctIdx = isAILab ? AI_QUIZ_CORRECT[quizRoundIndices[safeRound]]
+                                  : HARD_QUIZ_CORRECT[quizRoundIndices[safeRound]];
         boolean aiGlow = quizAiAssistPath && i == correctIdx;
         int oy = textY + i * (rowH + 6);
         if (aiGlow || quizCommandNum == i) {
