@@ -393,8 +393,8 @@ public class ObjectManager {
                 g2Librarian.drawRect(0, 0, 31, 31);
                 g2Librarian.dispose();
             }
-            // Scale up librarian to match larger teachers (~48x48)
-            double libScale = (teacher1Img != null) ? 48.0 / 128.0 : 1.5;
+            // Scale up librarian to match massive teachers (~96x96)
+            double libScale = (teacher1Img != null) ? 96.0 / 128.0 : 3.0;
             // Position shifted slightly down so he isn't floating
             Furniture librarian = new Furniture(deskX + 35, deskY - 15, librarianImg, libScale);
             librarian.name = "librarian";
@@ -458,10 +458,10 @@ public class ObjectManager {
             g2Img.drawRect(0, 0, 31, 31);
             g2Img.dispose();
         }
-        // Scale 128x128 sprite to ~64x64 (much bigger)
-        double teacherNpcScale = (teacher1Img != null) ? 64.0 / 128.0 : 2.0;
-        // Shift position FAR LEFT (-90) and slightly DOWN (+5) so he stands clearly beside the desk
-        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * tileSize - 90, 2 * tileSize + 5, teacherImg, teacherNpcScale);
+        // Scale 128x128 sprite to ~96x96 (MASSIVE)
+        double teacherNpcScale = (teacher1Img != null) ? 96.0 / 128.0 : 3.0;
+        // Shift position EXTREMELY FAR LEFT (-130) and DOWN (+25) so he stands clearly beside the desk
+        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * tileSize - 130, 2 * tileSize + 25, teacherImg, teacherNpcScale);
         teacherNPC.name = "teacher";
         furnitureList.add(teacherNPC);
 
@@ -671,10 +671,10 @@ public class ObjectManager {
             g2Img.drawRect(0, 0, 31, 31);
             g2Img.dispose();
         }
-        // Scale 128x128 sprite to ~64x64 (much bigger)
-        double aiTeacherScale = (teacher2Img != null) ? 64.0 / 128.0 : 2.0;
-        // Shift position FAR LEFT and slightly DOWN to stand beside the AI setup
-        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * ts - 90, ts + 20, teacherImg, aiTeacherScale);
+        // Scale 128x128 sprite to ~96x96 (MASSIVE)
+        double aiTeacherScale = (teacher2Img != null) ? 96.0 / 128.0 : 3.0;
+        // Shift position EXTREMELY FAR LEFT and DOWN to stand beside the AI setup
+        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * ts - 130, ts + 35, teacherImg, aiTeacherScale);
         teacherNPC.name = "teacher";
         furnitureList.add(teacherNPC);
 
@@ -720,8 +720,8 @@ public class ObjectManager {
     private Furniture makeZombie(String name, int x, int y, Color color, float speed, int detectRadius) {
         int ts = gp.tileSize;
         int spriteIdx = getZombieSpriteIndex(name);
-        // INCREASED SIZE: regular zombies ~80x80 (2.5 tiles), skeleton 90x90 (2.8 tiles)
-        int drawSize = (spriteIdx == 4) ? (int)(ts * 2.8) : (int)(ts * 2.5);
+        // MASSIVE SIZE: regular zombies ~112x112 (3.5 tiles), skeleton 128x128 (4.0 tiles)
+        int drawSize = (spriteIdx == 4) ? (int)(ts * 4.0) : (int)(ts * 3.5);
         Furniture f = new Furniture(null, x, y, drawSize, drawSize);
         f.name = name;
         f.placeholderColor = color; // Fallback if sprites fail to load
