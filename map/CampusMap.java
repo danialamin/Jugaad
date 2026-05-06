@@ -103,7 +103,9 @@ public class CampusMap {
     }
 
     public Zone getZone(int zoneId) {
-        // Gray-structure placeholder: support ID-based lookup per class diagram contract.
+        if (zoneId >= 0 && zoneId < ZoneType.values().length) {
+            return getZone(ZoneType.values()[zoneId]);
+        }
         return null;
     }
 
@@ -139,7 +141,10 @@ public class CampusMap {
     }
 
     public boolean isRouteBlocked(int fromZoneId, int toZoneId) {
-        // Gray-structure placeholder: route-check by integer zone IDs.
+        if (fromZoneId >= 0 && fromZoneId < ZoneType.values().length &&
+            toZoneId >= 0 && toZoneId < ZoneType.values().length) {
+            return isRouteBlocked(ZoneType.values()[fromZoneId], ZoneType.values()[toZoneId]);
+        }
         return true;
     }
 

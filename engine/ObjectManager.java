@@ -638,10 +638,10 @@ public class ObjectManager {
         furnitureList.clear();
         int ts = gp.tileSize;
 
-        // Haider Ramzan - using Teacher2 sprite as an NPC placeholder
+        // Haider Ramzan - using Teacher1 sprite
         BufferedImage haiderImg;
-        if (teacher2Img != null) {
-            haiderImg = teacher2Img;
+        if (teacher1Img != null) {
+            haiderImg = teacher1Img;
         } else {
             haiderImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2Haider = haiderImg.createGraphics();
@@ -651,8 +651,7 @@ public class ObjectManager {
             g2Haider.drawRect(0, 0, 31, 31);
             g2Haider.dispose();
         }
-        double haiderScale = (teacher2Img != null) ? 96.0 / 128.0 : 3.0;
-        // Shift him slightly up to accommodate the massive 96x96 sprite
+        double haiderScale = (teacher1Img != null) ? 0.6 : 1.2; // Decreased size
         Furniture haider = new Furniture(16 * ts, 10 * ts - 30, haiderImg, haiderScale);
         haider.name = "haider_ramzan";
         furnitureList.add(haider);
@@ -727,8 +726,7 @@ public class ObjectManager {
     private Furniture makeZombie(String name, int x, int y, Color color, float speed, int detectRadius) {
         int ts = gp.tileSize;
         int spriteIdx = getZombieSpriteIndex(name);
-        // MASSIVE SIZE: regular zombies ~112x112 (3.5 tiles), skeleton slightly smaller than regular zombies (3.2 tiles)
-        int drawSize = (spriteIdx == 4) ? (int)(ts * 3.2) : (int)(ts * 3.5);
+        int drawSize = (spriteIdx == 4) ? (int)(ts * 2.2) : (int)(ts * 3.5); // skeleton zombie made much smaller
         Furniture f = new Furniture(null, x, y, drawSize, drawSize);
         f.name = name;
         f.placeholderColor = color; // Fallback if sprites fail to load
@@ -752,9 +750,9 @@ public class ObjectManager {
     private int getZombieSpriteIndex(String name) {
         switch (name) {
             case "zombie_librarian":  case "zombie_cafe_uncle": return 0; // Zombie_1
-            case "zombie_dyen":       case "zombie_javeria":    return 1; // Zombie_2 (SWAPPED: javeria is now here)
-            case "zombie_hooud":      case "zombie_faizan":     return 2; // Zombie_3 (SWAPPED: faizan/TA is now here)
-            case "zombie_waseed":                               return 3; // Zombie_4
+            case "zombie_javeria":                              return 1; // Zombie_2
+            case "zombie_hooud":      case "zombie_faizan":     return 2; // Zombie_3
+            case "zombie_waseed":     case "zombie_dyen":       return 3; // Zombie_4
             case "zombie_ahmad":                                return 4; // Zombie_5 (skeleton)
             default:                                            return 0;
         }
@@ -771,7 +769,7 @@ public class ObjectManager {
     /** Call every frame to update zombie AI movement. */
     public void updateZombies(int playerX, int playerY) {
         for (Furniture f : furnitureList) {
-            f.updateAI(playerX, playerY);
+            f.updateAI(playerX, playerY, furnitureList);
         }
     }
 
@@ -795,7 +793,7 @@ public class ObjectManager {
             furnitureList.add(new Furniture((gp.maxScreenCol / 2) * ts - (ts/2), ts, libClockImg, 0.5));
         }
         // Zombie Librarian — the ONLY entity inside the library (Library Isolation Rule)
-        furnitureList.add(makeZombie("zombie_librarian", 4 * ts, 5 * ts, ZOMBIE_RED, 0.8f, ts * 3));
+        furnitureList.add(makeZombie("zombie_librarian", 4 * ts, 5 * ts, ZOMBIE_RED, 0.8f, ts * 6));
         // Checkpoint in far corner (bottom-right)
         furnitureList.add(makeStatic("checkpoint", (gp.maxScreenCol - 2) * ts, (gp.maxScreenRow - 3) * ts, ts, ts, new Color(50, 220, 180, 200)));
     }
@@ -804,7 +802,7 @@ public class ObjectManager {
         furnitureList.clear();
         int ts = gp.tileSize;
         // Waseed E Mustafa — drops Corridor Keycard
-        furnitureList.add(makeZombie("zombie_waseed", 10 * ts, 8 * ts, ZOMBIE_RED, 1.0f, ts * 3));
+        furnitureList.add(makeZombie("zombie_waseed", 10 * ts, 8 * ts, ZOMBIE_RED, 1.0f, ts * 6));
         // Checkpoint
         furnitureList.add(makeStatic("checkpoint", 3 * ts, (gp.maxScreenRow - 3) * ts, ts, ts, new Color(50, 220, 180, 200)));
     }
@@ -813,11 +811,11 @@ public class ObjectManager {
         furnitureList.clear();
         int ts = gp.tileSize;
         // Hooud Bin Jawad — easy, slow
-        furnitureList.add(makeZombie("zombie_hooud", 8 * ts, 8 * ts, ZOMBIE_RED, 0.7f, ts * 2));
-        // Haider Ramzan — friendly NPC (Using Teacher2 sprite as an NPC placeholder)
+        furnitureList.add(makeZombie("zombie_hooud", 8 * ts, 8 * ts, ZOMBIE_RED, 0.7f, ts * 5));
+        // Haider Ramzan — friendly NPC (Using Teacher1 sprite)
         BufferedImage haiderImg;
-        if (teacher2Img != null) {
-            haiderImg = teacher2Img;
+        if (teacher1Img != null) {
+            haiderImg = teacher1Img;
         } else {
             haiderImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2Haider = haiderImg.createGraphics();
@@ -827,7 +825,7 @@ public class ObjectManager {
             g2Haider.drawRect(0, 0, 31, 31);
             g2Haider.dispose();
         }
-        double haiderScale = (teacher2Img != null) ? 96.0 / 128.0 : 3.0;
+        double haiderScale = (teacher1Img != null) ? 0.6 : 1.2; // Decreased size
         Furniture haider = new Furniture(14 * ts, 4 * ts - 30, haiderImg, haiderScale);
         haider.name = "npc_haider";
         furnitureList.add(haider);
@@ -839,9 +837,9 @@ public class ObjectManager {
         furnitureList.clear();
         int ts = gp.tileSize;
         // Dyen Asif — medium blocker
-        furnitureList.add(makeZombie("zombie_dyen", 12 * ts, 5 * ts, ZOMBIE_RED, 1.0f, ts * 3));
+        furnitureList.add(makeZombie("zombie_dyen", 12 * ts, 5 * ts, ZOMBIE_RED, 1.0f, ts * 6));
         // Ahmad Hussain — The Strict Grader, hard, aggressive chaser
-        furnitureList.add(makeZombie("zombie_ahmad", 4 * ts, 12 * ts, ZOMBIE_RED, 1.3f, ts * 4));
+        furnitureList.add(makeZombie("zombie_ahmad", 4 * ts, 12 * ts, ZOMBIE_RED, 1.3f, ts * 8));
         // Checkpoint near exit to library
         furnitureList.add(makeStatic("checkpoint", (gp.maxScreenCol / 2) * ts, (gp.maxScreenRow - 3) * ts, ts, ts, new Color(50, 220, 180, 200)));
     }
@@ -850,26 +848,27 @@ public class ObjectManager {
         furnitureList.clear();
         int ts = gp.tileSize;
         if (serverImg != null) {
-            int serverW = 200, serverH = 110;
-            furnitureList.add(new Furniture(serverImg, (gp.screenWidth - serverW) / 2, ts + 10, serverW, serverH));
+            int serverW = 160, serverH = 88;  // Slightly smaller visual
+            int sx = (gp.screenWidth - serverW) / 2;
+            int sy = (gp.screenHeight - serverH) / 2;
+            Furniture mainServer = new Furniture(serverImg, sx, sy, serverW, serverH);
+            mainServer.name = "main_server";
+            // Shrink collision box to 60% so player can approach it easily
+            int colW = (int)(serverW * 0.6), colH = (int)(serverH * 0.6);
+            mainServer.solidArea = new java.awt.Rectangle(sx + (serverW - colW)/2, sy + (serverH - colH)/2, colW, colH);
+            furnitureList.add(mainServer);
         }
-        // Interactive server terminal — lore
-        if (aiDeskImg != null) {
-            int deskW = 100, deskH = 65;
-            int startX = (gp.screenWidth - (4 * deskW + 3 * 25)) / 2;
-            for (int col = 0; col < 4; col++) {
-                Furniture desk = new Furniture(aiDeskImg, startX + col * (deskW + 25), 5 * ts, deskW, deskH);
-                desk.name = "server_terminal_" + col;
-                furnitureList.add(desk);
-            }
-        }
-        // Lore computer (glowing, interactable)
-        furnitureList.add(makeStatic("lore_computer", (gp.maxScreenCol / 2) * ts - ts, 3 * ts, ts * 2, ts * 2, new Color(0, 180, 255, 200)));
-        // FINAL BOSS — The Corrupted AI (with animated boss sprites)
-        Furniture boss = makeZombie("final_boss", 8 * ts, 6 * ts, BOSS_PURPLE, 1.8f, ts * 15);
-        boss.width = ts * 2;       // 64px wide
-        boss.height = (int)(ts * 3.4); // 108px tall (proportional to ~244x412 source)
-        // Assign boss-specific sprites (overrides generic zombie frames)
+        // FINAL BOSS — spawned in top-left corner, far from the server
+        int bossW = gp.tileSize;           // exactly 1 tile wide
+        int bossH = (int)(gp.tileSize * 1.8); // ~58px tall
+        Furniture boss = makeZombie("final_boss", 2 * gp.tileSize, 2 * gp.tileSize, BOSS_PURPLE, 1.8f, gp.tileSize * 20);
+        boss.width  = bossW;
+        boss.height = bossH;
+        boss.worldX = 2 * gp.tileSize;
+        boss.worldY = 2 * gp.tileSize;
+        boss.x      = 2 * gp.tileSize;
+        boss.y      = 2 * gp.tileSize;
+        if (boss.solidArea != null) { boss.solidArea.x = boss.x; boss.solidArea.y = boss.y; boss.solidArea.width = bossW; boss.solidArea.height = bossH; }
         if (bossIdleFrames != null && bossIdleFrames.length > 0) {
             boss.idleFrames = bossIdleFrames;
             boss.walkFrames = bossWalkFrames;
@@ -902,10 +901,10 @@ public class ObjectManager {
         furnitureList.clear();
         int ts = gp.tileSize;
         // Faizan the TA — first fight in classroom
-        Furniture faizan = makeZombie("zombie_faizan", (gp.maxScreenCol / 2) * ts - 3 * ts, 4 * ts, new Color(200, 100, 30, 220), 1.1f, ts * 5);
+        Furniture faizan = makeZombie("zombie_faizan", (gp.maxScreenCol / 2) * ts - 3 * ts, 4 * ts, new Color(200, 100, 30, 220), 1.1f, ts * 8);
         furnitureList.add(faizan);
         // Miss Javeria — second fight, drops library server room key
-        Furniture javeria = makeZombie("zombie_javeria", (gp.maxScreenCol / 2) * ts + ts, 4 * ts, new Color(180, 50, 120, 220), 1.3f, ts * 5);
+        Furniture javeria = makeZombie("zombie_javeria", (gp.maxScreenCol / 2) * ts + ts, 4 * ts, new Color(180, 50, 120, 220), 1.3f, ts * 8);
         furnitureList.add(javeria);
         // Teacher desk visual
         if (teacherDeskImg != null) {

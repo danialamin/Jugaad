@@ -24,16 +24,15 @@ alt Checkpoint exists
     activate combatController
     combatController -> finalBoss: getCombatChallenge()
     activate finalBoss
-    finalBoss -> finalBoss: getCurrentPhase()
     finalBoss --> combatController: phaseChallengeRef
     deactivate finalBoss
     
-    loop Each boss phase (up to maxPhases = 3)
+    loop Until finalBoss.isDefeated() == true
         alt Player chooses DEBUG
             [-> gameSession: handleSystemEvent("solveChallenge")
-            gameSession -> combatController: executeCombatMove(debugMove)
+            gameSession -> combatController: executeCombatMove(debugMove, isBossFight=true)
             
-            combatController -> combatStrategyFactory: createStrategy("Debug")
+            combatController -> combatStrategyFactory: createStrategy("Debug", true)
             activate combatStrategyFactory
             combatStrategyFactory -> debugStrategy **: create(bossChallenge)
             combatStrategyFactory --> combatController: debugStrategyRef
@@ -59,12 +58,12 @@ alt Checkpoint exists
                 deactivate debugStrategy
                 
                 combatController -> combatController: applyResult(combatResult)
-                combatController -> finalBoss: escalatePhase()
+                combatController -> finalBoss: takeDamage(enemy.maxHp)
                 activate finalBoss
-                finalBoss -> finalBoss: isMaxPhase()
+                finalBoss -> finalBoss: isDefeated()
                 deactivate finalBoss
                 
-                combatController -> karmaTracker: add(10, "Boss phase cleared - Debug")
+                combatController -> karmaTracker: add(10, "Boss challenge cleared - Debug")
                 destroy combatResult
                 destroy debugStrategy
                 
@@ -87,9 +86,9 @@ alt Checkpoint exists
             
         else Player chooses TERMINATE
             [-> gameSession: handleSystemEvent("makeChoiceTerminate")
-            gameSession -> combatController: executeCombatMove(terminateMove)
+            gameSession -> combatController: executeCombatMove(terminateMove, isBossFight=true)
             
-            combatController -> combatStrategyFactory: createStrategy("Terminate")
+            combatController -> combatStrategyFactory: createStrategy("Terminate", true)
             activate combatStrategyFactory
             combatStrategyFactory -> terminateStrategy **: create()
             combatStrategyFactory --> combatController: terminateStrategyRef
@@ -104,21 +103,16 @@ alt Checkpoint exists
             deactivate terminateStrategy
             
             combatController -> combatController: applyResult(combatResult)
-            combatController -> finalBoss: escalatePhase()
+            combatController -> finalBoss: takeDamage(30)
             activate finalBoss
-            finalBoss -> finalBoss: isMaxPhase()
+            finalBoss -> finalBoss: isDefeated()
             deactivate finalBoss
             
-            combatController -> karmaTracker: deduct(15, "Boss phase - Terminate brute force")
+            combatController -> karmaTracker: deduct(15, "Boss attacked - Terminate brute force")
             destroy combatResult
             destroy terminateStrategy
         end
     end
-    
-    combatController -> finalBoss: deployPatch()
-    activate finalBoss
-    finalBoss -> finalBoss: isMaxPhase()
-    deactivate finalBoss
     
     [-> gameSession: handleSystemEvent("confirmPatch")
     gameSession -> endingResolver **: create()

@@ -121,6 +121,7 @@ public class GamePanel extends JPanel implements Runnable {
     public combat.CombatChallenge currentChallenge;
     public controller.CombatController combatController = new controller.CombatController();
     public java.util.Set<String> defeatedZombies = new java.util.HashSet<>();
+    public int serverBossHp = 300;
 
     public void resetPhaseOneFlow() {
         phaseOneState = PhaseOneState.CS_CLASS_REQUIRED;
@@ -232,14 +233,17 @@ public class GamePanel extends JPanel implements Runnable {
             zombieMode = true;
             phaseTwoState = PhaseTwoState.EXPLORE;
             session.switchToZombieMode();
-            currentZone = ZoneType.LIBRARY;
+            currentZone = ZoneType.SERVER_ROOM;
             tileM.loadMap();
-            objM.loadZombieLibraryObjects();
+            objM.loadZombieServerRoomObjects();
             objM.filterDefeatedZombies(defeatedZombies);
-            session.getPlayer().xLocation = (maxScreenCol / 2) * tileSize;
+            session.getPlayer().xLocation = tileSize * 2; // Spawn near door
             session.getPlayer().yLocation = (maxScreenRow / 2) * tileSize;
-            gameState = playState;  // Skip title screen too
-            System.out.println("[DEBUG] Skipped to Zombie Mode in Library");
+            gameUI.startDialogue("System|WARNING: You have entered the Server Room.\n" +
+                                 "System|The Corrupted AI Boss is heavily armored.\n" +
+                                 "System|Keep dodging it and interact with the Main Server (press E or Enter) repeatedly to WEAKEN it before combat!");
+            gameState = dialogueState;  // Skip title screen too
+            System.out.println("[DEBUG] Skipped to Zombie Mode in Server Room");
         } else {
             gameState = titleState;
         }
@@ -312,13 +316,6 @@ public class GamePanel extends JPanel implements Runnable {
                 session.getPlayer().getPhone().open();
                 gameUI.openPhoneMenu();
                 gameState = phoneState;
-            } else if (zombieMode && phaseTwoState == PhaseTwoState.BOSS_INTRO) {
-                bossIntroTicks++;
-                if (bossIntroTicks > FPS * 4) {
-                    phaseTwoState = PhaseTwoState.BOSS_FIGHT;
-                    gameUI.startCombatUI("CORRUPTED AI SYSTEM — Phase 1/3", 300);
-                    gameState = combatState;
-                }
             } else {
                 session.getPlayer().update();
                 checkZoneTransitions();
@@ -362,6 +359,13 @@ public class GamePanel extends JPanel implements Runnable {
         } else if (gameState == combatState) {
             gameUI.updateCombatScreen();
         } else if (gameState == gameOverState) {
+            if (keyH.enterPressed || keyH.ePressed || keyH.escapePressed) {
+                keyH.enterPressed = false;
+                keyH.ePressed = false;
+                keyH.escapePressed = false;
+                gameState = titleState;
+            }
+        } else if (gameState == endingState) {
             if (keyH.enterPressed || keyH.ePressed || keyH.escapePressed) {
                 keyH.enterPressed = false;
                 keyH.ePressed = false;
@@ -610,7 +614,11 @@ public class GamePanel extends JPanel implements Runnable {
                             objM.filterDefeatedZombies(defeatedZombies);
 
                             if (currentZone == ZoneType.SERVER_ROOM && !defeatedZombies.contains("final_boss")) {
-                                // Boss fight triggered by lore_computer interaction, not auto
+                                gameUI.startDialogue("System|WARNING: You have entered the Server Room.\n" +
+                                                     "System|The Corrupted AI Boss is heavily armored.\n" +
+                                                     "System|Keep dodging it and interact with the Main Server (press E or Enter) repeatedly to WEAKEN it before combat!");
+                                gameState = dialogueState;
+                                clearKeys();
                             }
                         } else {
                             if (currentZone == ZoneType.CAFETERIA) objM.loadCafeteriaObjects();
@@ -631,18 +639,7 @@ public class GamePanel extends JPanel implements Runnable {
                         soundM.playZoneMusic(currentZone);
                         clearKeys();
 
-                        if (zombieMode && currentZone == ZoneType.SERVER_ROOM) {
-                            phaseTwoState = PhaseTwoState.BOSS_INTRO;
-                            bossIntroTicks = 0;
-                            currentCombatEnemy = null;
-                            
-                            // Remove physical boss so it doesn't try to attack during the cutscene
-                            hiddenBoss = null;
-                            for (entity.Furniture f : objM.furnitureList) {
-                                if ("final_boss".equals(f.name)) hiddenBoss = f;
-                            }
-                            if (hiddenBoss != null) objM.furnitureList.remove(hiddenBoss);
-                        } else if (!zombieMode && currentZone == ZoneType.CLASSROOM) {
+                        if (!zombieMode && currentZone == ZoneType.CLASSROOM) {
                             gameUI.startDialogue("Classroom|CS-101 with Sir Shehryrar Rashid. Find an empty seat.");
                             gameState = dialogueState;
                         } else if (!zombieMode && currentZone == ZoneType.AI_LAB) {
@@ -706,8 +703,37 @@ public class GamePanel extends JPanel implements Runnable {
                 }
             }
 
-            // Lore computer in server room
+            // Server room hack mechanic
             if (currentZone == ZoneType.SERVER_ROOM && zombieMode) {
+                entity.Furniture server = findNearbyNamedFurniture("main_server", tileSize * 2);
+                if (server != null) {
+                    if (serverBossHp > 0) {
+                        serverBossHp -= 50;
+                        if (serverBossHp <= 0) {
+                            // Killed via hacking — no combat needed!
+                            serverBossHp = 0;
+                            // Remove physical boss sprite
+                            objM.furnitureList.removeIf(f -> "final_boss".equals(f.name));
+                            defeatedZombies.add("final_boss");
+                            session.getKarmaTracker().add(30, "Hacked the AI to death — pure intellect");
+                            gameUI.startDialogue("System|SYSTEM FAILURE: Corrupted AI destroyed via terminal exploit.\nYou|I... I actually killed it from the server. No combat needed.");
+                            gameState = dialogueState;
+                            // Trigger ending after dialogue
+                            phaseTwoState = PhaseTwoState.GAME_ENDING;
+                            resolveEnding();
+                        } else {
+                            gameUI.startDialogue("System|Terminal bypassed. Corrupted AI health compromised (-50 HP). Remaining: " + serverBossHp);
+                            gameState = dialogueState;
+                        }
+                    } else {
+                        gameUI.startDialogue("System|Terminal locked. AI is already at critical levels.");
+                        gameState = dialogueState;
+                    }
+                    keyH.ePressed = false;
+                    keyH.enterPressed = false;
+                    return;
+                }
+                
                 entity.Furniture lore = findNearbyNamedFurniture("lore_computer", tileSize * 2);
                 if (lore != null) {
                     if (!loreComputerRead) {
@@ -1117,21 +1143,20 @@ public class GamePanel extends JPanel implements Runnable {
 
     private void startFinalBoss() {
         entity.FinalBoss boss = new entity.FinalBoss();
+        boss.takeDamage(boss.getMaxHp() - serverBossHp); // Match the lowered HP from hacking
         currentCombatEnemy = boss;
         combatEnemyDisplayName = "CORRUPTED AI SYSTEM";
         combatController.initiateCombat(boss);
         
-        // Start with the Intro/Dodge sequence per user request
-        phaseTwoState = PhaseTwoState.BOSS_INTRO;
-        bossIntroTicks = 0;
+        phaseTwoState = PhaseTwoState.IN_COMBAT;
         
-        // Remove boss placeholder
+        // Remove physical boss
         for (entity.Furniture f : objM.furnitureList) {
             if ("final_boss".equals(f.name)) { objM.furnitureList.remove(f); break; }
         }
         
         soundM.playFightMusic("final_boss");
-        gameUI.startPreFightDialogue("final_boss", 300);
+        gameUI.startPreFightDialogue("final_boss", boss.getHp());
         gameState = dialogueState;
         clearKeys();
     }
@@ -1146,7 +1171,9 @@ public class GamePanel extends JPanel implements Runnable {
         if (move == combat.CombatMove.DEBUG) {
             // Start quiz phase
             if (currentCombatEnemy instanceof entity.FinalBoss) {
-                currentChallenge = combat.CombatChallenge.forBossPhase(((entity.FinalBoss)currentCombatEnemy).getCurrentPhase());
+                int hp = currentCombatEnemy.getHp();
+                int phase = hp > 200 ? 1 : hp > 100 ? 2 : 3;
+                currentChallenge = combat.CombatChallenge.forBossPhase(phase);
             } else {
                 currentChallenge = new combat.CombatChallenge(currentCombatEnemy.getHp() >= 70 ? 3 : currentCombatEnemy.getHp() >= 50 ? 2 : 1);
             }
@@ -1176,13 +1203,16 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     private void executeCombatStrategy(combat.CombatMove move, boolean passedQuiz) {
-        // SD-UC9/UC10/UC12: GameSession → CombatController.executeCombatMove(move)
-        //   → CombatStrategyFactory.createStrategy() → Strategy.execute()
         combatController.initiateCombat(currentCombatEnemy);
         boolean isBoss = currentCombatEnemy instanceof entity.FinalBoss;
         combat.CombatResult result = combatController.executeCombatMove(move, passedQuiz, isBoss);
         combatController.applyResult(result);
-        
+
+        // ── ALWAYS sync the bottom HUD bar immediately after any combat action ──
+        if (isBoss && currentCombatEnemy != null) {
+            serverBossHp = Math.max(0, currentCombatEnemy.getHp());
+        }
+
         // Apply karma
         if (result.getKarmaChange() != 0) {
             session.getPlayer().getStats().updateKarma(result.getKarmaChange());
@@ -1195,20 +1225,20 @@ public class GamePanel extends JPanel implements Runnable {
         }
         
         if (result.isVictory()) {
-            // Check if final boss and needs phase escalation
+            // ── Final Boss: single HP pool, no phases ──
             if (currentCombatEnemy instanceof entity.FinalBoss) {
                 entity.FinalBoss boss = (entity.FinalBoss) currentCombatEnemy;
-                boss.escalatePhase();
-                if (boss.isMaxPhase()) {
-                    // Boss defeated! Deploy patch and resolve ending
-                    boss.deployPatch();
+                serverBossHp = Math.max(0, boss.getHp());
+                if (boss.isDefeated()) {
+                    // Boss is dead — trigger the ending
+                    serverBossHp = 0;
                     resolveEnding();
                     return;
                 } else {
-                    // Next phase
-                    boss.resetHp();
-                    gameUI.startCombatUI("CORRUPTED AI — Phase " + boss.getCurrentPhase() + "/3", boss.getHp());
+                    // Boss still alive — return to overworld chase, fight again when caught
+                    gameUI.startDialogue("You|The AI staggers but holds. It's still active. HP: " + serverBossHp);
                     phaseTwoState = PhaseTwoState.BOSS_FIGHT;
+                    gameState = dialogueState;
                     return;
                 }
             }
@@ -1299,48 +1329,55 @@ public class GamePanel extends JPanel implements Runnable {
     private void resolveEnding() {
         phaseTwoState = PhaseTwoState.GAME_ENDING;
         int karma = session.getKarmaTracker().getTotal();
-        String endingType = karma >= 70 ? "PACIFIST" : karma >= 30 ? "MIXED" : "BAD";
+        String endingType;
         String[] endingQueue;
-        if (endingType.equals("PACIFIST")) {
+
+        if (karma >= 70) {
+            endingType = "PACIFIST";
             endingQueue = new String[] {
-                "You|The containment patch deploys cleanly. The lights stabilize.",
-                "System|ALARM DEACTIVATED. HEURISTIC STABILITY RESTORED. CAMPUS NETWORK REBOOTING...",
-                "You|The corridors fill with confused students and staff. Everyone is alive.",
-                "You|Miss Javeria is grading in the corridor. Haider is making chai. The librarian is back at her desk.",
-                "You|FAST-NU Islamabad is chaotic again. And that means it is okay."
+                "You|The containment patch compiles without a single error.",
+                "System|ALARM DEACTIVATED. ALL NODES STABLE. CAMPUS NETWORK REBOOTING...",
+                "You|The flicker in the corridor lights dies down. One by one — they come back on.",
+                "You|Miss Javeria emerges from Lab-1, confused but alive. A TA is helping Faizan off the floor.",
+                "You|Haider Ramzan is at the prayer area, making chai. The librarian is back at her desk arguing with a student.",
+                "You|FAST-NU Islamabad is chaotic again. And somehow — that means everything is okay."
             };
-        } else if (endingType.equals("MIXED")) {
+        } else if (karma >= 30) {
+            endingType = "MIXED";
             endingQueue = new String[] {
-                "You|The patch goes through. Warnings still flicker on the terminal.",
-                "System|PARTIAL RECOVERY. Some nodes remain unstable.",
-                "You|Miss Javeria and a TA are conscious, sitting silently in the classroom.",
-                "You|The rest of the campus is quiet. Maybe too quiet."
+                "You|The patch goes through — barely. Half the terminal warnings stay red.",
+                "System|PARTIAL RECOVERY. SOME NODES REMAIN UNSTABLE. MONITORING REQUIRED.",
+                "You|Miss Javeria and a TA are sitting silently in the corridor. Alive. Not talking.",
+                "You|Some doors don't open. Some rooms are empty that shouldn't be.",
+                "You|You walk out into sunlight. The campus recovers. Slowly."
             };
         } else {
+            endingType = "BAD";
             endingQueue = new String[] {
-                "You|The patch deploys but the system keeps spitting errors.",
-                "System|CRITICAL INSTABILITY. RECOVERY INCOMPLETE.",
-                "You|The campus is empty. A sign on the third classroom door says something odd.",
-                "You|It reads: 'They were never here. You were never here. GPA: 0.0.'"
+                "You|The patch deploys but the system keeps rejecting it. Error after error.",
+                "System|CRITICAL INSTABILITY. ROLLBACK FAILED. CORRUPTION SPREADING TO BACKUP NODES.",
+                "You|The building is dark and empty. Your footsteps echo in the corridor.",
+                "You|A sign on the CS-101 door reads: 'They were never here. You were never here.'",
+                "You|GPA: 0.0. Karma: " + karma + ". The campus forgets you ever existed."
             };
             soundM.setBadEndingMode(true);
-            soundM.playZoneMusic(currentZone); // triggers badEnding.wav immediately
+            soundM.playZoneMusic(currentZone);
         }
-        gameUI.setLectureQueue(endingQueue, false);
-        gameUI.startDialogue(endingQueue[0]);
-        gameState = dialogueState;
-        currentCombatEnemy = null;
 
-        // Set ending screen data for finalizeEnding
         String epilogue;
         if (endingType.equals("PACIFIST")) {
-            epilogue = "You chose mercy at every turn. The campus remembers. Karma: " + karma;
+            epilogue = "You chose intellect and mercy at every turn. The campus healed completely. Karma: " + karma;
         } else if (endingType.equals("MIXED")) {
-            epilogue = "A mix of force and compassion. Some recovered, some did not. Karma: " + karma;
+            epilogue = "A mix of force and compassion. The campus recovered — but some scars remain. Karma: " + karma;
         } else {
-            epilogue = "Force was your answer to everything. The campus paid for it. Karma: " + karma;
+            epilogue = "Force was your only answer. The corruption spread further. Karma: " + karma;
         }
+
+        gameUI.setLectureQueue(endingQueue, false);
+        gameUI.startDialogue(endingQueue[0]);
         gameUI.showEndingScreen(endingType, epilogue, karma);
+        gameState = dialogueState;
+        currentCombatEnemy = null;
     }
 
     public void finalizeEnding() {

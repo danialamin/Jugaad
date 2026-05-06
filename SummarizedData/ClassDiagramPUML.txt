@@ -31,11 +31,15 @@ together {
             - sessionId : int
             - mode : GameModeType
             - isActive : boolean
+            - lectureQuizActive : boolean
+            - activeGameMode : GameMode
+            - combatController : CombatController
             + startNewGame() : void
             + loadFromSave(saveId : int) : void
             + handleSystemEvent(event : String) : void
             + switchToZombieMode() : void
             + showGameOver() : void
+            + updateZone(zone : Zone) : void
             + getCurrentMode() : GameModeType
             + getPlayer() : Player
             + getCampusMap() : CampusMap
@@ -217,13 +221,6 @@ together {
             }
 
             class FinalBoss {
-                - phase : int
-                - maxPhases : int = 3
-                - patchDeployed : boolean
-                + escalatePhase() : void
-                + isMaxPhase() : boolean
-                + deployPatch() : void
-                + getCurrentPhase() : int
             }
         }
     }
@@ -285,10 +282,8 @@ together {
 
         class SavePoint {
             - savePointId : int
-            - zoneId : int
             + onInteract(player : Player, session : GameSession) : void
             + isActive() : boolean
-            + activate() : void
         }
 
         class EasterEgg {
@@ -429,6 +424,7 @@ together {
 
         class CombatStrategyFactory {
             + createStrategy(strategyType : String) : ICombatStrategy
+            + createStrategy(strategyType : String, isBossFight : boolean) : ICombatStrategy
         }
 
         class CombatChallenge {

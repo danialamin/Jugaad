@@ -177,15 +177,14 @@ public class TileManager {
      * Blood spatters at fixed positions.
      */
     private void zombifyCurrentMap() {
-        int zombieFloor = 17;
-        int zombieWall = 18;
-        int bloodyFloor = 19;
-        int doorTile = 11;
+        int zombieFloor = 17;   // The main zombie floor tile
+        int zombieWall  = 18;   // Border / wall tile (collision = true)
+        int bloodyFloor = 19;   // Blood-splatter composite (just visual accent)
+        int doorTile    = 11;
 
         for (int col = 0; col < gp.maxScreenCol; col++) {
             for (int row = 0; row < gp.maxScreenRow; row++) {
-                int current = mapTileNum[col][row];
-                if (current == doorTile) continue; // Never touch doors
+                if (mapTileNum[col][row] == doorTile) continue; // Never touch doors
 
                 boolean isBorder = (row == 0 || row == gp.maxScreenRow - 1 ||
                                     col == 0 || col == gp.maxScreenCol - 1);
@@ -193,13 +192,10 @@ public class TileManager {
                 if (isBorder) {
                     mapTileNum[col][row] = zombieWall;
                 } else {
-                    // Deterministic mix: keep ~30% original room tiles for vibe
-                    boolean keepOriginal = ((col * 3 + row * 7) % 10 < 3);
-                    if (!keepOriginal) {
-                        // Blood at specific fixed positions (deterministic pattern)
-                        boolean bloodHere = ((col * 7 + row * 13) % 23 == 0);
-                        mapTileNum[col][row] = bloodHere ? bloodyFloor : zombieFloor;
-                    }
+                    // All interior tiles: zombie floor only.
+                    // Sprinkle a small amount of blood spatters (deterministic, sparse)
+                    boolean bloodHere = ((col * 7 + row * 13) % 40 == 0);
+                    mapTileNum[col][row] = (bloodHere && tile[19] != null) ? bloodyFloor : zombieFloor;
                 }
             }
         }
@@ -232,20 +228,24 @@ public class TileManager {
     }
 
     private void loadGroundMap() {
-        int grassTile = 1;
-        int doorTile = 11;
+        int grassTile = 1;   // Grass floor
+        int wallTile  = 0;   // Default wall tile from floor.png (first tile)
+        int doorTile  = 11;
 
         for (int col = 0; col < gp.maxScreenCol; col++) {
             for (int row = 0; row < gp.maxScreenRow; row++) {
-                // Top row: door to Cafe (center) and door to Prayer Area (center+5)
-                if (row == 0 && (col == gp.maxScreenCol / 2 || col == gp.maxScreenCol / 2 + 5)) {
-                    mapTileNum[col][row] = doorTile;
-                }
-                // Left edge: door to Walkway at mid-height
-                else if (col == 0 && row == gp.maxScreenRow / 2) {
-                    mapTileNum[col][row] = doorTile;
-                }
-                else {
+                boolean isBorder = (row == 0 || row == gp.maxScreenRow - 1 ||
+                                    col == 0 || col == gp.maxScreenCol - 1);
+                if (isBorder) {
+                    // Doors: Cafe (top center), Prayer Area (top center+5), Walkway (left mid)
+                    if (row == 0 && (col == gp.maxScreenCol / 2 || col == gp.maxScreenCol / 2 + 5)) {
+                        mapTileNum[col][row] = doorTile;
+                    } else if (col == 0 && row == gp.maxScreenRow / 2) {
+                        mapTileNum[col][row] = doorTile;
+                    } else {
+                        mapTileNum[col][row] = wallTile;
+                    }
+                } else {
                     mapTileNum[col][row] = grassTile;
                 }
             }

@@ -100,7 +100,19 @@ public class GameSession {
         state.setPosY(player.getPosition().getY());
         state.setZoneId(player.getCurrentZoneId());
         state.setModeSnapshot(mode);
+        state.setFlag("saved", true);
         return state;
+    }
+
+    public void showGameOver() {
+        this.isActive = false;
+        System.out.println("Game Over.");
+    }
+
+    public void updateZone(map.Zone zone) {
+        if (zone != null) {
+            this.player.setCurrentZoneId(zone.getType().ordinal());
+        }
     }
 
     public void endSession() {

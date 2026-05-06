@@ -21,7 +21,7 @@ public class Player {
 
     public int xLocation, yLocation;
     public int speed;
-    public boolean isImmortal = true;
+    public boolean isImmortal = false;
 
     private String name = "Student";
     private int hp;

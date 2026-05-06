@@ -205,6 +205,9 @@ public class UI {
         } else if (gp.gameState == gp.phoneState) {
             drawLiveHUD(g2);
             drawPhoneMenu(g2);
+        } else if (gp.gameState == gp.endingState) {
+            drawEndingScreen(g2);
+            return;
         }
 
         int x = gp.screenWidth - 130;
@@ -240,6 +243,47 @@ public class UI {
                     g2.setColor(new Color(255, 200, 50));
                     g2.drawString("• Server Card", x - 20, y);
                 }
+            }
+            
+            if (gp.currentZone == map.ZoneType.SERVER_ROOM && gp.serverBossHp >= 0) {
+                // Always pull from the LIVE enemy object during combat — never stale
+                int liveHp  = gp.serverBossHp; // default (explore mode)
+                int maxHp   = 300;
+                if (gp.currentCombatEnemy instanceof entity.FinalBoss) {
+                    liveHp = Math.max(0, gp.currentCombatEnemy.getHp());
+                    maxHp  = gp.currentCombatEnemy.getMaxHp();
+                    gp.serverBossHp = liveHp; // keep in sync so the variable is never stale
+                }
+                if (liveHp <= 0 && gp.currentCombatEnemy == null) return; // boss dead, skip bar
+
+                int barWidth  = 400;
+                int barHeight = 25;
+                int bx = (gp.screenWidth - barWidth) / 2;
+                int by = gp.screenHeight - 60;
+
+                // Background
+                g2.setColor(new Color(50, 0, 0, 200));
+                g2.fillRect(bx, by, barWidth, barHeight);
+
+                // HP fill
+                double hpRatio = Math.min(1.0, Math.max(0.0, (double) liveHp / maxHp));
+                // Colour shifts red → orange as HP gets low
+                Color barColor = liveHp > maxHp / 2
+                    ? new Color(200, 0, 0, 230)
+                    : new Color(255, 80, 0, 230);
+                g2.setColor(barColor);
+                g2.fillRect(bx, by, (int)(barWidth * hpRatio), barHeight);
+
+                // Border
+                g2.setColor(Color.WHITE);
+                g2.setStroke(new BasicStroke(2));
+                g2.drawRect(bx, by, barWidth, barHeight);
+
+                // Label — shows exact same number as combat window
+                g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, 14));
+                String bossLabel = "Corrupted AI: " + liveHp + " / " + maxHp;
+                int lw = g2.getFontMetrics().stringWidth(bossLabel);
+                g2.drawString(bossLabel, bx + (barWidth - lw) / 2, by + 17);
             }
         }
 
@@ -1406,7 +1450,7 @@ public void updateDialogueScreen() {
         };
         lectureQueueIndex = 0;
         lectureQueueTriggersQuiz = false;
-        loreComputerAfterDialogue = true;
+        loreComputerAfterDialogue = false;
         preFightAfterDialogue = false;
         startDialogue(lectureQueue[0], false);
     }
@@ -2430,31 +2474,69 @@ public void drawQuizScreen(Graphics2D g2) {
     }
 
     private void drawEndingScreen(Graphics2D g2) {
+        // Dark overlay background
         g2.setColor(new Color(0, 0, 0, 250));
         g2.fillRect(0, 0, gp.screenWidth, gp.screenHeight);
 
+        // Title color per ending type
         Color titleColor;
-        if (endingType.equals("PACIFIST")) titleColor = new Color(100, 255, 150);
-        else if (endingType.equals("EVIL")) titleColor = new Color(255, 60, 60);
-        else titleColor = new Color(200, 200, 100);
+        Color accentColor;
+        if (endingType.equals("PACIFIST")) {
+            titleColor  = new Color(100, 255, 150);
+            accentColor = new Color(60, 200, 100);
+        } else if (endingType.equals("BAD")) {
+            titleColor  = new Color(255, 60, 60);
+            accentColor = new Color(200, 40, 40);
+        } else { // MIXED
+            titleColor  = new Color(255, 210, 60);
+            accentColor = new Color(200, 160, 40);
+        }
 
-        g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 36));
+        int cx = gp.screenWidth / 2;
+        int cy = gp.screenHeight / 2;
+
+        // Game title
+        g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, 38));
         g2.setColor(titleColor);
         String title = "CAMPUSFLEX";
-        g2.drawString(title, getXForCenteredText(g2, title, 0, gp.screenWidth), gp.screenHeight / 2 - 80);
+        g2.drawString(title, getXForCenteredText(g2, title, 0, gp.screenWidth), cy - 100);
 
-        g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
-        String endLabel = endingType + " ENDING";
-        g2.drawString(endLabel, getXForCenteredText(g2, endLabel, 0, gp.screenWidth), gp.screenHeight / 2 - 40);
+        // Ending type label
+        g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, 22));
+        g2.setColor(accentColor);
+        String endLabel = "\u2605  " + endingType + " ENDING  \u2605";
+        g2.drawString(endLabel, getXForCenteredText(g2, endLabel, 0, gp.screenWidth), cy - 60);
 
-        g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 15));
+        // Divider line
+        g2.setColor(accentColor);
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawLine(cx - 200, cy - 45, cx + 200, cy - 45);
+
+        // Epilogue text
+        g2.setFont(new Font(Font.SERIF, Font.ITALIC, 15));
         g2.setColor(new Color(220, 220, 220));
-        drawWrappedString(g2, endingEpilogue, 50, gp.screenHeight / 2 - 20, gp.screenWidth - 100, 22, 12);
+        drawWrappedString(g2, endingEpilogue, 60, cy - 25, gp.screenWidth - 120, 22, 12);
 
-        g2.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 12));
-        g2.setColor(new Color(120, 120, 120));
-        String credits = "24I-0608 Muhammad Dyen Asif | 24I-0574 Abdullah Aamir | 24I-0669 Danial Amin";
-        g2.drawString(credits, getXForCenteredText(g2, credits, 0, gp.screenWidth), gp.screenHeight / 2 + 80);
+        // Karma score
+        g2.setFont(new Font(Font.MONOSPACED, Font.BOLD, 14));
+        g2.setColor(accentColor);
+        String karmaStr = "Final Karma Score: " + endingKarma;
+        g2.drawString(karmaStr, getXForCenteredText(g2, karmaStr, 0, gp.screenWidth), cy + 65);
+
+        // Credits
+        g2.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 11));
+        g2.setColor(new Color(100, 100, 100));
+        String credits = "24I-0608 Muhammad Dyen Asif  |  24I-0574 Abdullah Aamir  |  24I-0669 Danial Amin";
+        g2.drawString(credits, getXForCenteredText(g2, credits, 0, gp.screenWidth), cy + 90);
+
+        // Prompt
+        long blink = (System.currentTimeMillis() / 600) % 2;
+        if (blink == 0) {
+            g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+            g2.setColor(new Color(160, 160, 160));
+            String prompt = "[ Press ENTER to exit ]";
+            g2.drawString(prompt, getXForCenteredText(g2, prompt, 0, gp.screenWidth), cy + 115);
+        }
     }
 
     private void drawBossIntro(Graphics2D g2) {
