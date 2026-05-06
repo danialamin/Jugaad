@@ -458,10 +458,10 @@ public class ObjectManager {
             g2Img.drawRect(0, 0, 31, 31);
             g2Img.dispose();
         }
-        // Scale 128x128 sprite to ~48x48 (much bigger)
-        double teacherNpcScale = (teacher1Img != null) ? 48.0 / 128.0 : 1.5;
-        // Shift position LEFT (-64) and DOWN (+10) so he stands beside the desk
-        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * tileSize - 64, 2 * tileSize - 10, teacherImg, teacherNpcScale);
+        // Scale 128x128 sprite to ~64x64 (much bigger)
+        double teacherNpcScale = (teacher1Img != null) ? 64.0 / 128.0 : 2.0;
+        // Shift position FAR LEFT (-90) and slightly DOWN (+5) so he stands clearly beside the desk
+        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * tileSize - 90, 2 * tileSize + 5, teacherImg, teacherNpcScale);
         teacherNPC.name = "teacher";
         furnitureList.add(teacherNPC);
 
@@ -671,10 +671,10 @@ public class ObjectManager {
             g2Img.drawRect(0, 0, 31, 31);
             g2Img.dispose();
         }
-        // Scale 128x128 sprite to ~48x48 (much bigger)
-        double aiTeacherScale = (teacher2Img != null) ? 48.0 / 128.0 : 1.5;
-        // Shift position LEFT and slightly DOWN to stand beside the AI setup
-        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * ts - 60, ts + 15, teacherImg, aiTeacherScale);
+        // Scale 128x128 sprite to ~64x64 (much bigger)
+        double aiTeacherScale = (teacher2Img != null) ? 64.0 / 128.0 : 2.0;
+        // Shift position FAR LEFT and slightly DOWN to stand beside the AI setup
+        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * ts - 90, ts + 20, teacherImg, aiTeacherScale);
         teacherNPC.name = "teacher";
         furnitureList.add(teacherNPC);
 
@@ -720,8 +720,8 @@ public class ObjectManager {
     private Furniture makeZombie(String name, int x, int y, Color color, float speed, int detectRadius) {
         int ts = gp.tileSize;
         int spriteIdx = getZombieSpriteIndex(name);
-        // INCREASED SIZE: regular zombies ~64x64 (2 tiles wide/tall), skeleton slightly bigger
-        int drawSize = (spriteIdx == 4) ? (int)(ts * 2.2) : (int)(ts * 2.0);
+        // INCREASED SIZE: regular zombies ~80x80 (2.5 tiles), skeleton 90x90 (2.8 tiles)
+        int drawSize = (spriteIdx == 4) ? (int)(ts * 2.8) : (int)(ts * 2.5);
         Furniture f = new Furniture(null, x, y, drawSize, drawSize);
         f.name = name;
         f.placeholderColor = color; // Fallback if sprites fail to load
