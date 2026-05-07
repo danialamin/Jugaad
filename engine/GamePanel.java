@@ -133,6 +133,24 @@ public class GamePanel extends JPanel implements Runnable {
         cafeteriaUncleStage = 0;
     }
 
+    public void resetZombieModeState() {
+        zombieMode = false;
+        phaseTwoState = PhaseTwoState.CUTSCENE;
+        zombieCutsceneTicks = 0;
+        bossIntroTicks = 0;
+        bossDodgeTicks = 0;
+        hiddenBoss = null;
+        flares.clear();
+        currentCombatEnemy = null;
+        combatEnemyDisplayName = "";
+        combatEnemyInternalName = "";
+        currentChallenge = null;
+        defeatedZombies.clear();
+        serverBossHp = 300;
+        phase2IntroPart = 0;
+        soundM.setZombieMode(false);
+    }
+
     public void beginLectureForCurrentZone() {
         activeLectureZone = currentZone;
     }
@@ -506,7 +524,7 @@ public class GamePanel extends JPanel implements Runnable {
                                 // Enforce killing librarian before entering CS-101
                                 if (loc.getName().equals("CS-101 Classroom")) {
                                     if (!defeatedZombies.contains("zombie_librarian")) {
-                                        gameUI.startDialogue("You|The door is jammed. Maybe the Librarian back in the Library dropped something useful.");
+                                        gameUI.startDialogue("You|The door is jammed. Maybe Mr Amir Rehman back in the Library dropped something useful.");
                                         pushPlayerBack(loc.getRequiredDirection());
                                         gameState = dialogueState;
                                         clearKeys();
@@ -940,13 +958,13 @@ public class GamePanel extends JPanel implements Runnable {
         entity.Furniture f = findNearbyNamedFurniture("librarian", tileSize * 3);
         if (f == null) return;
         String[] librarianDialogues = {
-            "Librarian|Shh! This is FAST-NU Islamabad library, not your gaming lounge. Rs. 2000 fine if I catch you playing games!",
-            "Librarian|Books are due back in two weeks. Late fees apply. We accept cash, not your grandmother's excuses.",
-            "Librarian|The CS section is in the back. Try not to spill coffee on the books like last semester's batch did.",
-            "Librarian|I've been working here since 2005. I've seen students come and go. Most of them go to switch their major to BBA.",
-            "Librarian|The WiFi password changes every semester. Last one was 'FASTNU2024'. Ask IT, not me.",
-            "Librarian|No sleeping on the tables! This is a library, not a hostel. Go to the prayer area if you're that tired.",
-            "Librarian|Group study is allowed, but if I hear you discussing PUBG strategies, you're out."
+            "Mr Amir Rehman|Shh! This is FAST-NU Islamabad library, not your gaming lounge. Rs. 2000 fine if I catch you playing games!",
+            "Mr Amir Rehman|Books are due back in two weeks. Late fees apply. We accept cash, not your grandmother's excuses.",
+            "Mr Amir Rehman|The CS section is in the back. Try not to spill coffee on the books like last semester's batch did.",
+            "Mr Amir Rehman|I've been working here since 2005. I've seen students come and go. Most of them go to switch their major to BBA.",
+            "Mr Amir Rehman|The WiFi password changes every semester. Last one was 'FASTNU2024'. Ask IT, not me.",
+            "Mr Amir Rehman|No sleeping on the tables! This is a library, not a hostel. Go to the prayer area if you're that tired.",
+            "Mr Amir Rehman|Group study is allowed, but if I hear you discussing PUBG strategies, you're out."
         };
         int index = (int)(Math.random() * librarianDialogues.length);
         gameUI.startDialogue(librarianDialogues[index]);
@@ -1068,8 +1086,8 @@ public class GamePanel extends JPanel implements Runnable {
         int hp;
         String displayName;
         switch (zombieName) {
-            case "zombie_librarian":          displayName = "Mam Hafsa (Librarian)";         hp = 60;  break;
-            case "zombie_waseed":            displayName = "Waseed E Mustafa (Zombie)";     hp = 80;  break;
+            case "zombie_librarian":          displayName = "Mr Amir Rehman (Librarian)";   hp = 60;  break;
+            case "zombie_ibtassam_amjad":    displayName = "Ibtassam Amjad (Zombie)";       hp = 80;  break;
             case "zombie_dyen":              displayName = "Dyen Asif (Zombie)";            hp = 80;  break;
             case "zombie_ahmad":             displayName = "Ahmad Hussain — The Grader";    hp = 120; break;
             case "zombie_hooud":             displayName = "Hooud Bin Jawad (Zombie)";      hp = 50;  break;
@@ -1285,7 +1303,7 @@ public class GamePanel extends JPanel implements Runnable {
 
     private void checkZombieDrops(String internalName) {
         switch (internalName) {
-            case "zombie_waseed":
+            case "zombie_ibtassam_amjad":
                 session.getPlayer().getInventory().addItem(new inventory.KeyItem(1, "Corridor Keycard", "Unlocks the Corridor"));
                 break;
             case "zombie_javeria":
@@ -1339,7 +1357,7 @@ public class GamePanel extends JPanel implements Runnable {
                 "System|ALARM DEACTIVATED. ALL NODES STABLE. CAMPUS NETWORK REBOOTING...",
                 "You|The flicker in the corridor lights dies down. One by one — they come back on.",
                 "You|Miss Javeria emerges from Lab-1, confused but alive. A TA is helping Faizan off the floor.",
-                "You|Haider Ramzan is at the prayer area, making chai. The librarian is back at her desk arguing with a student.",
+                "You|Haider Ramzan is at the prayer area, making chai. Mr Amir Rehman is back at his desk arguing with a student.",
                 "You|FAST-NU Islamabad is chaotic again. And somehow — that means everything is okay."
             };
         } else if (karma >= 30) {

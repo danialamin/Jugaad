@@ -20,22 +20,22 @@ public class ObjectManager {
     public List<Furniture> furnitureList = new CopyOnWriteArrayList<>();
 
     public static final String[] STUDENT_NAMES = {
-        "Muhammad Fasih Ul Mubashir", "Fatima Hashmat", "Hooud Bin Jawad",
+        "Muhammad Fasih Ul Mubashir", "Hooud Bin Jawad",
         "Zunnoon Bin Jawad", "Waseed E Mustafa", "Raja Shehryar Ameer",
         "Muhammad Saad", "Abdullah Aamir", "Muhammad Hanzalah Aman",
         "Aminullah Khan", "Muhammad Dyen Asif", "Hassan Rizwan",
         "Huzaifa Amin", "Muhammad Taha Nasim", "Ahmad Hussain",
-        "Muhammad Arham Manzoor", "Alina Farooq", "Haleema Sadia",
+        "Muhammad Arham Manzoor",
         "Muhammad Huzaifa Tayyab", "Ali Ather", "Ayaan Aman",
         "Muhammad Danial Amin", "Jawwad Najeeb", "Saad Ahmed",
         "Muhammad Ammar", "Muhammad Sohaib Saeed", "Kumail Raza",
         "Muhammad Saim Nawaz", "Hanzla Zafran", "Talha Iftikhar Abbasi",
-        "Muhammad Ahmed", "Arwa Javed", "Muhammad Hamza Saeed",
-        "Zainab Nisar", "Sabia Munir", "Aon Mohammad Awan",
-        "Muhammad Hassaan Ul Mustafa", "Abdullah Malik", "Fatima Mazhar"
+        "Muhammad Ahmed", "Muhammad Hamza Saeed",
+        "Aon Mohammad Awan",
+        "Muhammad Hassaan Ul Mustafa", "Abdullah Malik",
     };
 
-    public static final String[] USED_NAMES = new String[39];
+    public static final String[] USED_NAMES = new String[32];
     private static int usedCount = 0;
 
     public static String pickUnusedName(int seed) {
@@ -91,10 +91,16 @@ public class ObjectManager {
     private BufferedImage aiDeskPersonImg;
     private BufferedImage serverImg;
     private BufferedImage cableCrapImg;
+    private BufferedImage guardImg;
+
+    // Cafeteria Objects
+    private BufferedImage cafeUncleImg;
 
     // Teacher sprites (single frame extracted from idle sheet)
     private BufferedImage teacher1Img; // Sir Shehryrar
     private BufferedImage teacher2Img; // Sir Shams
+    private BufferedImage librarianImg; // Mr Amir Rehman
+    private BufferedImage haiderRamzanImg; // Haider Ramzan
 
     // Zombie sprite frames [zombieTypeIndex][frameIndex]
     private BufferedImage[][] zombieIdleFrames = new BufferedImage[5][];
@@ -190,19 +196,33 @@ public class ObjectManager {
             cableCrapImg = cropImage(ImageIO.read(new File("assets/ServerRoom/cablecrap.png")), 0, 0, -1, -1);
             System.out.println("Loaded cablecrap.png: " + cableCrapImg.getWidth() + "x" + cableCrapImg.getHeight());
         } catch (Exception e) { System.err.println("Failed to load cablecrap: " + e.getMessage()); }
+        try {
+            guardImg = ImageIO.read(new File("assets/guard.png"));
+            System.out.println("Loaded guard.png: " + guardImg.getWidth() + "x" + guardImg.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load guard: " + e.getMessage()); }
+        try {
+            cafeUncleImg = ImageIO.read(new File("assets/cafe_uncle.png"));
+            System.out.println("Loaded cafe_uncle.png: " + cafeUncleImg.getWidth() + "x" + cafeUncleImg.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load cafe uncle: " + e.getMessage()); }
 
         // ─── TEACHER SPRITES ───
-        // Each sheet is 896x128 with 7 frames of 128x128. Extract frame 0.
+        // Extract single frame from sprite sheets (Idle.png contains multiple frames)
         try {
-            BufferedImage t1Sheet = ImageIO.read(new File("assets/Teachers/Teacher1/Idle.png"));
-            teacher1Img = t1Sheet.getSubimage(0, 0, 128, 128);
-            System.out.println("Loaded Teacher1 sprite: 128x128 from " + t1Sheet.getWidth() + "x" + t1Sheet.getHeight());
-        } catch (Exception e) { System.err.println("Failed to load Teacher1: " + e.getMessage()); }
+            teacher1Img = ImageIO.read(new File("assets/Teachers/SirShehryar.png"));
+            System.out.println("Loaded SirShehryar.png: " + teacher1Img.getWidth() + "x" + teacher1Img.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load SirShehryar: " + e.getMessage()); }
         try {
-            BufferedImage t2Sheet = ImageIO.read(new File("assets/Teachers/Teacher2/Idle.png"));
-            teacher2Img = t2Sheet.getSubimage(0, 0, 128, 128);
-            System.out.println("Loaded Teacher2 sprite: 128x128 from " + t2Sheet.getWidth() + "x" + t2Sheet.getHeight());
-        } catch (Exception e) { System.err.println("Failed to load Teacher2: " + e.getMessage()); }
+            teacher2Img = ImageIO.read(new File("assets/Teachers/SirShams.png"));
+            System.out.println("Loaded SirShams.png: " + teacher2Img.getWidth() + "x" + teacher2Img.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load SirShams: " + e.getMessage()); }
+        try {
+            librarianImg = ImageIO.read(new File("assets/Teachers/Librarian.png"));
+            System.out.println("Loaded Librarian sprite: " + librarianImg.getWidth() + "x" + librarianImg.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load Librarian: " + e.getMessage()); }
+        try {
+            haiderRamzanImg = ImageIO.read(new File("assets/haider_ramzan.png"));
+            System.out.println("Loaded Haider Ramzan sprite: " + haiderRamzanImg.getWidth() + "x" + haiderRamzanImg.getHeight());
+        } catch (Exception e) { System.err.println("Failed to load Haider Ramzan: " + e.getMessage()); }
 
         // ─── ZOMBIE SPRITES (1-4): Sprite sheets, 128px per frame ───
         for (int z = 1; z <= 4; z++) {
@@ -283,16 +303,20 @@ public class ObjectManager {
         furnitureList.clear();
 
         // Cafeteria Uncle NPC - behind the counter at the top
-        BufferedImage uncleImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2Uncle = uncleImg.createGraphics();
-        g2Uncle.setColor(new Color(160, 82, 45)); // Sienna uniform
-        g2Uncle.fillRect(0, 0, 32, 32);
-        g2Uncle.setColor(Color.WHITE);
-        g2Uncle.drawRect(0, 0, 31, 31);
-        g2Uncle.dispose();
+        BufferedImage uncleSprite = (cafeUncleImg != null) ? cafeUncleImg : new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+        if (cafeUncleImg == null) {
+            Graphics2D g2Uncle = uncleSprite.createGraphics();
+            g2Uncle.setColor(new Color(160, 82, 45)); // Sienna uniform
+            g2Uncle.fillRect(0, 0, 32, 32);
+            g2Uncle.setColor(Color.WHITE);
+            g2Uncle.drawRect(0, 0, 31, 31);
+            g2Uncle.dispose();
+        }
         // Place uncle behind the counter (top center area)
         int ts = gp.tileSize;
-        Furniture uncle = new Furniture(uncleImg, (gp.maxScreenCol / 2) * ts - 16, ts + 10, 32, 32);
+        // Scale to smaller size (same as librarian and guard)
+        double uncleScale = (cafeUncleImg != null) ? 48.0 / cafeUncleImg.getWidth() : 3.0;
+        Furniture uncle = new Furniture((gp.maxScreenCol / 2) * ts - 16, ts + 10, uncleSprite, uncleScale);
         uncle.name = "cafeteria_uncle";
         furnitureList.add(uncle);
 
@@ -380,23 +404,21 @@ public class ObjectManager {
             int deskY = gp.maxScreenRow / 2 * tileSize - 20;
             furnitureList.add(new Furniture(deskX, deskY, libDeskImg, scale));
 
-            // Librarian NPC behind the counter (Using Teacher1 sprite as Librarian)
-            BufferedImage librarianImg;
-            if (teacher1Img != null) {
-                librarianImg = teacher1Img;
-            } else {
-                librarianImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
-                Graphics2D g2Librarian = librarianImg.createGraphics();
+            // Librarian NPC behind the counter (Using dedicated Librarian sprite)
+            BufferedImage imgToUse = librarianImg;
+            if (imgToUse == null) {
+                imgToUse = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g2Librarian = imgToUse.createGraphics();
                 g2Librarian.setColor(new Color(139, 69, 19)); // Brown uniform
                 g2Librarian.fillRect(0, 0, 32, 32);
                 g2Librarian.setColor(Color.WHITE);
                 g2Librarian.drawRect(0, 0, 31, 31);
                 g2Librarian.dispose();
             }
-            // Scale up librarian to match massive teachers (~96x96)
-            double libScale = (teacher1Img != null) ? 96.0 / 128.0 : 3.0;
+            // Scale librarian to smaller size (half of before)
+            double libScale = (librarianImg != null) ? 48.0 / librarianImg.getWidth() : 3.0;
             // Position shifted drastically UP so he stands properly behind the table
-            Furniture librarian = new Furniture(deskX + 35, deskY - 110, librarianImg, libScale);
+            Furniture librarian = new Furniture(deskX + 35, deskY - 110, imgToUse, libScale);
             librarian.name = "librarian";
             furnitureList.add(librarian);
         }
@@ -458,10 +480,12 @@ public class ObjectManager {
             g2Img.drawRect(0, 0, 31, 31);
             g2Img.dispose();
         }
-        // Scale 128x128 sprite to ~96x96 (MASSIVE)
-        double teacherNpcScale = (teacher1Img != null) ? 96.0 / 128.0 : 3.0;
-        // Shift position EXTREMELY FAR LEFT (-130) and DOWN (+25) so he stands clearly beside the desk
-        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * tileSize - 130, 2 * tileSize + 25, teacherImg, teacherNpcScale);
+        // Scale to same size as guard (~48px)
+        double teacherNpcScale = (teacher1Img != null) ? 48.0 / teacher1Img.getWidth() : 1.0;
+        // Position behind the teacher desk, on the right side
+        int teacherX = (gp.maxScreenCol / 2) * tileSize + 84;
+        int teacherY = 1 * tileSize + 10;
+        Furniture teacherNPC = new Furniture(teacherX, teacherY, teacherImg, teacherNpcScale);
         teacherNPC.name = "teacher";
         furnitureList.add(teacherNPC);
 
@@ -568,15 +592,19 @@ public class ObjectManager {
         int ts = gp.tileSize; // 32
 
         // Server Room Guard NPC - blocks player from touching anything
-        BufferedImage guardImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2Guard = guardImg.createGraphics();
-        g2Guard.setColor(new Color(80, 80, 80)); // Grey uniform
-        g2Guard.fillRect(0, 0, 32, 32);
-        g2Guard.setColor(Color.RED);
-        g2Guard.drawRect(0, 0, 31, 31);
-        g2Guard.dispose();
+        BufferedImage guardSprite = (guardImg != null) ? guardImg : new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+        if (guardImg == null) {
+            Graphics2D g2Guard = guardSprite.createGraphics();
+            g2Guard.setColor(new Color(80, 80, 80)); // Grey uniform
+            g2Guard.fillRect(0, 0, 32, 32);
+            g2Guard.setColor(Color.RED);
+            g2Guard.drawRect(0, 0, 31, 31);
+            g2Guard.dispose();
+        }
         // Place guard near the entrance (center, blocking the room)
-        Furniture guard = new Furniture(guardImg, (gp.maxScreenCol / 2) * ts - 16, (gp.maxScreenRow / 2) * ts, 32, 32);
+        // Scale to smaller size (same as librarian)
+        double guardScale = (guardImg != null) ? 48.0 / guardImg.getWidth() : 3.0;
+        Furniture guard = new Furniture((gp.maxScreenCol / 2) * ts - 16, (gp.maxScreenRow / 2) * ts, guardSprite, guardScale);
         guard.name = "server_room_guard";
         furnitureList.add(guard);
 
@@ -633,26 +661,23 @@ public class ObjectManager {
         // Phase 1 save checkpoint — far top-left corner
         furnitureList.add(makeStatic("checkpoint", 2 * ts, 2 * ts, ts, ts, CHECKPOINT_TEAL));
     }
-
     public void loadGroundObjects() {
         furnitureList.clear();
         int ts = gp.tileSize;
 
-        // Haider Ramzan - using Teacher1 sprite
-        BufferedImage haiderImg;
-        if (teacher1Img != null) {
-            haiderImg = teacher1Img;
-        } else {
-            haiderImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g2Haider = haiderImg.createGraphics();
+        // Haider Ramzan - using dedicated sprite
+        BufferedImage imgToUse = haiderRamzanImg;
+        if (imgToUse == null) {
+            imgToUse = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2Haider = imgToUse.createGraphics();
             g2Haider.setColor(new Color(60, 120, 180)); // Blue shirt
             g2Haider.fillRect(0, 0, 32, 32);
             g2Haider.setColor(Color.WHITE);
             g2Haider.drawRect(0, 0, 31, 31);
             g2Haider.dispose();
         }
-        double haiderScale = (teacher1Img != null) ? 0.6 : 1.2; // Decreased size
-        Furniture haider = new Furniture(16 * ts, 10 * ts - 30, haiderImg, haiderScale);
+        double haiderScale = (haiderRamzanImg != null) ? 48.0 / haiderRamzanImg.getWidth() : 1.2; // Same size as guard/teachers (~48px)
+        Furniture haider = new Furniture(16 * ts, 10 * ts - 30, imgToUse, haiderScale);
         haider.name = "haider_ramzan";
         furnitureList.add(haider);
         // Phase 1 save checkpoint — far top-left corner (opposite of Haider)
@@ -677,10 +702,12 @@ public class ObjectManager {
             g2Img.drawRect(0, 0, 31, 31);
             g2Img.dispose();
         }
-        // Scale 128x128 sprite to ~96x96 (MASSIVE)
-        double aiTeacherScale = (teacher2Img != null) ? 96.0 / 128.0 : 3.0;
-        // Shift position EXTREMELY FAR LEFT and DOWN to stand beside the AI setup
-        Furniture teacherNPC = new Furniture((gp.maxScreenCol / 2) * ts - 130, ts + 35, teacherImg, aiTeacherScale);
+        // Scale to same size as guard (~48px)
+        double aiTeacherScale = (teacher2Img != null) ? 48.0 / teacher2Img.getWidth() : 1.0;
+        // Position behind the desk (above it, between desk and wall)
+        int teacherX = (gp.maxScreenCol / 2) * ts - 24;
+        int teacherY = 1 * ts + 10;
+        Furniture teacherNPC = new Furniture(teacherX, teacherY, teacherImg, aiTeacherScale);
         teacherNPC.name = "teacher";
         furnitureList.add(teacherNPC);
 
@@ -752,7 +779,7 @@ public class ObjectManager {
             case "zombie_librarian":  case "zombie_cafe_uncle": return 0; // Zombie_1
             case "zombie_javeria":                              return 1; // Zombie_2
             case "zombie_hooud":      case "zombie_faizan":     return 2; // Zombie_3
-            case "zombie_waseed":     case "zombie_dyen":       return 3; // Zombie_4
+            case "zombie_ibtassam_amjad": case "zombie_dyen":       return 3; // Zombie_4
             case "zombie_ahmad":                                return 4; // Zombie_5 (skeleton)
             default:                                            return 0;
         }
@@ -801,8 +828,8 @@ public class ObjectManager {
     public void loadZombieWalkwayObjects() {
         furnitureList.clear();
         int ts = gp.tileSize;
-        // Waseed E Mustafa — drops Corridor Keycard
-        furnitureList.add(makeZombie("zombie_waseed", 10 * ts, 8 * ts, ZOMBIE_RED, 1.0f, ts * 6));
+        // Ibtassam Amjad — drops Corridor Keycard
+        furnitureList.add(makeZombie("zombie_ibtassam_amjad", 10 * ts, 8 * ts, ZOMBIE_RED, 1.0f, ts * 6));
         // Checkpoint
         furnitureList.add(makeStatic("checkpoint", 3 * ts, (gp.maxScreenRow - 3) * ts, ts, ts, new Color(50, 220, 180, 200)));
     }
@@ -812,23 +839,6 @@ public class ObjectManager {
         int ts = gp.tileSize;
         // Hooud Bin Jawad — easy, slow
         furnitureList.add(makeZombie("zombie_hooud", 8 * ts, 8 * ts, ZOMBIE_RED, 0.7f, ts * 5));
-        // Haider Ramzan — friendly NPC (Using Teacher1 sprite)
-        BufferedImage haiderImg;
-        if (teacher1Img != null) {
-            haiderImg = teacher1Img;
-        } else {
-            haiderImg = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g2Haider = haiderImg.createGraphics();
-            g2Haider.setColor(new Color(60, 120, 180)); // Blue shirt
-            g2Haider.fillRect(0, 0, 32, 32);
-            g2Haider.setColor(Color.WHITE);
-            g2Haider.drawRect(0, 0, 31, 31);
-            g2Haider.dispose();
-        }
-        double haiderScale = (teacher1Img != null) ? 0.6 : 1.2; // Decreased size
-        Furniture haider = new Furniture(14 * ts, 4 * ts - 30, haiderImg, haiderScale);
-        haider.name = "npc_haider";
-        furnitureList.add(haider);
         // Checkpoint near entry
         furnitureList.add(makeStatic("checkpoint", 18 * ts, (gp.maxScreenRow / 2) * ts, ts, ts, new Color(50, 220, 180, 200)));
     }
@@ -888,11 +898,11 @@ public class ObjectManager {
         g2.setColor(Color.WHITE);
         g2.drawRect(0, 0, 31, 31);
         g2.dispose();
-        Furniture uncle = makeZombie("zombie_cafe_uncle", (gp.maxScreenCol / 2) * ts - 16, ts + 10, new Color(160, 60, 20, 220), 1.2f, ts * 8);
+        Furniture uncle = makeZombie("zombie_cafe_uncle", (gp.maxScreenCol / 2) * ts - 16, ts + 10, new Color(160, 60, 20, 220), 2.5f, ts * 8);
         uncle.width = 32; uncle.height = 32;
         furnitureList.add(uncle);
         // Food pickup spot using same counter name as normal mode (for interaction consistency)
-        furnitureList.add(makeStatic("cafe_counter", (gp.maxScreenCol / 2) * ts - 16, ts + 10, 32, 32, new Color(160, 60, 20, 0)));
+        furnitureList.add(makeStatic("left_over_food_stash", (gp.maxScreenCol / 2) * ts - 16, ts + 10, 32, 32, new Color(160, 60, 20, 0)));
         // Checkpoint near cafe entrance
         furnitureList.add(makeStatic("checkpoint", 3 * ts, (gp.maxScreenRow - 3) * ts, ts, ts, CHECKPOINT_TEAL));
     }

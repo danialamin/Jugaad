@@ -72,7 +72,7 @@ public class Player {
         
         speed = 4;
         direction = "down";
-        maxHp = 100;
+        maxHp = 50;
         hp = maxHp;
         
         if (this.stats == null) this.stats = new entity.PlayerStats();

@@ -17,8 +17,8 @@ public class SoundManager {
     private Clip sfxClip;
     
     // Volume controls
-    private float musicVolume = -15.0f; // Lowered slightly so it's not overpowering
-    private float sfxVolume = -5.0f;
+    private float musicVolume = -5.0f; // Increased volume
+    private float sfxVolume = 0.0f; // Full volume
     
     public boolean musicOn = true;
     public boolean sfxOn = true;
@@ -38,6 +38,8 @@ public class SoundManager {
 
     public void setZombieMode(boolean zombie) {
         this.zombieMode = zombie;
+        // Reset currentMusicZone to force music replay when mode changes
+        currentMusicZone = null;
     }
 
     public void setBadEndingMode(boolean active) {
@@ -78,7 +80,7 @@ public class SoundManager {
             case "zombie_cafe_uncle":          path = "assets/sound/FightCafeUncle.wav"; break;
             case "zombie_faizan":              path = "assets/sound/FightFaizan.wav"; break;
             case "zombie_javeria":             path = "assets/sound/FightJaveria.wav"; break;
-            case "zombie_waseed":              path = "assets/sound/FightStudent.wav"; break;
+            case "zombie_ibtassam_amjad":    path = "assets/sound/FightStudent.wav"; break;
             case "zombie_dyen":                path = "assets/sound/FightStudent.wav"; break;
             case "zombie_ahmad":               path = "assets/sound/FightStudent.wav"; break;
             case "zombie_hooud":               path = "assets/sound/FightStudent.wav"; break;

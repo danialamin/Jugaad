@@ -522,6 +522,7 @@ public void updateTitleScreen() {
             gp.session.startNewGame();
             gp.session.getPlayer().setEngineComponents(gp, gp.keyH);
             gp.resetPhaseOneFlow();
+            gp.resetZombieModeState();
             
             // Set explicitly to Ground C Block Right side
             gp.currentZone = map.ZoneType.GROUND;
@@ -1016,7 +1017,7 @@ public void updateDialogueScreen() {
             "You|Your head keeps drooping. You pinch yourself to stay awake, but the notes are becoming meaningless squiggles.",
             "You|So... tired... just... five... more... minutes...",
             "You|The warm desk, the quiet air, the gentle ticking of the library clock... Your eyes close. Just for a moment...",
-            "You|You fall asleep right there, drooling on your notes. The librarian will judge you in the morning."
+            "You|You fall asleep right there, drooling on your notes. Mr Amir Rehman will judge you in the morning."
         };
         lectureQueueIndex = 0;
         lectureQueueTriggersQuiz = false; // Story sequence: no quiz after
@@ -1307,7 +1308,7 @@ public void updateDialogueScreen() {
             case "zombie_librarian":
                 lines = new String[] {
                     "Zombie Librarian|...",
-                    "You|Ms. Nadia? It\'s me. Flex. From section D.",
+                    "You|Amir Rehman? It\'s me. Flex. From section D.",
                     "Zombie Librarian|SHHH.",
                     "You|Okay. I have to get past this."
                 };
@@ -1319,18 +1320,11 @@ public void updateDialogueScreen() {
                     "You|I am so sorry, Uncle. I have to do this."
                 };
                 break;
-            case "zombie_waseed":
+            case "zombie_fatima_mazhar":
                 lines = new String[] {
-                    "You|Waseed? You were in my section...",
-                    "Zombie Waseed|...(group project)...",
-                    "You|I remember. You always carried the team."
-                };
-                break;
-            case "zombie_dyen":
-                lines = new String[] {
-                    "You|Dyen. We sat together in AI.",
-                    "Zombie Dyen|...(heuristic failure)...",
-                    "You|Not you too."
+                    "You|Fatima? You were in my section...",
+                    "Zombie Fatima Mazhar|...(group project)...",
+                    "You|I'm sorry. I have to get past this."
                 };
                 break;
             case "zombie_ahmad":
@@ -1398,8 +1392,8 @@ public void updateDialogueScreen() {
 
     public void startLibrarianLootSequence() {
         lectureQueue = new String[] {
-            "You|She stops moving. The room is silent again.",
-            "You|There is something in her jacket pocket. A folded note.",
+            "You|He stops moving. The room is silent again.",
+            "You|There is something in his jacket pocket. A folded note.",
             "You|It reads: If everything goes wrong, go to Sir Shehryar's classroom. He kept a backup.",
             "You|Sir Shehryar's CS-101 classroom. That is my next stop.",
             "You|The note mentions something else... a key. For the server room. He hid it there.",
@@ -1986,7 +1980,7 @@ public void updateQuizScreen() {
             case "zombie_faizan":       attackLabel = "Faizan slashes red marks across — fast."; break;
             case "zombie_javeria":      attackLabel = "Miss Javeria volleys from all four sides."; break;
             case "zombie_ahmad":        attackLabel = "Ahmad marks everything. Very fast. All sides."; break;
-            case "zombie_waseed":       attackLabel = "Waseed charges with project folders."; break;
+            case "zombie_fatima_mazhar": attackLabel = "Fatima Mazhar charges with project folders."; break;
             case "zombie_dyen":         attackLabel = "Dyen fires AI heuristics from all edges."; break;
             case "zombie_hooud":        attackLabel = "Hooud swipes blindly while scrolling."; break;
             default:                    attackLabel = "The zombie attacks erratically. Dodge."; break;
