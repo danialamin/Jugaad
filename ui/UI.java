@@ -538,9 +538,10 @@ public void updateTitleScreen() {
             startDialogue("Late Start|You overslept. Classic FAST-NU Islamabad speedrun.\nSir Shehryrar Rashid's CS class is starting, and attendance is not known for mercy.");
         } else if (titleCommandNum == 1) {
             // LOAD GAME
-            gp.session.loadFromSave(1);
-            gp.session.getPlayer().setEngineComponents(gp, gp.keyH);
-            gp.gameState = gp.playState;
+            state.GameState loaded = gp.session.loadFromSave(1);
+            if (loaded != null) {
+                gp.restoreFromState(loaded);
+            }
         } else if (titleCommandNum == 2) {
             // QUIT
             System.exit(0);

@@ -1,34 +1,30 @@
 @startuml
 title UC7: Save Game (SD) - CampusFlex Section D
 
+participant ":GamePanel" as gamePanel
 participant ":GameSession" as gameSession
-participant ":Zone" as zone
-participant ":Location" as location
 participant ":SavePoint" as savePoint
 participant ":PersistenceFactory" as persistenceFactory
 participant ":PersistenceHandler" as persistenceHandler
 participant ":GameState" as gameState
 
-[-> gameSession: handleSystemEvent("approachSavePoint")
-activate gameSession
-gameSession -> zone: getNearbyLocation(player.getPosition())
-activate zone
-zone --> gameSession: locationRef
-deactivate zone
-
-gameSession -> location: interact(player, session)
-activate location
-location -> savePoint: onInteract(player, session)
+[-> gamePanel: checkInteractions()
+activate gamePanel
+gamePanel -> savePoint: detect nearby checkpoint
 activate savePoint
-savePoint -> savePoint: isActive()
+savePoint --> gamePanel: checkpoint found
+deactivate savePoint
+
+gamePanel -> gamePanel: buildFullGameState()
+gamePanel -> gameState **: create(saveId, posX, posY, currentZoneName,\nmodeSnapshot, zombieMode, phaseOneState, phaseTwoState,\ndefeatedZombies, serverBossHp, hp, gpa, energy, stress, karma)
+
+gamePanel -> gameSession: saveGameState(gameState)
+activate gameSession
 
 alt Player cancels save
     [-> gameSession: handleSystemEvent("cancelSave")
 else Player confirms save
     [-> gameSession: handleSystemEvent("confirmSave")
-    gameSession -> gameSession: buildCurrentGameState()
-    
-    gameSession -> gameState **: create(saveId, zoneId, posX, posY, modeSnapshot, flags, timestamp)
     
     gameSession -> persistenceFactory: getPersistenceHandler(type)
     activate persistenceFactory
@@ -44,9 +40,8 @@ else Player confirms save
         persistenceHandler --> gameSession: isSaved = false
     end
     deactivate persistenceHandler
-    destroy gameState
 end
-deactivate savePoint
-deactivate location
 deactivate gameSession
+destroy gameState
+deactivate gamePanel
 @enduml

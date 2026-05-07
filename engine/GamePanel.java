@@ -1154,9 +1154,104 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     public void checkpointSave() {
-        session.saveGame();
+        state.GameState saveState = buildFullGameState();
+        session.saveGameState(saveState);
         gameUI.startDialogue("System|Checkpoint reached. Progress saved.");
         gameState = dialogueState;
+    }
+
+    public void restoreFromState(state.GameState gs) {
+        if (gs == null) return;
+        
+        // Restore zone
+        try {
+            currentZone = gs.getCurrentZoneName() != null 
+                ? map.ZoneType.valueOf(gs.getCurrentZoneName()) 
+                : map.ZoneType.LIBRARY;
+        } catch (IllegalArgumentException e) {
+            currentZone = map.ZoneType.LIBRARY;
+        }
+        
+        // Restore story phase
+        zombieMode = gs.isZombieMode();
+        try {
+            phaseOneState = gs.getPhaseOneState() != null 
+                ? PhaseOneState.valueOf(gs.getPhaseOneState()) 
+                : PhaseOneState.CS_CLASS_REQUIRED;
+        } catch (IllegalArgumentException e) {
+            phaseOneState = PhaseOneState.CS_CLASS_REQUIRED;
+        }
+        try {
+            phaseTwoState = gs.getPhaseTwoState() != null 
+                ? PhaseTwoState.valueOf(gs.getPhaseTwoState()) 
+                : PhaseTwoState.CUTSCENE;
+        } catch (IllegalArgumentException e) {
+            phaseTwoState = PhaseTwoState.CUTSCENE;
+        }
+        phase2IntroPart = gs.getPhase2IntroPart();
+        defeatedZombies = gs.getDefeatedZombies() != null 
+            ? new java.util.HashSet<>(gs.getDefeatedZombies()) 
+            : new java.util.HashSet<>();
+        serverBossHp = gs.getServerBossHp() > 0 ? gs.getServerBossHp() : 300;
+        prayedThisPhase = gs.isPrayedThisPhase();
+        
+        // Restore player position
+        session.getPlayer().setXLocation((int) gs.getPosX());
+        session.getPlayer().setYLocation((int) gs.getPosY());
+        session.getPlayer().setEngineComponents(this, keyH);
+        
+        // Set up sound mode
+        soundM.setZombieMode(zombieMode);
+        
+        // Load correct map + objects for zone
+        tileM.loadMap();
+        objM.clearObjects();
+        if (zombieMode) {
+            if (currentZone == map.ZoneType.GROUND) objM.loadZombieGroundObjects();
+            else if (currentZone == map.ZoneType.WALKWAY) objM.loadZombieWalkwayObjects();
+            else if (currentZone == map.ZoneType.CORRIDOR) objM.loadZombieCorridorObjects();
+            else if (currentZone == map.ZoneType.LIBRARY) objM.loadZombieLibraryObjects();
+            else if (currentZone == map.ZoneType.SERVER_ROOM) objM.loadZombieServerRoomObjects();
+            else if (currentZone == map.ZoneType.CAFETERIA) objM.loadZombieCafeObjects();
+            else if (currentZone == map.ZoneType.CLASSROOM) objM.loadZombieClassroomObjects();
+            objM.filterDefeatedZombies(defeatedZombies);
+        } else {
+            if (currentZone == map.ZoneType.CAFETERIA) objM.loadCafeteriaObjects();
+            if (currentZone == map.ZoneType.LIBRARY) objM.loadLibraryObjects();
+            if (currentZone == map.ZoneType.CLASSROOM) objM.loadClassroomObjects();
+            if (currentZone == map.ZoneType.PRAYER_AREA) objM.loadPrayerAreaObjects();
+            if (currentZone == map.ZoneType.SERVER_ROOM) objM.loadServerRoomObjects();
+        }
+        
+        soundM.playZoneMusic(currentZone);
+        gameState = playState;
+    }
+
+    public state.GameState buildFullGameState() {
+        state.GameState gs = new state.GameState();
+        gs.setSaveId(1);
+        gs.setPosX(session.getPlayer().getXLocation());
+        gs.setPosY(session.getPlayer().getYLocation());
+        gs.setCurrentZoneName(currentZone.name());
+        gs.setModeSnapshot(zombieMode ? mode.GameModeType.ZOMBIE : mode.GameModeType.NORMAL);
+        gs.setZombieMode(zombieMode);
+        gs.setPhaseOneState(phaseOneState.name());
+        gs.setPhaseTwoState(phaseTwoState.name());
+        gs.setPhase2IntroPart(phase2IntroPart);
+        gs.setDefeatedZombies(new java.util.HashSet<>(defeatedZombies));
+        gs.setServerBossHp(serverBossHp);
+        gs.setPrayedThisPhase(prayedThisPhase);
+        
+        gs.setHp(session.getPlayer().getHp());
+        gs.setMaxHp(session.getPlayer().getMaxHp());
+        if (session.getPlayer().getStats() != null) {
+            gs.setGpa(session.getPlayer().getStats().getGPA());
+            gs.setEnergy(session.getPlayer().getStats().getEnergy());
+            gs.setStress(session.getPlayer().getStats().getStress());
+            gs.setKarma(session.getPlayer().getStats().getKarma());
+        }
+        gs.setTimestamp(new java.util.Date().toString());
+        return gs;
     }
 
     private void startFinalBoss() {

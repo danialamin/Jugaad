@@ -80,8 +80,23 @@ else Player selects Load Game
     persistenceHandler --> gameSession: gameStateRef
     deactivate persistenceHandler
     
+    gameSession --> game: gameStateRef
     deactivate gameSession
     deactivate game
+    
+    game -> gamePanel: restoreFromState(gameStateRef)
+    activate gamePanel
+    gamePanel -> gamePanel: currentZone = gameState.currentZoneName
+    gamePanel -> gamePanel: zombieMode = gameState.zombieMode
+    gamePanel -> gamePanel: phaseOneState = gameState.phaseOneState
+    gamePanel -> gamePanel: phaseTwoState = gameState.phaseTwoState
+    gamePanel -> gamePanel: defeatedZombies = gameState.defeatedZombies
+    gamePanel -> gamePanel: player.position = (gameState.posX, gameState.posY)
+    gamePanel -> gamePanel: player.stats = (hp, gpa, energy, stress, karma)
+    gamePanel -> tileM: loadMap()
+    gamePanel -> objM: loadZoneObjects(currentZone, zombieMode)
+    gamePanel -> soundM: playZoneMusic(currentZone)
+    deactivate gamePanel
 end
 
 @enduml

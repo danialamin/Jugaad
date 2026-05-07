@@ -38,7 +38,8 @@ together {
             - activeGameMode : GameMode
             - combatController : CombatController
             + startNewGame() : void
-            + loadFromSave(saveId : int) : void
+            + loadFromSave(saveId : int) : GameState
+            + saveGameState(state : GameState) : void
             + handleSystemEvent(event : String) : void
             + switchToZombieMode() : void
             + showGameOver() : void
@@ -93,16 +94,27 @@ together {
 
         class GameState {
             - saveId : int
-            - zoneId : int
             - posX : float
             - posY : float
+            - currentZoneName : String
             - modeSnapshot : GameModeType
+            - zombieMode : boolean
+            - phaseOneState : String
+            - phaseTwoState : String
+            - phase2IntroPart : int
+            - defeatedZombies : Set~String~
+            - serverBossHp : int
+            - prayedThisPhase : boolean
+            - hp : int
+            - maxHp : int
+            - gpa : double
+            - energy : int
+            - stress : int
+            - karma : int
             - flags : Map~String,Boolean~
             - timestamp : String
             + getFlag(key : String) : boolean
             + setFlag(key : String, val : boolean) : void
-            + serialize() : String
-            + {static} deserialize(data : String) : GameState
         }
 
         class KarmaTracker {
@@ -138,6 +150,11 @@ together {
         }
 
         class SQLServerHandler {
+            - {static} URL : String
+            - {static} DB_USER : String
+            - {static} DB_PASS : String
+            - getConnection() : Connection
+            - ensureTableExists() : void
             + save(state : GameState) : boolean
             + load(saveId : int) : GameState
         }
@@ -151,10 +168,6 @@ together {
             + {static} getPersistenceHandler(type : PersistenceType) : PersistenceHandler
         }
 
-        class HibernateUtil {
-            - {static} sessionFactory : SessionFactory
-            + {static} getSessionFactory() : SessionFactory
-        }
     }
 }
 
@@ -619,6 +632,12 @@ together {
             + currentZone : ZoneType
             + gameState : int
             + zombieMode : boolean
+            + phaseOneState : PhaseOneState
+            + phaseTwoState : PhaseTwoState
+            + phase2IntroPart : int
+            + defeatedZombies : Set~String~
+            + serverBossHp : int
+            + prayedThisPhase : boolean
             + session : GameSession
             + startGameThread() : void
             + update() : void
@@ -629,6 +648,9 @@ together {
             + completeCurrentLectureQuiz() : void
             + startPhaseOneEnding() : void
             + getPhaseGoalText() : String
+            + checkpointSave() : void
+            + buildFullGameState() : GameState
+            + restoreFromState(gs : GameState) : void
         }
 
         class KeyHandler {

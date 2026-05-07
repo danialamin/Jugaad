@@ -52,7 +52,7 @@ public class GameSession {
         this.isActive = true;
     }
 
-    public void loadFromSave(int saveId) {
+    public GameState loadFromSave(int saveId) {
         String[] options = {"SQL Server", "File System (XML)"};
         int choice = JOptionPane.showOptionDialog(null, 
             "Where do you want to load the game from?", 
@@ -62,7 +62,7 @@ public class GameSession {
             null, options, options[0]);
             
         if (choice == JOptionPane.CLOSED_OPTION) {
-            return; // Player canceled loading
+            return null; // Player canceled loading
         }
             
         PersistenceHandler handler;
@@ -76,12 +76,12 @@ public class GameSession {
         
         if (state == null) {
             JOptionPane.showMessageDialog(null, "Failed to load game or no save found!");
-            return;
+            return null;
         }
         
-        this.player = new Player();
+        // Restore player entity
+        this.player = new Player("Player 1", 1);
         this.player.moveTo(state.getPosX(), state.getPosY());
-        this.player.setCurrentZoneId(state.getZoneId());
         
         this.player.setHp(state.getHp());
         this.player.setMaxHp(state.getMaxHp());
@@ -92,7 +92,7 @@ public class GameSession {
             this.player.getStats().setKarma(state.getKarma());
         }
         
-        this.karmaTracker = new KarmaTracker(); // Should load from state
+        this.karmaTracker = new KarmaTracker();
         this.campusMap = new CampusMap();
         this.combatController = new CombatController(this.player);
         
@@ -104,6 +104,9 @@ public class GameSession {
             this.activeGameMode = factory.createNormalMode();
             this.mode = GameModeType.NORMAL;
         }
+        
+        this.isActive = true;
+        return state;
     }
 
     public void handleSystemEvent(String event) {
@@ -133,6 +136,10 @@ public class GameSession {
     public CombatController getCombatController() { return combatController; }
 
     public void saveGame() {
+        saveGameState(buildCurrentGameState());
+    }
+
+    public void saveGameState(GameState gameState) {
         String[] options = {"SQL Server", "File System (XML)"};
         int choice = JOptionPane.showOptionDialog(null, 
             "Where do you want to save the game?", 
@@ -154,7 +161,7 @@ public class GameSession {
             handler = PersistenceFactory.getPersistenceHandler(PersistenceFactory.PersistenceType.XML);
         }
         
-        boolean success = handler.save(buildCurrentGameState());
+        boolean success = handler.save(gameState);
         if (success) {
             JOptionPane.showMessageDialog(null, "Game saved successfully!");
         } else {
@@ -167,7 +174,6 @@ public class GameSession {
         state.setSaveId(1);
         state.setPosX(player.getPosition().getX());
         state.setPosY(player.getPosition().getY());
-        state.setZoneId(player.getCurrentZoneId());
         state.setModeSnapshot(mode);
         state.setFlag("saved", true);
         
