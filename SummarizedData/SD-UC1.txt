@@ -11,7 +11,8 @@ participant ":Block" as block
 participant ":Zone" as zone
 participant ":GameModeFactory" as gameModeFactory
 participant ":NormalMode" as normalMode
-participant ":GameStateRepository" as gameStateRepository
+participant ":PersistenceFactory" as persistenceFactory
+participant ":PersistenceHandler" as persistenceHandler
 
 alt Player selects New Game
     [-> game: start()
@@ -31,18 +32,18 @@ alt Player selects New Game
     gameSession -> karmaTracker **: create()
     karmaTracker --> gameSession: karmaTrackerRef
     
-    gameSession -> campusMap **: create(mapId=1)
+    gameSession -> campusMap **: create()
     activate campusMap
     campusMap -> block **: createBlock(1, "C-Block")
     activate block
-    block -> zone **: createZone(1, 0)
+    block -> zone **: createZone(ZoneType.CAFETERIA, "Cafeteria")
     zone --> block: zoneRef
     block --> campusMap: blockRef
     deactivate block
     
     campusMap -> block **: createBlock(2, "D-Block")
     activate block
-    block -> zone **: createZone(2, 0)
+    block -> zone **: createZone(ZoneType.CLASSROOM, "Classroom")
     zone --> block: zoneRef
     block --> campusMap: blockRef
     deactivate block
@@ -69,10 +70,15 @@ else Player selects Load Game
     game -> gameSession: loadFromSave(saveId)
     activate gameSession
     
-    gameSession -> gameStateRepository: fetch(saveId)
-    activate gameStateRepository
-    gameStateRepository --> gameSession: gameStateRef
-    deactivate gameStateRepository
+    gameSession -> persistenceFactory: getPersistenceHandler(type)
+    activate persistenceFactory
+    persistenceFactory --> gameSession: persistenceHandlerRef
+    deactivate persistenceFactory
+    
+    gameSession -> persistenceHandler: load(saveId)
+    activate persistenceHandler
+    persistenceHandler --> gameSession: gameStateRef
+    deactivate persistenceHandler
     
     deactivate gameSession
     deactivate game

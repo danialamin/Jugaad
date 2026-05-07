@@ -1154,7 +1154,7 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     public void checkpointSave() {
-        session.getSaveStrategy().save(session.buildCurrentGameState());
+        session.saveGame();
         gameUI.startDialogue("System|Checkpoint reached. Progress saved.");
         gameState = dialogueState;
     }

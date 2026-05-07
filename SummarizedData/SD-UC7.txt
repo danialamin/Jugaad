@@ -5,7 +5,8 @@ participant ":GameSession" as gameSession
 participant ":Zone" as zone
 participant ":Location" as location
 participant ":SavePoint" as savePoint
-participant ":GameStateRepository" as gameStateRepository
+participant ":PersistenceFactory" as persistenceFactory
+participant ":PersistenceHandler" as persistenceHandler
 participant ":GameState" as gameState
 
 [-> gameSession: handleSystemEvent("approachSavePoint")
@@ -29,16 +30,20 @@ else Player confirms save
     
     gameSession -> gameState **: create(saveId, zoneId, posX, posY, modeSnapshot, flags, timestamp)
     
-    gameSession -> gameStateRepository: save(gameState)
-    activate gameStateRepository
-    gameStateRepository -> gameStateRepository: persist(gameState)
+    gameSession -> persistenceFactory: getPersistenceHandler(type)
+    activate persistenceFactory
+    persistenceFactory --> gameSession: persistenceHandlerRef
+    deactivate persistenceFactory
+    
+    gameSession -> persistenceHandler: save(gameState)
+    activate persistenceHandler
     
     alt Database write SUCCEEDS
-        gameStateRepository --> gameSession: isSaved = true
+        persistenceHandler --> gameSession: isSaved = true
     else Database write FAILS
-        gameStateRepository --> gameSession: isSaved = false
+        persistenceHandler --> gameSession: isSaved = false
     end
-    deactivate gameStateRepository
+    deactivate persistenceHandler
     destroy gameState
 end
 deactivate savePoint

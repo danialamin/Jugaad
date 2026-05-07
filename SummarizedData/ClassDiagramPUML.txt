@@ -14,7 +14,7 @@ skinparam roundcorner 6
 hide circle
 
 ' ╔══════════════════════════════════════════════════════╗
-'  BAND 1 — CONTROLLERS · STATE · INTERFACES
+'  BAND 1 — CONTROLLERS · STATE · INTERFACES · DATABASE
 ' ╚══════════════════════════════════════════════════════╝
 together {
 
@@ -32,6 +32,9 @@ together {
             - mode : GameModeType
             - isActive : boolean
             - lectureQuizActive : boolean
+            - player : Player
+            - campusMap : CampusMap
+            - karmaTracker : KarmaTracker
             - activeGameMode : GameMode
             - combatController : CombatController
             + startNewGame() : void
@@ -40,12 +43,17 @@ together {
             + switchToZombieMode() : void
             + showGameOver() : void
             + updateZone(zone : Zone) : void
+            + onPlayerMove(x : float, y : float) : void
+            + onInteract() : void
             + getCurrentMode() : GameModeType
+            + isLectureQuizActive() : boolean
+            + setLectureQuizActive(active : boolean) : void
             + getPlayer() : Player
             + getCampusMap() : CampusMap
             + getKarmaTracker() : KarmaTracker
-            + getSaveStrategy() : ISaveStrategy
+            + getCombatController() : CombatController
             + buildCurrentGameState() : GameState
+            + saveGame() : void
             + endSession() : void
         }
 
@@ -53,9 +61,12 @@ together {
             - player : Player
             - currentEnemy : Enemy
             - strategy : ICombatStrategy
+            + setPlayer(player : Player) : void
             + initiateCombat(enemy : Enemy) : void
             + setStrategy(s : ICombatStrategy) : void
             + executeCombatMove(move : CombatMove) : CombatResult
+            + executeCombatMove(move : CombatMove, passedMinigame : boolean) : CombatResult
+            + executeCombatMove(move : CombatMove, passedMinigame : boolean, isBossFight : boolean) : CombatResult
             + applyResult(result : CombatResult) : void
             + isPlayerAlive() : boolean
         }
@@ -70,11 +81,6 @@ together {
         interface ICombatStrategy {
             + execute(p : Player, e : Enemy) : CombatResult
             + getKarmaEffect() : int
-        }
-
-        interface ISaveStrategy {
-            + save(state : GameState) : boolean
-            + load(saveId : int) : GameState
         }
 
         interface IStatModifier {
@@ -99,13 +105,6 @@ together {
             + {static} deserialize(data : String) : GameState
         }
 
-        class GameStateRepository {
-            - connectionString : String
-            + persist(state : GameState) : boolean
-            + fetch(saveId : int) : GameState
-            + deleteExpired() : void
-        }
-
         class KarmaTracker {
             - history : List~KarmaEvent~
             - total : int
@@ -128,6 +127,33 @@ together {
             - {static} EVIL_MAX : int = 30
             + resolve(tracker : KarmaTracker) : EndingType
             + buildEpilogueText(type : EndingType) : String
+        }
+    }
+
+    package "database [Factory, Handler]" #F5F5F5 {
+
+        interface PersistenceHandler {
+            + save(state : GameState) : boolean
+            + load(saveId : int) : GameState
+        }
+
+        class SQLServerHandler {
+            + save(state : GameState) : boolean
+            + load(saveId : int) : GameState
+        }
+
+        class XMLPersistenceHandler {
+            + save(state : GameState) : boolean
+            + load(saveId : int) : GameState
+        }
+
+        class PersistenceFactory {
+            + {static} getPersistenceHandler(type : PersistenceType) : PersistenceHandler
+        }
+
+        class HibernateUtil {
+            - {static} sessionFactory : SessionFactory
+            + {static} getSessionFactory() : SessionFactory
         }
     }
 }
@@ -155,6 +181,9 @@ together {
             - maxHp : int
             - spawnZoneId : int
             - currentZoneId : int
+            + xLocation : int
+            + yLocation : int
+            + speed : int
             + takeDamage(amount : int) : void
             + heal(amount : int) : void
             + isAlive() : boolean
@@ -166,17 +195,32 @@ together {
             + moveTo(x : float, y : float) : void
             + getCurrentZoneId() : int
             + setCurrentZoneId(zoneId : int) : void
+            + getHp() : int
+            + setHp(hp : int) : void
+            + getMaxHp() : int
+            + getXLocation() : int
+            + getYLocation() : int
+            + isSeatedInClass() : boolean
+            + setSeatedInClass(seated : boolean) : void
+            + setEngineComponents(gp : GamePanel, keyH : KeyHandler) : void
+            + update() : void
+            + draw(g2 : Graphics2D) : void
         }
 
         class PlayerStats {
             - gpa : double
+            - energy : int
             - stress : int
             - karma : int
+            - maxEnergy : int
             + applyModifier(mod : IStatModifier) : void
             + updateGPA(delta : double) : void
+            + updateEnergy(delta : int) : void
             + updateStress(delta : int) : void
             + updateKarma(delta : int) : void
+            + isEnergyFull() : boolean
             + getGPA() : double
+            + getEnergy() : int
             + getStress() : int
             + getKarma() : int
         }
@@ -208,7 +252,11 @@ together {
                 # maxHp : int
                 # rewardKarma : int
                 + takeDamage(amount : int) : void
+                + resetHp() : void
                 + isDefeated() : boolean
+                + getHp() : int
+                + getMaxHp() : int
+                + getName() : String
                 + attack(player : Player) : void
                 + getCombatChallenge() : CombatChallenge
             }
@@ -227,13 +275,27 @@ together {
 
     package "map [GRASP: Info Expert, Creator]" #FFF3E0 {
 
+        enum ZoneType {
+            CAFETERIA
+            GROUND
+            LIBRARY
+            CORRIDOR
+            CLASSROOM
+            PRAYER_AREA
+            SERVER_ROOM
+            AI_LAB
+            WALKWAY
+        }
+
         class CampusMap {
             - mapId : int
             - blocks : List~Block~
             + createBlock(id : int, name : String) : void
             + getBlock(blockId : int) : Block
             + getZone(zoneId : int) : Zone
+            + getZone(type : ZoneType) : Zone
             + isRouteBlocked(fromZoneId : int, toZoneId : int) : boolean
+            + isRouteBlocked(fromZone : ZoneType, toZone : ZoneType) : boolean
             + getSpawnZone() : Zone
         }
 
@@ -241,28 +303,39 @@ together {
             - blockId : int
             - name : String
             - zones : List~Zone~
+            + addZone(zone : Zone) : void
             + createZone(id : int, floorNumber : int) : void
             + getZone(floorNumber : int) : Zone
             + getAllZones() : List~Zone~
+            + getZones() : List~Zone~
+            + getBlockId() : int
             + getName() : String
         }
 
         class Zone {
-            - zoneId : int
-            - floorNumber : int
-            - isBlocked : boolean
+            - type : ZoneType
+            - name : String
+            - isLocked : boolean
             - alternateZone : Zone
+            - connectedZones : List~ZoneType~
             - locations : List~Location~
             - npcs : List~NPC~
             - enemies : List~Enemy~
             + createLocation(id : int, name : String, isInteractable : boolean, i : IInteractable, triggerX : float, triggerY : float, triggerRadius : float) : void
+            + addLocation(loc : Location) : void
             + addNPC(npc : NPC) : void
             + addEnemy(enemy : Enemy) : void
             + getLocation(locationId : int) : Location
             + getNearbyLocation(pos : Position) : Location
+            + unlock() : void
+            + lock() : void
+            + isLocked() : boolean
             + isBlocked() : boolean
             + getAlternateZone() : Zone
             + setAlternateZone(zone : Zone) : void
+            + getType() : ZoneType
+            + getName() : String
+            + getLocations() : List~Location~
         }
 
         class Location {
@@ -273,25 +346,25 @@ together {
             - triggerY : float
             - triggerRadius : float
             - interactable : IInteractable
+            - position : Position
+            - targetZone : ZoneType
+            - targetSpawnPosition : Position
+            - requiredDirection : String
             + setInteractable(i : IInteractable) : void
             + interact(player : Player, session : GameSession) : void
             + isPlayerInRange(pos : Position) : boolean
             + isInteractable() : boolean
             + getName() : String
+            + getPosition() : Position
+            + getTargetZone() : ZoneType
+            + getTargetSpawnPosition() : Position
+            + getRequiredDirection() : String
         }
 
         class SavePoint {
             - savePointId : int
             + onInteract(player : Player, session : GameSession) : void
             + isActive() : boolean
-        }
-
-        class EasterEgg {
-            - eggId : int
-            - triggerNpcId : int
-            - eggText : String
-            + trigger() : void
-            + getText() : String
         }
 
         class Obstacle {
@@ -324,6 +397,7 @@ together {
             - description : String
             + getItemId() : int
             + getName() : String
+            + getDescription() : String
         }
     }
 }
@@ -334,6 +408,11 @@ together {
 together {
 
     package "mode [GRASP: Polymorphism, High Cohesion]" #E8EAF6 {
+
+        enum GameModeType {
+            NORMAL
+            ZOMBIE
+        }
 
         class GameModeFactory {
             + createNormalMode() : NormalMode
@@ -375,7 +454,7 @@ together {
             - isAttended : boolean
             + onInteract(player : Player, session : GameSession) : void
             + isAvailable(currentHour : int) : boolean
-            + startLecture(player : Player) : void
+            + startLecture(player : Player) : Quiz
             + generateQuiz() : Quiz
             + markAttended() : void
         }
@@ -418,9 +497,21 @@ together {
             + buildPrayerModifier() : IStatModifier
             + resetCycle() : void
         }
+
+        class EasterEgg {
+            - eggId : int
+            - triggerNpcId : int
+            - eggText : String
+            + trigger() : void
+        }
     }
 
     package "combat [GRASP: Polymorphism, Pure Fabrication]" #EDE7F6 {
+
+        enum CombatMove {
+            DEBUG
+            TERMINATE
+        }
 
         class CombatStrategyFactory {
             + createStrategy(strategyType : String) : ICombatStrategy
@@ -430,21 +521,34 @@ together {
         class CombatChallenge {
             - challengeId : int
             - question : String
-            - correctAnswer : String
+            - options : String[]
+            - correctIndex : int
             - timeLimit : int
+            - difficulty : int
             + present() : void
+            + evaluate(answerIndex : int) : boolean
             + evaluate(answer : String) : boolean
             + buildPenaltyModifier() : IStatModifier
+            + {static} forBossPhase(phase : int) : CombatChallenge
+            + getQuestion() : String
+            + getOptions() : String[]
+            + getCorrectIndex() : int
+            + getTimeLimit() : int
+            + getDifficulty() : int
         }
 
         class DebugStrategy {
-            - challenge : CombatChallenge
+            - passedQuiz : boolean
+            + setPassed(passed : boolean) : void
             + execute(p : Player, e : Enemy) : CombatResult
             + getKarmaEffect() : int
         }
 
         class TerminateStrategy {
             - damageAmount : int = 30
+            - karmaEffect : int
+            - passed : boolean
+            + setPassed(p : boolean) : void
             + execute(p : Player, e : Enemy) : CombatResult
             + getKarmaEffect() : int
         }
@@ -463,6 +567,13 @@ together {
 
     package "dialogue [GRASP: Indirection, Pure Fabrication]" #E0F2F1 {
 
+        class DialogueManager {
+            - factory : DialogueFactory
+            + loadDialogue(npcId : int, mode : GameModeType) : Dialogue
+            + applyEffect(opt : DialogueOption, k : KarmaTracker) : void
+            + hasEasterEgg(npcId : int) : boolean
+        }
+
         class DialogueFactory {
             + loadDialogue(npcId : int, mode : GameModeType) : Dialogue
             + applyEffect(opt : DialogueOption, k : KarmaTracker) : void
@@ -473,6 +584,7 @@ together {
             - dialogueId : int
             - text : String
             - options : List~DialogueOption~
+            + addOption(opt : DialogueOption) : void
             + display() : void
             + getOptions() : List~DialogueOption~
             + getOption(index : int) : DialogueOption
@@ -489,6 +601,99 @@ together {
     }
 }
 
+' ╔══════════════════════════════════════════════════════╗
+'  BAND 4 — ENGINE · UI (Presentation Layer)
+' ╚══════════════════════════════════════════════════════╝
+together {
+
+    package "engine [UI Layer]" #F1F8E9 {
+
+        class GameEngine {
+            + {static} main(args : String[]) : void
+        }
+
+        class GamePanel {
+            + tileSize : int
+            + screenWidth : int
+            + screenHeight : int
+            + currentZone : ZoneType
+            + gameState : int
+            + zombieMode : boolean
+            + session : GameSession
+            + startGameThread() : void
+            + update() : void
+            + paintComponent(g : Graphics) : void
+            + resetPhaseOneFlow() : void
+            + resetZombieModeState() : void
+            + beginLectureForCurrentZone() : void
+            + completeCurrentLectureQuiz() : void
+            + startPhaseOneEnding() : void
+            + getPhaseGoalText() : String
+        }
+
+        class KeyHandler {
+            + upPressed : boolean
+            + downPressed : boolean
+            + leftPressed : boolean
+            + rightPressed : boolean
+            + ePressed : boolean
+            + enterPressed : boolean
+            + pPressed : boolean
+            + keyPressed(e : KeyEvent) : void
+            + keyReleased(e : KeyEvent) : void
+        }
+
+        class CollisionChecker {
+            + checkTile(player : Player) : void
+            + checkObjectCollision(player : Player) : void
+        }
+
+        class ObjectManager {
+            + furnitureList : List~Furniture~
+            + loadLibraryObjects() : void
+            + loadClassroomObjects() : void
+            + loadCafeteriaObjects() : void
+            + loadPrayerAreaObjects() : void
+            + loadServerRoomObjects() : void
+            + loadGroundObjects() : void
+            + clearObjects() : void
+            + draw(g2 : Graphics2D) : void
+        }
+
+        class SoundManager {
+            - bgmClip : Clip
+            - sfxClip : Clip
+            - musicVolume : float
+            - sfxVolume : float
+            + musicOn : boolean
+            + sfxOn : boolean
+            + playZoneMusic(zone : ZoneType) : void
+            + playSFX(path : String) : void
+            + stopMusic() : void
+            + setZombieMode(zombie : boolean) : void
+            + setBadEndingMode(bad : boolean) : void
+        }
+
+        class TileManager {
+            + mapTileNum : int[][]
+            + loadMap(zone : ZoneType) : void
+            + draw(g2 : Graphics2D) : void
+        }
+    }
+
+    package "ui [Presentation]" #E8F5E9 {
+
+        class UI {
+            - gp : GamePanel
+            + showGoal : boolean
+            + currentDialogueMessage : String
+            + quizPhase : int
+            + draw(g2 : Graphics2D) : void
+            + startDialogue(message : String) : void
+        }
+    }
+}
+
 ' ═══════════════════════════════════════════════════
 '  RELATIONSHIPS — BAND 1
 ' ═══════════════════════════════════════════════════
@@ -497,11 +702,13 @@ GameSession         "1" *-- "1"     GameMode              : " manages >"
 GameSession         "1" *-- "1"     KarmaTracker          : " tracks >"
 GameSession         "1" *-- "1"     CombatController      : " coordinates >"
 GameSession              ..>        GameState             : " constructs >"
-GameStateRepository      ..|>       ISaveStrategy         : " implements >"
+GameSession              ..>        PersistenceFactory    : " uses >"
+PersistenceFactory       ..>        PersistenceHandler    : " creates >"
+SQLServerHandler         ..|>       PersistenceHandler    : " implements >"
+XMLPersistenceHandler    ..|>       PersistenceHandler    : " implements >"
 StatModifierImpl         ..|>       IStatModifier         : " implements >"
 KarmaTracker        "1" *-- "0..*"  KarmaEvent            : " logs >"
 EndingResolver           ..>        KarmaTracker          : " analyzes >"
-GamePanel           "1" *-- "1"     SoundManager          : " utilizes >"
 
 ' ═══════════════════════════════════════════════════
 '  RELATIONSHIPS — BAND 2
@@ -529,9 +736,10 @@ Zone                "1" o-- "0..*"  NPC                   : " populated by >"
 Zone                "1" o-- "0..*"  Enemy                 : " spawns >"
 Location            "1" -->  "0..1" IInteractable         : " exposes >"
 Location                 ..>        Position              : " situated at >"
+Location                 ..>        ZoneType              : " targets >"
 Obstacle                 ..|>       IInteractable         : " implements >"
 SavePoint                ..|>       IInteractable         : " implements >"
-SavePoint                ..>        ISaveStrategy         : " triggers >"
+SavePoint                ..>        GameSession           : " triggers save on >"
 Obstacle            "1" -->  "0..1" KeyItem               : " unlocked via >"
 Inventory           "1" o-- "0..*"  KeyItem               : " holds >"
 
@@ -557,21 +765,44 @@ PrayerArea               ..>        IStatModifier         : " buffs >"
 CombatChallenge          ..>        IStatModifier         : " yields penalty >"
 
 CombatController         ..>        CombatStrategyFactory : " requests from >"
+CombatController         ..>        CombatMove            : " uses >"
 CombatStrategyFactory    ..>        ICombatStrategy       : " instantiates >"
 CombatStrategyFactory    ..>        DebugStrategy         : " creates >"
 CombatStrategyFactory    ..>        TerminateStrategy     : " creates >"
 DebugStrategy            ..|>       ICombatStrategy       : " implements >"
 TerminateStrategy        ..|>       ICombatStrategy       : " implements >"
-DebugStrategy       "1" --> "1"     CombatChallenge       : " evaluates >"
 CombatController         ..>        ICombatStrategy       : " executes >"
 CombatController         ..>        Player                : " references >"
 CombatController         ..>        Enemy                 : " targets >"
 CombatController         ..>        CombatResult          : " produces >"
 CombatResult             ..>        KarmaTracker          : " affects >"
 
-NPC                      -->        DialogueFactory       : " retrieves from >"
+DialogueManager     "1" *-- "1"     DialogueFactory       : " wraps >"
+NPC                      -->        DialogueManager       : " retrieves from >"
 DialogueFactory     "1" --> "1..*"  Dialogue              : " yields >"
 Dialogue            "1" *-- "1..*"  DialogueOption        : " presents >"
 DialogueOption           ..>        KarmaTracker          : " modifies >"
+
+' ═══════════════════════════════════════════════════
+'  RELATIONSHIPS — BAND 4 (Engine · UI)
+' ═══════════════════════════════════════════════════
+GameEngine               ..>        GamePanel             : " creates >"
+GamePanel           "1" *-- "1"     Player                : " renders >"
+GamePanel           "1" *-- "1"     GameSession           : " orchestrates >"
+GamePanel           "1" *-- "1"     KeyHandler            : " listens to >"
+GamePanel           "1" *-- "1"     CollisionChecker      : " checks via >"
+GamePanel           "1" *-- "1"     ObjectManager         : " populates >"
+GamePanel           "1" *-- "1"     TileManager           : " draws maps >"
+GamePanel           "1" *-- "1"     SoundManager          : " plays audio >"
+GamePanel           "1" *-- "1"     UI                    : " displays >"
+GamePanel                ..>        CombatController      : " manages combat >"
+GamePanel                ..>        CombatChallenge       : " presents quiz >"
+GamePanel                ..>        Enemy                 : " targets >"
+GamePanel                ..>        ZoneType              : " tracks zone >"
+UI                       ..>        GamePanel             : " reads state >"
+CollisionChecker         ..>        Player                : " validates >"
+CollisionChecker         ..>        TileManager           : " reads tiles >"
+ObjectManager            ..>        ZoneType              : " loads per zone >"
+SoundManager             ..>        ZoneType              : " selects music >"
 
 @enduml

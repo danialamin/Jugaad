@@ -20,7 +20,7 @@ zombieMode -> campusMap: isRouteBlocked(fromZoneId, toZoneId)
 activate campusMap
 campusMap -> zone: isBlocked()
 activate zone
-zone -> obstacle: isBlocked()
+zone -> obstacle: isLocked()
 activate obstacle
 obstacle --> zone: blockedStatus
 deactivate obstacle

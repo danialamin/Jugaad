@@ -4,6 +4,7 @@ title UC6: Interact with NPC (SD) - CampusFlex Section D
 participant ":GameSession" as gameSession
 participant ":Zone" as zone
 participant ":NPC" as npcEntity
+participant ":DialogueManager" as dialogueManager
 participant ":DialogueFactory" as dialogueFactory
 participant ":DialogueOption" as dialogueOption
 participant ":KarmaTracker" as karmaTracker
@@ -24,7 +25,9 @@ else Player initiates dialogue
     npcEntity -> npcEntity: isHostile(player.getStats().getKarma())
     npcEntity -> npcEntity: incrementInteraction()
     
-    npcEntity -> dialogueFactory: loadDialogue(npc.npcId, session.getCurrentMode())
+    npcEntity -> dialogueManager: loadDialogue(npc.npcId, session.getCurrentMode())
+    activate dialogueManager
+    dialogueManager -> dialogueFactory: loadDialogue(npc.npcId, mode)
     activate dialogueFactory
     dialogueFactory -> dialogueFactory: hasEasterEgg(npc.npcId)
     
@@ -33,16 +36,22 @@ else Player initiates dialogue
         activate dialogue
         dialogue -> dialogue: display()
         dialogue --> dialogueFactory: dialogueRef
-        dialogueFactory --> gameSession: dialogueRef
+        dialogueFactory --> dialogueManager: dialogueRef
+        dialogueManager --> npcEntity: dialogueRef
         
     else Normal dialogue
         dialogueFactory -> dialogue **: create(dialogueId, text, options)
         dialogue -> dialogue: display()
         dialogue --> dialogueFactory: dialogueRef
-        dialogueFactory --> gameSession: dialogueRef
+        dialogueFactory --> dialogueManager: dialogueRef
+        deactivate dialogueFactory
+        dialogueManager --> npcEntity: dialogueRef
         
         [-> gameSession: handleSystemEvent("selectResponse")
-        gameSession -> dialogueFactory: applyEffect(selectedOption, karmaTracker)
+        gameSession -> dialogueManager: applyEffect(selectedOption, karmaTracker)
+        activate dialogueManager
+        dialogueManager -> dialogueFactory: applyEffect(selectedOption, karmaTracker)
+        activate dialogueFactory
         
         dialogueFactory -> dialogueOption: getKarmaEffect()
         activate dialogueOption
@@ -56,9 +65,10 @@ else Player initiates dialogue
         else Dismissive response (isKind = false)
             dialogueFactory -> karmaTracker: deduct(karmaEffect, "Rude NPC response")
         end
+        deactivate dialogueFactory
     end
     destroy dialogue
-    deactivate dialogueFactory
+    deactivate dialogueManager
     deactivate npcEntity
 end
 deactivate gameSession

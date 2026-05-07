@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<java version="21.0.9" class="java.beans.XMLDecoder">
+ <object class="state.GameState" id="GameState0">
+  <void property="energy">
+   <int>100</int>
+  </void>
+  <void property="flags">
+   <void method="put">
+    <string>saved</string>
+    <boolean>true</boolean>
+   </void>
+  </void>
+  <void property="gpa">
+   <double>4.0</double>
+  </void>
+  <void property="hp">
+   <int>50</int>
+  </void>
+  <void property="karma">
+   <int>50</int>
+  </void>
+  <void property="maxHp">
+   <int>50</int>
+  </void>
+  <void property="modeSnapshot">
+   <object class="java.lang.Enum" method="valueOf">
+    <class>mode.GameModeType</class>
+    <string>NORMAL</string>
+   </object>
+  </void>
+  <void property="posX">
+   <float>88.0</float>
+  </void>
+  <void property="posY">
+   <float>488.0</float>
+  </void>
+  <void property="saveId">
+   <int>1</int>
+  </void>
+  <void property="zoneId">
+   <int>4</int>
+  </void>
+ </object>
+</java>

@@ -35,7 +35,7 @@ alt Player chooses DEBUG (Pacifist)
     
     combatController -> combatStrategyFactory: createStrategy("Debug")
     activate combatStrategyFactory
-    combatStrategyFactory -> debugStrategy **: create(challenge)
+    combatStrategyFactory -> debugStrategy **: create()
     combatStrategyFactory --> combatController: debugStrategyRef
     deactivate combatStrategyFactory
     

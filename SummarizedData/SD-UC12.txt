@@ -34,7 +34,7 @@ alt Checkpoint exists
             
             combatController -> combatStrategyFactory: createStrategy("Debug", true)
             activate combatStrategyFactory
-            combatStrategyFactory -> debugStrategy **: create(bossChallenge)
+            combatStrategyFactory -> debugStrategy **: create()
             combatStrategyFactory --> combatController: debugStrategyRef
             deactivate combatStrategyFactory
             
@@ -53,7 +53,7 @@ alt Checkpoint exists
                 deactivate combatChallenge
                 
                 debugStrategy -> debugStrategy: getKarmaEffect()
-                debugStrategy -> combatResult **: create(victory=true, usedDebug=true, karmaChange=+10, hpChange=0)
+                debugStrategy -> combatResult **: create(victory=true, usedDebug=true, karmaChange=+15, hpChange=0)
                 debugStrategy --> combatController: combatResult
                 deactivate debugStrategy
                 
@@ -63,7 +63,7 @@ alt Checkpoint exists
                 finalBoss -> finalBoss: isDefeated()
                 deactivate finalBoss
                 
-                combatController -> karmaTracker: add(10, "Boss challenge cleared - Debug")
+                combatController -> karmaTracker: add(15, "Boss challenge cleared - Debug")
                 destroy combatResult
                 destroy debugStrategy
                 
@@ -73,11 +73,11 @@ alt Checkpoint exists
                 combatChallenge --> debugStrategy: isCorrect = false
                 deactivate combatChallenge
                 
-                debugStrategy -> combatResult **: create(victory=false, usedDebug=true, karmaChange=0, hpChange=-20)
+                debugStrategy -> combatResult **: create(victory=false, usedDebug=true, karmaChange=0, hpChange=-10)
                 debugStrategy --> combatController: combatResult
                 
                 combatController -> combatController: applyResult(combatResult)
-                combatController -> playerEntity: takeDamage(20)
+                combatController -> playerEntity: takeDamage(10)
                 activate playerEntity
                 deactivate playerEntity
                 destroy combatResult
@@ -130,8 +130,8 @@ alt Checkpoint exists
     else totalKarma <= 30 (EVIL)
         endingResolver -> endingResolver: buildEpilogueText(EVIL)
         
-    else 30 < totalKarma < 70 (MIXED)
-        endingResolver -> endingResolver: buildEpilogueText(MIXED)
+    else 30 < totalKarma < 70 (NEUTRAL)
+        endingResolver -> endingResolver: buildEpilogueText(NEUTRAL)
     end
     
     deactivate endingResolver

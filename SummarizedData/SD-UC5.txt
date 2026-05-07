@@ -30,7 +30,7 @@ alt Prayer Area AVAILABLE (prayedThisCycle = false)
         [-> gameSession: handleSystemEvent("chooseToPray")
         gameSession -> prayerArea: buildPrayerModifier()
         
-        prayerArea -> statModifierImpl **: create(gpaDelta=0, energyDelta=0, stressDelta=0, karmaDelta=+20)
+        prayerArea -> statModifierImpl **: create(gpaDelta=0, stressDelta=0, karmaDelta=+20)
         statModifierImpl --> prayerArea: prayerModifier
         prayerArea --> gameSession: prayerModifier
         

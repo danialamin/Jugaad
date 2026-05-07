@@ -1,2 +1,8 @@
 /DatabaseConnection.class
 /GameStateDao.class
+/HibernateUtil.class
+/PersistenceFactory$PersistenceType.class
+/PersistenceFactory.class
+/PersistenceHandler.class
+/SQLServerHandler.class
+/XMLPersistenceHandler.class

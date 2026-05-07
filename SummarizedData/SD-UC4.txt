@@ -33,16 +33,16 @@ activate playerEntity
 playerEntity --> canteen: currentHp
 deactivate playerEntity
 
-canteen -> canteen: canEat(player)
+canteen -> canteen: canEat(statsRef)
 
-alt Player HP is BELOW max (canEat = true)
+alt canEat = true
     canteen -> canteen: showMenu()
     
     alt Player selects food
         [-> gameSession: handleSystemEvent("selectFood")
         gameSession -> canteen: buildFoodModifier()
         
-        canteen -> statModifierImpl **: create(gpaDelta=0, hpDelta=+30, stressDelta=-10, karmaDelta=0)
+        canteen -> statModifierImpl **: create(gpaDelta=0, stressDelta=-10, karmaDelta=0)
         statModifierImpl --> canteen: foodModifier
         canteen --> gameSession: foodModifier
         

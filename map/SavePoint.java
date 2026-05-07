@@ -13,14 +13,9 @@ public class SavePoint implements IInteractable {
 
     @Override
     public void onInteract(Player player, GameSession session) {
-        // SD-UC7: buildCurrentGameState() → gameStateRepository.save(gameState)
-        state.GameState gameState = session.buildCurrentGameState();
-        boolean saved = session.getSaveStrategy().save(gameState);
-        if (saved) {
-            System.out.println("Game Saved at Save Point " + savePointId);
-        } else {
-            System.out.println("Save failed at Save Point " + savePointId);
-        }
+        // SD-UC7: handle save interaction
+        session.saveGame();
+        System.out.println("Game Save initiated at Save Point " + savePointId);
     }
 
     public boolean isActive() {

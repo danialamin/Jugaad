@@ -23,18 +23,21 @@ activate campusMap
 campusMap --> gameMode: currentZoneRef
 deactivate campusMap
 
-alt Interaction overlaps Zone Boundary
-    gameMode -> zone: resolveBoundaryTransition()
+alt Player reaches door Location
+    gameMode -> zone: getNearbyLocation(player.getPosition())
     activate zone
-    zone --> gameMode: nextZoneRef
+    zone --> gameMode: doorLocationRef
     deactivate zone
     
-    gameMode -> gameSession: updateZone(nextZoneRef)
+    gameMode -> zone: getLocations()
+    note right: Location holds targetZone : ZoneType
     
-    gameSession -> soundManager: playZoneMusic(nextZoneRef.getZoneType())
+    gameMode -> gameSession: updateZone(nextZone)
+    
+    gameSession -> soundManager: playZoneMusic(nextZone.getType())
     activate soundManager
     soundManager -> soundManager: stopMusic()
-    soundManager -> soundManager: load AudioStream
+    soundManager -> soundManager: playZoneMusic(zoneType)
     soundManager --> gameSession: musicPlaying
     deactivate soundManager
     

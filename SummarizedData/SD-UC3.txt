@@ -24,7 +24,7 @@ alt Phone opened DURING active Quiz
     phone -> quiz: incrementAttempt()
     
     phone -> phone: buildCheatModifier()
-    phone -> statModifierImpl **: create(gpaDelta=0, energyDelta=0, stressDelta=0, karmaDelta=-15)
+    phone -> statModifierImpl **: create(gpaDelta=0, stressDelta=0, karmaDelta=-15)
     statModifierImpl --> phone: cheatModifier
     phone --> gameSession: cheatModifier
     
@@ -42,7 +42,7 @@ else Phone opened OUTSIDE quiz
         [-> gameSession: handleSystemEvent("scrollSocialMedia")
         gameSession -> phone: buildSocialMediaModifier()
         
-        phone -> statModifierImpl **: create(gpaDelta=0, energyDelta=0, stressDelta=-5, karmaDelta=-5)
+        phone -> statModifierImpl **: create(gpaDelta=0, stressDelta=-5, karmaDelta=-5)
         statModifierImpl --> phone: socialModifier
         phone --> gameSession: socialModifier
         

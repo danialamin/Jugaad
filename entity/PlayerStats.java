@@ -50,4 +50,9 @@ public class PlayerStats {
     public int getEnergy() { return energy; }
     public int getStress() { return stress; }
     public int getKarma() { return karma; }
+
+    public void setGPA(double gpa) { this.gpa = gpa; }
+    public void setEnergy(int energy) { this.energy = energy; }
+    public void setStress(int stress) { this.stress = stress; }
+    public void setKarma(int karma) { this.karma = karma; }
 }

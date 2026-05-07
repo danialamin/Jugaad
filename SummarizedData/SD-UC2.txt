@@ -47,7 +47,7 @@ alt Class is available and player enters
         phone -> quiz: incrementAttempt()
         
         phone -> phone: buildCheatModifier()
-        phone -> statModifierImpl **: create(gpaDelta=0, energyDelta=0, stressDelta=0, karmaDelta=-15)
+        phone -> statModifierImpl **: create(gpaDelta=0, stressDelta=0, karmaDelta=-15)
         statModifierImpl --> phone: cheatModifier
         phone --> gameSession: cheatModifier
         deactivate phone
@@ -69,7 +69,7 @@ alt Class is available and player enters
             quiz --> gameSession: isCorrect = true
             gameSession -> quiz: buildResultModifier(true)
             
-            quiz -> statModifierImpl **: create(gpaDelta=+0.3, energyDelta=0, stressDelta=0, karmaDelta=+5)
+            quiz -> statModifierImpl **: create(gpaDelta=+0.3, stressDelta=0, karmaDelta=+5)
             statModifierImpl --> quiz: modifier
             quiz --> gameSession: modifier
             
@@ -90,7 +90,7 @@ alt Class is available and player enters
             gameSession -> quiz: incrementAttempt()
             gameSession -> quiz: buildResultModifier(false)
             
-            quiz -> statModifierImpl **: create(gpaDelta=+0.1, energyDelta=0, stressDelta=0, karmaDelta=0)
+            quiz -> statModifierImpl **: create(gpaDelta=+0.1, stressDelta=0, karmaDelta=0)
             statModifierImpl --> quiz: modifier
             quiz --> gameSession: modifier
             
@@ -107,7 +107,7 @@ alt Class is available and player enters
     destroy quiz
     
 else Player skips class entirely
-    location -> statModifierImpl **: create(gpaDelta=-0.1, energyDelta=0, stressDelta=0, karmaDelta=-10)
+    location -> statModifierImpl **: create(gpaDelta=-0.1, stressDelta=0, karmaDelta=-10)
     
     location -> playerStats: applyModifier(skipModifier)
     activate playerStats
