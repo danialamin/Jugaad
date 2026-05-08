@@ -6,3 +6,5 @@
 /PersistenceHandler.class
 /SQLServerHandler.class
 /XMLPersistenceHandler.class
+/DbConfig.class
+/PersistenceFactory$1.class

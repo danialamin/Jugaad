@@ -1,2 +1,27 @@
-/DatabaseTest.class
+# ── Compiled class files (root-level) ───────────────────────────────────────
+*.class
+
+# ── Maven build output ───────────────────────────────────────────────────────
+target/
+
+# ── Downloaded tools (bootstrapped at run-time, not needed in repo) ──────────
+tools/apache-maven-*/
+tools/*.zip
+
+# ── Native SQL Server auth DLL (downloaded by lib/auth/download_auth_dll.ps1) ─
+lib/auth/*.dll
+
+# ── Temp extraction artifacts ────────────────────────────────────────────────
+lib/temp_extract/
+
+# ── Game save files (user data, not source) ──────────────────────────────────
+savegame.xml
+
+# ── IDE folders ──────────────────────────────────────────────────────────────
 .vs/
+.idea/
+*.iml
+
+# ── OS cruft ─────────────────────────────────────────────────────────────────
+Thumbs.db
+.DS_Store

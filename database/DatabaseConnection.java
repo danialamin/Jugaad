@@ -8,14 +8,14 @@ public class DatabaseConnection {
     private static DatabaseConnection instance;
     private Connection connection;
 
-    private String url = "jdbc:sqlserver://localhost:1433;databaseName=campusFlexDb;encrypt=true;trustServerCertificate=true;";
-    private String user = "sa"; 
-    private String password = "YourPassword123"; 
-
     private DatabaseConnection() throws SQLException {
         try {
             Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-            this.connection = DriverManager.getConnection(url, user, password);
+            if (DbConfig.isWindowsAuth()) {
+                this.connection = DriverManager.getConnection(DbConfig.url());
+            } else {
+                this.connection = DriverManager.getConnection(DbConfig.url(), DbConfig.user(), DbConfig.password());
+            }
         } catch (ClassNotFoundException e) {
             throw new SQLException("SQL Server Driver not found.", e);
         }
