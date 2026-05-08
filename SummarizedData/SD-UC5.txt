@@ -1,56 +1,60 @@
-@startuml
+﻿@startuml
 title UC5: Pray at Prayer Area (SD) - CampusFlex Section D
 
+' â”€â”€ Reflects actual code flow â”€â”€
+' GamePanel.interactWithOptionalPrayer is invoked from checkInteractions
+' when the player is in PRAYER_AREA during FREE_ROAM_OPTIONAL phase
+' and stands next to an "empty_prayer_mat" furniture.
+'
+' The activity.PrayerArea class exists with buildPrayerModifier(),
+' but is NOT instantiated at runtime â€” GamePanel directly calls
+' PlayerStats.updateKarma(20) and KarmaTracker.add(20, ...).
+
+participant ":GamePanel" as gamePanel
+participant ":KeyHandler" as keyH
+participant ":ObjectManager" as objM
+participant ":Furniture" as mat
 participant ":GameSession" as gameSession
-participant ":NormalMode" as normalMode
-participant ":Zone" as zone
-participant ":Location" as location
-participant ":PrayerArea" as prayerArea
+participant ":Player" as playerEntity
 participant ":PlayerStats" as playerStats
 participant ":KarmaTracker" as karmaTracker
-participant ":StatModifierImpl" as statModifierImpl
+participant ":UI" as gameUI
 
-[-> gameSession: handleSystemEvent("enterPrayerArea")
-activate gameSession
-gameSession -> normalMode: onInteract(session)
-activate normalMode
-normalMode -> zone: getNearbyLocation(player.getPosition())
-activate zone
-zone --> normalMode: locationRef
-deactivate zone
-normalMode -> location: interact(player, session)
-activate location
-location -> prayerArea: onInteract(player, session)
-activate prayerArea
+[-> gamePanel: checkInteractions()\n
+activate gamePanel
 
-prayerArea -> prayerArea: isAvailable()
+gamePanel -> gamePanel: interactWithOptionalPrayer()
+gamePanel -> objM: findNearbyNamedFurniture("empty_prayer_mat", 2*tile)
 
-alt Prayer Area AVAILABLE (prayedThisCycle = false)
-    alt Player chooses to pray
-        [-> gameSession: handleSystemEvent("chooseToPray")
-        gameSession -> prayerArea: buildPrayerModifier()
-        
-        prayerArea -> statModifierImpl **: create(gpaDelta=0, stressDelta=0, karmaDelta=+20)
-        statModifierImpl --> prayerArea: prayerModifier
-        prayerArea --> gameSession: prayerModifier
-        
-        gameSession -> playerStats: applyModifier(prayerModifier)
+alt mat found
+    objM --> gamePanel: matRef
+    
+    alt prayedThisPhase == false (Prayer Area available)
+        gamePanel -> gamePanel: prayedThisPhase = true
+        gamePanel -> gameSession: getPlayer()
+        gameSession --> gamePanel: playerRef
+        gamePanel -> playerEntity: getStats()
+        gamePanel -> playerStats: updateKarma(+20)
         activate playerStats
-        playerStats -> playerStats: updateKarma(+20)
-        playerStats --> gameSession
+        playerStats -> playerStats: karma += 20
         deactivate playerStats
         
-        gameSession -> karmaTracker: add(20, "Prayer at Prayer Area")
-        gameSession -> prayerArea: resetCycle()
-        destroy statModifierImpl
+        gamePanel -> gameSession: getKarmaTracker()
+        gameSession --> gamePanel: karmaTrackerRef
+        gamePanel -> karmaTracker: add(20, "Prayer at Prayer Area")
+        activate karmaTracker
+        karmaTracker -> karmaTracker: history.add(KarmaEvent(+20, ...))\ntotal += 20
+        deactivate karmaTracker
         
-    else Player decides not to pray
-        [-> gameSession: handleSystemEvent("declinePrayer")
+        gamePanel -> gameUI: startDialogue("You|You pray quietly...")
+        
+    else prayedThisPhase == true (already prayed)
+        gamePanel -> gameUI: startDialogue("You|You already prayed...")
     end
+    
+    gamePanel -> gamePanel: gameState = dialogueState
 end
+deactivate gamePanel
 
-deactivate prayerArea
-deactivate location
-deactivate normalMode
-deactivate gameSession
+
 @enduml

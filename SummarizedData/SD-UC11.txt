@@ -1,91 +1,90 @@
-@startuml
+﻿@startuml
 title UC11: Navigate Campus Obstacles (SD) - CampusFlex Section D
 
-participant ":GameSession" as gameSession
-participant ":ZombieMode" as zombieMode
+' â”€â”€ Reflects actual code flow â”€â”€
+' In the actual build, locked routes and key checks are handled inline
+' inside GamePanel during door-trigger detection (see UC8). Keys are
+' added to Inventory by checkZombieDrops() when the right zombie is
+' defeated (UC9 / UC10 outcome).
+'
+' map.Obstacle, map.Zone.alternateZone, ZombieMode.revealAlternate,
+' and the "key pickup location" prompt from the original SD are
+' present in the codebase but NOT invoked at runtime.
+
+participant ":GamePanel" as gamePanel
+participant ":ObjectManager" as objM
 participant ":CampusMap" as campusMap
 participant ":Zone" as zone
-participant ":Obstacle" as obstacle
+participant ":Location" as location
+participant ":Player" as playerEntity
 participant ":Inventory" as inventory
-participant ":CombatController" as combatController
-participant ":ZombieEnemy" as zombieEnemy
 participant ":KeyItem" as keyItem
+participant ":CombatController" as combatController
+participant ":ZombieEnemy" as zEnemy
+participant ":UI" as gameUI
 
-[-> gameSession: handleSystemEvent("attemptBlockedRoute")
-activate gameSession
-gameSession -> zombieMode: onPlayerMove(routeX, routeY, session)
-activate zombieMode
+[-> gamePanel: update()
+activate gamePanel
 
-zombieMode -> campusMap: isRouteBlocked(fromZoneId, toZoneId)
-activate campusMap
-campusMap -> zone: isBlocked()
-activate zone
-zone -> obstacle: isLocked()
-activate obstacle
-obstacle --> zone: blockedStatus
-deactivate obstacle
-zone --> campusMap: routeBlocked
-deactivate zone
-campusMap --> zombieMode: isRouteBlocked
-deactivate campusMap
+' --- 1. Player attempts to walk through a door ---
+gamePanel -> campusMap: getZone(currentZone)
+campusMap --> gamePanel: zoneRef
+gamePanel -> zone: getLocations()
+zone --> gamePanel: List<Location>
 
-[-> gameSession: handleSystemEvent("takeAlternateRoute")
-gameSession -> zombieMode: revealAlternate(zone)
-
-zombieMode -> campusMap: getZone(alternateZoneId)
-activate campusMap
-campusMap -> zone: getAlternateZone()
-activate zone
-zone --> campusMap: alternateZoneRef
-deactivate zone
-campusMap --> zombieMode: alternateZone
-deactivate campusMap
-
-[-> gameSession: handleSystemEvent("collectKey")
-gameSession -> campusMap: getLocation(keyLocationId)
-activate campusMap
-campusMap -> zone: getLocation(keyLocationId)
-activate zone
-zone --> campusMap: locationRef
-deactivate zone
-campusMap --> gameSession: locationRef
-deactivate campusMap
-
-alt Key spot is guarded by a zombie
-    gameSession -> combatController: initiateCombat(guardingZombie)
-    activate combatController
-    combatController -> zombieEnemy: getCombatChallenge()
-    activate zombieEnemy
-    zombieEnemy --> combatController: challengeRef
-    deactivate zombieEnemy
-    deactivate combatController
+loop for each Location (door) at player's tile
+    gamePanel -> location: getTargetZone(), getRequiredDirection()
+    
+    alt target == CORRIDOR
+        gamePanel -> playerEntity: getInventory()
+        gamePanel -> inventory: hasItem(1)  ' Corridor Keycard
+        alt !hasItem(1)
+            gamePanel -> gameUI: startDialogue("ACCESS DENIED. Requires: Corridor Keycard.")
+            gamePanel -> gamePanel: pushPlayerBack(dir); gameState=dialogueState
+        end
+    else target == SERVER_ROOM
+        gamePanel -> inventory: hasItem(2)  ' Server Access Card
+        alt !hasItem(2)
+            gamePanel -> gameUI: startDialogue("ACCESS DENIED. Requires: Server Access Card.")
+            gamePanel -> gamePanel: pushPlayerBack(dir); gameState=dialogueState
+        end
+    else target == AI_LAB (zombie mode)
+        gamePanel -> gameUI: startDialogue("AI Lab is locked tight.")
+        gamePanel -> gamePanel: pushPlayerBack(dir); gameState=dialogueState
+    end
 end
+deactivate gamePanel
 
-gameSession -> obstacle: onInteract(player, session)
-activate obstacle
-obstacle -> obstacle: isLocked()
+' --- 2. Combat with the key-holding zombie (see UC9) ---
+[-> gamePanel: checkZombieTouchEncounters() â†’ startZombieCombat(zombieFurniture)
+activate gamePanel
+gamePanel -> zEnemy **: new ZombieEnemy("Ibtassam Amjad" or "Miss Javeria Imtiaz", ...)
+gamePanel -> combatController: initiateCombat(zEnemy)
+deactivate gamePanel
 
-alt Player tries door WITHOUT key
-    obstacle -> obstacle: getHint()
-    
-else Player reaches key pickup location
-    gameSession -> inventory: addItem(keyItem)
-    activate inventory
-    inventory -> keyItem **: create(itemId, name, description)
-    inventory --> gameSession: addedStatus
-    deactivate inventory
-    
-    gameSession -> obstacle: tryUnlock(keyItem)
-    obstacle -> inventory: hasItem(keyItem.getItemId())
-    activate inventory
-    inventory --> obstacle: hasItem
-    deactivate inventory
-    
-    obstacle --> gameSession: unlockStatus
-    gameSession -> zombieMode: revealAlternate(zone)
+' --- 3. Drop key on victory ---
+[-> gamePanel: executeCombatStrategy returns victory
+activate gamePanel
+gamePanel -> gamePanel: checkZombieDrops(internalName)
+
+alt internalName == "zombie_ibtassam_amjad"
+    gamePanel -> keyItem **: new KeyItem(1, "Corridor Keycard", "Unlocks the Corridor")
+    gamePanel -> playerEntity: getInventory()
+    gamePanel -> inventory: addItem(keyItem)
+else internalName == "zombie_javeria"
+    gamePanel -> keyItem **: new KeyItem(2, "Server Access Card", "Grants access to the Server Room")
+    gamePanel -> inventory: addItem(keyItem)
+    gamePanel -> gamePanel: javeriaDefeated = true
 end
+deactivate gamePanel
 
-deactivate obstacle
-deactivate zombieMode
-deactivate gameSession
+' --- 4. Re-attempt door now succeeds (back to UC8 transition path) ---
+[-> gamePanel: door re-trigger
+activate gamePanel
+gamePanel -> inventory: hasItem(N)
+inventory --> gamePanel: true
+gamePanel -> gamePanel: currentZone = targetZone\n+ load assets / spawn / music\n(see SD-UC8)
+deactivate gamePanel
+
+
 @enduml

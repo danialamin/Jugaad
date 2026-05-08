@@ -1,75 +1,70 @@
-@startuml
+﻿@startuml
 title UC6: Interact with NPC (SD) - CampusFlex Section D
 
+' â”€â”€ Reflects actual code flow â”€â”€
+' NPC interactions are detected in GamePanel.checkInteractions via
+' findNearbyNamedFurniture("librarian"|"haider_ramzan"|
+' "cafeteria_uncle"|"server_room_guard", radius). Each handler picks a
+' randomized line from a hardcoded array and calls
+' UI.startDialogue / specialized cutscene methods.
+'
+' DialogueManager / DialogueFactory / Dialogue / DialogueOption /
+' entity.NPC classes exist but are NOT used at runtime â€” the project
+' does not run karma-based response selection through them.
+' Easter-egg lines are gated by a per-NPC interaction counter
+' (haiderInteractionCount >= 6) inside GamePanel.
+
+participant ":GamePanel" as gamePanel
+participant ":KeyHandler" as keyH
+participant ":ObjectManager" as objM
+participant ":Furniture" as npcF
+participant ":UI" as gameUI
 participant ":GameSession" as gameSession
-participant ":Zone" as zone
-participant ":NPC" as npcEntity
-participant ":DialogueManager" as dialogueManager
-participant ":DialogueFactory" as dialogueFactory
-participant ":DialogueOption" as dialogueOption
-participant ":KarmaTracker" as karmaTracker
-participant ":Dialogue" as dialogue
+participant ":PlayerStats" as playerStats
 
-[-> gameSession: handleSystemEvent("initiateConversation")
-activate gameSession
-gameSession -> zone: getNearbyLocation(player.getPosition())
-activate zone
-zone --> gameSession: npcLocationRef
-deactivate zone
+[-> gamePanel: checkInteractions()
+activate gamePanel
 
-alt Player walks away without talking
-    [-> gameSession: handleSystemEvent("walkAway")
-else Player initiates dialogue
-    gameSession -> npcEntity: onInteract(player, session)
-    activate npcEntity
-    npcEntity -> npcEntity: isHostile(player.getStats().getKarma())
-    npcEntity -> npcEntity: incrementInteraction()
+alt currentZone == LIBRARY
+    gamePanel -> gamePanel: interactWithLibrarian()
+    gamePanel -> objM: findNearbyNamedFurniture("librarian", 3*tile)
+    objM --> gamePanel: librarianFurniture
+    gamePanel -> gameUI: startDialogue(random librarianDialogues[i])
+
+else currentZone == GROUND or WALKWAY
+    gamePanel -> gamePanel: interactWithHaiderRamzan()
+    gamePanel -> objM: findNearbyNamedFurniture("haider_ramzan", 3*tile)
+    objM --> gamePanel: haiderFurniture
+    gamePanel -> gamePanel: haiderInteractionCount++
     
-    npcEntity -> dialogueManager: loadDialogue(npc.npcId, session.getCurrentMode())
-    activate dialogueManager
-    dialogueManager -> dialogueFactory: loadDialogue(npc.npcId, mode)
-    activate dialogueFactory
-    dialogueFactory -> dialogueFactory: hasEasterEgg(npc.npcId)
-    
-    alt NPC has Easter Egg line
-        dialogueFactory -> dialogue **: create(easterEggId, easterEggText, options)
-        activate dialogue
-        dialogue -> dialogue: display()
-        dialogue --> dialogueFactory: dialogueRef
-        dialogueFactory --> dialogueManager: dialogueRef
-        dialogueManager --> npcEntity: dialogueRef
-        
-    else Normal dialogue
-        dialogueFactory -> dialogue **: create(dialogueId, text, options)
-        dialogue -> dialogue: display()
-        dialogue --> dialogueFactory: dialogueRef
-        dialogueFactory --> dialogueManager: dialogueRef
-        deactivate dialogueFactory
-        dialogueManager --> npcEntity: dialogueRef
-        
-        [-> gameSession: handleSystemEvent("selectResponse")
-        gameSession -> dialogueManager: applyEffect(selectedOption, karmaTracker)
-        activate dialogueManager
-        dialogueManager -> dialogueFactory: applyEffect(selectedOption, karmaTracker)
-        activate dialogueFactory
-        
-        dialogueFactory -> dialogueOption: getKarmaEffect()
-        activate dialogueOption
-        dialogueOption --> dialogueFactory: karmaEffect
-        dialogueFactory -> dialogueOption: isKindChoice()
-        dialogueOption --> dialogueFactory: isKind
-        deactivate dialogueOption
-        
-        alt Kind response (isKind = true)
-            dialogueFactory -> karmaTracker: add(karmaEffect, "Kind NPC response")
-        else Dismissive response (isKind = false)
-            dialogueFactory -> karmaTracker: deduct(karmaEffect, "Rude NPC response")
-        end
-        deactivate dialogueFactory
+    alt haiderInteractionCount >= 6 AND not yet shown
+        gamePanel -> gamePanel: easterEggTriggered = true
+        gamePanel -> gameUI: startEasterEggDialogue("Haider Ramzan")
+    else normal line
+        gamePanel -> gameUI: startDialogue(random haiderDialogues[i])
     end
-    destroy dialogue
-    deactivate dialogueManager
-    deactivate npcEntity
+
+else currentZone == CAFETERIA AND not zombieMode
+    gamePanel -> gamePanel: interactWithCafeteriaUncle()
+    gamePanel -> objM: findNearbyNamedFurniture("cafeteria_uncle", 3*tile)
+    objM --> gamePanel: uncleFurniture
+    gamePanel -> gameUI: startCafeteriaUncleSequence()
+
+else currentZone == SERVER_ROOM
+    gamePanel -> gamePanel: interactWithServerRoomGuard()
+    gamePanel -> objM: findNearbyNamedFurniture("server_room_guard", 4*tile)
+    objM --> gamePanel: guardFurniture
+    gamePanel -> gameUI: startServerRoomGuardSequence()
+    
+    opt Player tries to touch a server rack/desk
+        gamePanel -> gameUI: startServerRoomGuard{Rack|Desk}Sequence()
+        gamePanel -> gameSession: getPlayer().getStats()
+        gamePanel -> playerStats: updateStress(+10)
+    end
 end
-deactivate gameSession
+
+gamePanel -> gamePanel: gameState = dialogueState
+deactivate gamePanel
+
+
 @enduml

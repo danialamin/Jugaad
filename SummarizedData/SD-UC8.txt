@@ -1,51 +1,85 @@
-@startuml
+﻿@startuml
 title UC8: Explore Campus Map (SD) - CampusFlex Section D
 
-participant ":GameSession" as gameSession
-participant ":GameMode" as gameMode
+' â”€â”€ Reflects actual code flow â”€â”€
+' Movement is processed in GamePanel.update() while gameState=playState.
+' Player.update() reads KeyHandler and applies axis movement (with
+' collision checks via TileManager + ObjectManager). Door transitions
+' are handled inline in GamePanel by scanning the current zone's
+' Locations for one whose triggerRadius contains the player.
+'
+' GameMode.onPlayerMove(x, y, session) exists and is called via
+' session.onPlayerMove(...) but is currently used only to mirror the
+' player position; mode classes do not gate movement.
+
+participant ":GamePanel" as gamePanel
+participant ":KeyHandler" as keyH
 participant ":Player" as playerEntity
+participant ":TileManager" as tileM
+participant ":ObjectManager" as objM
 participant ":CampusMap" as campusMap
 participant ":Zone" as zone
+participant ":Location" as location
+participant ":GameSession" as gameSession
 participant ":SoundManager" as soundManager
+participant ":UI" as gameUI
 
-[-> gameSession: handleSystemEvent("exploreCampus")
-activate gameSession
-gameSession -> gameMode: onPlayerMove(x, y, session)
-activate gameMode
-
-gameMode -> playerEntity: moveTo(x, y)
+[-> gamePanel: update()
+activate gamePanel
+gamePanel -> playerEntity: update()
 activate playerEntity
-playerEntity --> gameMode: positionUpdated
+playerEntity -> keyH: read up/down/left/right
+playerEntity -> tileM: collision check on tiles
+playerEntity -> objM: collision check on furniture
+alt no collision
+    playerEntity -> playerEntity: xLocation += Â±speed\nor yLocation += Â±speed
+end
 deactivate playerEntity
 
-gameMode -> campusMap: getZone(player.getCurrentZoneId())
-activate campusMap
-campusMap --> gameMode: currentZoneRef
-deactivate campusMap
+gamePanel -> gamePanel: updateLiveLocation()\n(currentLiveZone tracked for HUD/music)
 
-alt Player reaches door Location
-    gameMode -> zone: getNearbyLocation(player.getPosition())
-    activate zone
-    zone --> gameMode: doorLocationRef
-    deactivate zone
-    
-    gameMode -> zone: getLocations()
-    note right: Location holds targetZone : ZoneType
-    
-    gameMode -> gameSession: updateZone(nextZone)
-    
-    gameSession -> soundManager: playZoneMusic(nextZone.getType())
-    activate soundManager
-    soundManager -> soundManager: stopMusic()
-    soundManager -> soundManager: playZoneMusic(zoneType)
-    soundManager --> gameSession: musicPlaying
-    deactivate soundManager
-    
-    gameMode --> gameSession: transitionComplete
+' --- Door transition detection ---
+gamePanel -> campusMap: getZone(currentZone)
+campusMap --> gamePanel: zoneRef
+gamePanel -> zone: getLocations()
+zone --> gamePanel: List of Location
+
+loop each Location in current Zone
+    gamePanel -> location: getPosition / getRequiredDirection
+    alt player tile == door tile AND facing requiredDirection
+        location --> gamePanel: targetZone, targetSpawnPosition
+        
+        alt (zombieMode and locked-door rules)
+            alt target == CORRIDOR AND !inventory.hasItem(1)
+                gamePanel -> gameUI: startDialogue("ACCESS DENIED. Corridor Keycard.")
+                gamePanel -> gamePanel: pushPlayerBack(dir); gameState = dialogueState
+            else target == SERVER_ROOM AND !inventory.hasItem(2)
+                gamePanel -> gameUI: startDialogue("ACCESS DENIED. Server Access Card.")
+                gamePanel -> gamePanel: pushPlayerBack(dir); gameState = dialogueState
+            else target == AI_LAB (zombie mode)
+                gamePanel -> gameUI: startDialogue("AI Lab is locked tight.")
+                gamePanel -> gamePanel: pushPlayerBack(dir); gameState = dialogueState
+            end
+        end
+        
+        gamePanel -> gamePanel: currentZone = targetZone
+        gamePanel -> tileM: loadMap()
+        gamePanel -> objM: clearObjects() + load[Zone]Objects()\n(zombie variant if zombieMode)
+        gamePanel -> objM: filterDefeatedZombies(defeatedZombies)
+        gamePanel -> playerEntity: setXLocation/YLocation(targetSpawnPosition)
+        gamePanel -> playerEntity: setCurrentZoneId(currentZone.ordinal())
+        gamePanel -> soundManager: playZoneMusic(currentZone)
+        
+        opt Special arrival cutscene\n(CLASSROOM/AI_LAB lecture intro,\nzombie cafe/classroom intro,\nServer Room arrival)
+            gamePanel -> gameUI: start...Sequence()
+            gamePanel -> gamePanel: gameState = dialogueState
+        end
+    end
 end
 
-gameSession --> [: renderUpdatedMapAndMusic()
-deactivate gameMode
-deactivate gameSession
+' --- Mode hook (mirrors position; no blocking) ---
+gamePanel -> gameSession: onPlayerMove(x, y) (implicit, not per-frame)
+deactivate gamePanel
+
 
 @enduml

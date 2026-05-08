@@ -6,12 +6,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="lib/mssql-jdbc-12.8.1.jre11.jar"/>
-	<classpathentry excluding="Context/**" including="**/*.java" kind="src" output="target/classes" path="">
-		<attributes>
-			<attribute name="optional" value="true"/>
-			<attribute name="maven.pomderived" value="true"/>
-		</attributes>
-	</classpathentry>
 	<classpathentry excluding="**" kind="src" output="target/classes" path="src/main/resources">
 		<attributes>
 			<attribute name="maven.pomderived" value="true"/>
@@ -27,6 +21,12 @@
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
 		<attributes>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry excluding="Context/**|DatabaseTest.java|tools/**|lib/**|target/**" including="**/*.java" kind="src" output="target/classes" path="">
+		<attributes>
+			<attribute name="optional" value="true"/>
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>

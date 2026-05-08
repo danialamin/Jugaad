@@ -1,47 +1,89 @@
-@startuml
-title UC7: Save Game (SD) - CampusFlex Section D
+﻿@startuml
+title UC7: Save Game at Checkpoint (SD) - CampusFlex Section D
+
+' â”€â”€ Reflects actual code flow â”€â”€
+' Save is triggered when GamePanel.checkInteractions finds a
+' "checkpoint" furniture near the player. GamePanel builds the full
+' GameState snapshot via buildFullGameState() and asks GameSession
+' to persist it. GameSession shows a JOptionPane to pick SQL Server
+' (Hibernate-backed SQLServerHandler) or File System (XMLPersistenceHandler).
+' Save IDs are hardcoded to 1 (single save slot).
 
 participant ":GamePanel" as gamePanel
-participant ":GameSession" as gameSession
-participant ":SavePoint" as savePoint
-participant ":PersistenceFactory" as persistenceFactory
-participant ":PersistenceHandler" as persistenceHandler
+participant ":KeyHandler" as keyH
+participant ":ObjectManager" as objM
+participant ":Furniture" as cpF
 participant ":GameState" as gameState
+participant ":GameSession" as gameSession
+participant ":Player" as playerEntity
+participant ":PlayerStats" as playerStats
+participant ":KarmaTracker" as karmaTracker
+participant ":PersistenceFactory" as persistenceFactory
+participant ":SQLServerHandler" as sqlHandler
+participant ":HibernateUtil" as hibernateUtil
+participant "session:Session" as hbSession
+participant ":XMLPersistenceHandler" as xmlHandler
+participant ":UI" as gameUI
 
 [-> gamePanel: checkInteractions()
 activate gamePanel
-gamePanel -> savePoint: detect nearby checkpoint
-activate savePoint
-savePoint --> gamePanel: checkpoint found
-deactivate savePoint
+gamePanel -> objM: findNearbyNamedFurniture("checkpoint", 2*tile)
+objM --> gamePanel: cpF
+gamePanel -> gamePanel: checkpointSave()
 
 gamePanel -> gamePanel: buildFullGameState()
-gamePanel -> gameState **: create(saveId, posX, posY, currentZoneName,\nmodeSnapshot, zombieMode, phaseOneState, phaseTwoState,\ndefeatedZombies, serverBossHp, hp, gpa, energy, stress, karma)
+gamePanel -> gameState **: new GameState()
+activate gameState
+gamePanel -> gameState: setSaveId(1)
+gamePanel -> gameState: setPosX/Y, setCurrentZoneName,\nsetModeSnapshot, setZombieMode,\nsetPhaseOneState/PhaseTwoState/Phase2IntroPart,\nsetDefeatedZombies, setServerBossHp, setPrayedThisPhase
+gamePanel -> playerEntity: getHp / getMaxHp
+gamePanel -> playerStats: getGPA / getEnergy / getStress / getKarma
+gamePanel -> gameState: setHp/setMaxHp/setGpa/\nsetEnergy/setStress/setKarma/setTimestamp
 
 gamePanel -> gameSession: saveGameState(gameState)
 activate gameSession
+gameSession -> gameSession: showOptionDialog("SQL Server" | "File System (XML)")
 
-alt Player cancels save
-    [-> gameSession: handleSystemEvent("cancelSave")
-else Player confirms save
-    [-> gameSession: handleSystemEvent("confirmSave")
+alt Player closes dialog (cancel)
+    gameSession -> gameSession: handleSystemEvent("cancelSave")
+    gameSession --> gamePanel: (no write)
+
+else Player confirms
+    gameSession -> gameSession: handleSystemEvent("confirmSave")
     
-    gameSession -> persistenceFactory: getPersistenceHandler(type)
-    activate persistenceFactory
-    persistenceFactory --> gameSession: persistenceHandlerRef
-    deactivate persistenceFactory
-    
-    gameSession -> persistenceHandler: save(gameState)
-    activate persistenceHandler
-    
-    alt Database write SUCCEEDS
-        persistenceHandler --> gameSession: isSaved = true
-    else Database write FAILS
-        persistenceHandler --> gameSession: isSaved = false
+    alt Choice == 0 (SQL Server / Hibernate)
+        gameSession -> persistenceFactory: getPersistenceHandler(SQL_SERVER)
+        persistenceFactory -> sqlHandler **: new SQLServerHandler()
+        sqlHandler -> sqlHandler: ensureDatabaseExists()\n(JDBC create campusFlexDb)
+        persistenceFactory --> gameSession: handlerRef
+        gameSession -> sqlHandler: save(gameState)
+        sqlHandler -> hibernateUtil: getSessionFactory()
+        activate hibernateUtil
+        hibernateUtil --> sqlHandler: SessionFactory
+        deactivate hibernateUtil
+        sqlHandler -> hbSession **: openSession()
+        sqlHandler -> hbSession: beginTransaction()
+        sqlHandler -> hbSession: merge(gameState)
+        sqlHandler -> hbSession: commit()
+        sqlHandler -> hbSession: close()
+        destroy hbSession
+        sqlHandler --> gameSession: success boolean
+        
+    else Choice == 1 (File System / XML)
+        gameSession -> persistenceFactory: getPersistenceHandler(XML)
+        persistenceFactory -> xmlHandler **: new XMLPersistenceHandler()
+        gameSession -> xmlHandler: save(gameState)
+        xmlHandler -> xmlHandler: XMLEncoder.writeObject(state)\nâ†’ savegame.xml
+        xmlHandler --> gameSession: success boolean
     end
-    deactivate persistenceHandler
+    
+    gameSession -> gameSession: showMessageDialog("Saved!" / "Failed.")
 end
 deactivate gameSession
+
+gamePanel -> gameUI: startDialogue("System|Checkpoint reached. Progress saved.")
+gamePanel -> gamePanel: gameState = dialogueState
 destroy gameState
 deactivate gamePanel
+
 @enduml

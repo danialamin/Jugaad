@@ -1,68 +1,85 @@
-@startuml
+﻿@startuml
 title UC3: Use Phone (SD) - CampusFlex Section D
 
+' â”€â”€ Reflects actual code flow â”€â”€
+' Phone is opened from GamePanel.update() via keyH.pPressed.
+' All phone-menu logic lives in UI.updatePhoneMenu, which decides
+' between cheat (during quiz) and social-media / close / open-Flex
+' based on session.isLectureQuizActive() and the selected option.
+
+participant ":GamePanel" as gamePanel
+participant ":KeyHandler" as keyH
 participant ":GameSession" as gameSession
 participant ":Player" as playerEntity
 participant ":Phone" as phone
-participant ":Quiz" as quiz
+participant ":UI" as gameUI
 participant ":PlayerStats" as playerStats
 participant ":KarmaTracker" as karmaTracker
 participant ":StatModifierImpl" as statModifierImpl
 
-[-> gameSession: handleSystemEvent("openPhone")
-activate gameSession
-gameSession -> playerEntity: getPhone()
-activate playerEntity
-playerEntity --> gameSession: phoneRef
-deactivate playerEntity
+[-> gamePanel: update()
+activate gamePanel
+gamePanel -> playerEntity: getPhone()
+playerEntity --> gamePanel: phoneRef
+gamePanel -> phone: open()
+gamePanel -> gameUI: openPhoneMenu()
+gamePanel -> gamePanel: gameState = phoneState
+deactivate gamePanel
 
-gameSession -> phone: open()
-activate phone
-phone -> phone: isDuringQuiz(session)
+[-> gameUI: updatePhoneMenu(session)
+activate gameUI
+gameUI -> phone: isDuringQuiz(session)
+phone -> gameSession: isLectureQuizActive()
+gameSession --> phone: bool
+phone --> gameUI: bool
 
-alt Phone opened DURING active Quiz
-    phone -> quiz: incrementAttempt()
+alt Phone opened DURING quiz (cheat path)
+    gameUI -> phone: buildCheatModifier()
+    phone -> statModifierImpl **: new StatModifierImpl(0, 0, -15)
+    phone --> gameUI: cheatModifier
     
-    phone -> phone: buildCheatModifier()
-    phone -> statModifierImpl **: create(gpaDelta=0, stressDelta=0, karmaDelta=-15)
-    statModifierImpl --> phone: cheatModifier
-    phone --> gameSession: cheatModifier
-    
-    gameSession -> playerStats: applyModifier(cheatModifier)
+    gameUI -> playerStats: applyModifier(cheatModifier)
     activate playerStats
-    playerStats -> playerStats: updateKarma(-15)
-    playerStats --> gameSession
+    playerStats -> playerStats: updateGPA(0)\nupdateStress(0)\nupdateKarma(-15)
     deactivate playerStats
     
-    gameSession -> karmaTracker: deduct(15, "Phone during quiz - cheating")
+    gameUI -> karmaTracker: deduct(15, "Phone during quiz - cheating")
+    gameUI -> phone: close()
+    gameUI -> gameUI: quizAiAssistPath = true
+    gameUI -> gameUI: startDialogue(teacher catches cheating)
+    gameUI -> gamePanel: gameState = dialogueState
     destroy statModifierImpl
-    
+
 else Phone opened OUTSIDE quiz
-    alt Player selects Scroll Social Media
-        [-> gameSession: handleSystemEvent("scrollSocialMedia")
-        gameSession -> phone: buildSocialMediaModifier()
+    gameUI -> keyH: read up/down/enter
+    
+    alt Option 0 â€” Scroll socials
+        gameUI -> phone: buildSocialMediaModifier()
+        phone -> statModifierImpl **: new StatModifierImpl(0, -5, -5)
+        phone --> gameUI: socialModifier
         
-        phone -> statModifierImpl **: create(gpaDelta=0, stressDelta=-5, karmaDelta=-5)
-        statModifierImpl --> phone: socialModifier
-        phone --> gameSession: socialModifier
-        
-        gameSession -> playerStats: applyModifier(socialModifier)
+        gameUI -> playerStats: applyModifier(socialModifier)
         activate playerStats
-        playerStats -> playerStats: updateStress(-5)
-        playerStats -> playerStats: updateKarma(-5)
-        playerStats --> gameSession
+        playerStats -> playerStats: updateGPA(0)\nupdateStress(-5)\nupdateKarma(-5)
         deactivate playerStats
         
-        gameSession -> karmaTracker: deduct(5, "Scrolled social media")
-        
-        gameSession -> phone: close()
+        gameUI -> karmaTracker: deduct(5, "Scrolled social media")
+        gameUI -> phone: close()
+        gameUI -> gamePanel: gameState = playState
         destroy statModifierImpl
         
-    else Player selects Close Phone
-        [-> gameSession: handleSystemEvent("closePhone")
-        gameSession -> phone: close()
+    else Option 1 â€” Close phone
+        gameUI -> phone: close()
+        gameUI -> gamePanel: gameState = playState
+        
+    else Option 2 â€” Open Flex (no stat change)
+        gameUI -> gameUI: startDialogue("You|Flex opens after thinking about it...")
+        gameUI -> phone: close()
+        gameUI -> gamePanel: gameState = dialogueState
+        
+    else Option 3 â€” Stress display only
     end
 end
-deactivate phone
-deactivate gameSession
+deactivate gameUI
+
 @enduml

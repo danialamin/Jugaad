@@ -1,146 +1,179 @@
-@startuml
-title UC12: Deploy System Patch (SD) - CampusFlex Section D
+﻿@startuml
+title UC12: Deploy System Patch / Final Boss (SD) - CampusFlex Section D
 
-participant ":GameSession" as gameSession
-participant ":ZombieMode" as zombieMode
+' â”€â”€ Reflects actual code flow â”€â”€
+' Endgame in code has TWO paths into the ending:
+'   (A) "Hack to death" â€” repeatedly interacting with the Main Server
+'       in SERVER_ROOM lowers serverBossHp by 50; on reaching 0 the
+'       boss is removed and resolveEnding() is called immediately.
+'   (B) "Combat" â€” touching the FinalBoss starts startFinalBoss() â†’
+'       Debug or Terminate via CombatController, with karma -15 for
+'       Terminate (boss flag) and +15 for Debug. After defeat,
+'       resolveEnding() is called.
+'
+' resolveEnding() picks PACIFIST/MIXED/BAD based on
+' KarmaTracker.getTotal() thresholds (>=70 / >=30 / <30) and starts
+' the ending dialogue. The trailing UI dialogue completion calls
+' GamePanel.finalizeEnding(), which constructs an EndingResolver to
+' produce the canonical epilogue text and switches to endingState.
+
+participant ":GamePanel" as gamePanel
+participant ":ObjectManager" as objM
+participant ":Furniture" as serverF
+participant ":FinalBoss" as boss
 participant ":CombatController" as combatController
 participant ":CombatStrategyFactory" as combatStrategyFactory
-participant ":FinalBoss" as finalBoss
+participant ":DebugStrategy" as debugStrategy
+participant ":TerminateStrategy" as terminateStrategy
 participant ":CombatChallenge" as combatChallenge
+participant ":CombatResult" as combatResult
 participant ":KarmaTracker" as karmaTracker
 participant ":Player" as playerEntity
-participant ":DebugStrategy" as debugStrategy
-participant ":CombatResult" as combatResult
-participant ":TerminateStrategy" as terminateStrategy
+participant ":PlayerStats" as playerStats
+participant ":UI" as gameUI
 participant ":EndingResolver" as endingResolver
+participant ":SoundManager" as soundManager
 
-[-> gameSession: handleSystemEvent("enterResearchLab")
-activate gameSession
-gameSession -> zombieMode: onInteract(session)
-activate zombieMode
+[-> gamePanel: checkInteractions()
 
-alt Checkpoint exists
-    zombieMode -> combatController: initiateCombat(finalBoss)
-    activate combatController
-    combatController -> finalBoss: getCombatChallenge()
-    activate finalBoss
-    finalBoss --> combatController: phaseChallengeRef
-    deactivate finalBoss
+alt PATH A â€” Hack the Main Server (no combat)
+    activate gamePanel
+    gamePanel -> objM: findNearbyNamedFurniture("main_server", 2*tile)
+    objM --> gamePanel: serverF
+    gamePanel -> gamePanel: serverBossHp -= 50
     
-    loop Until finalBoss.isDefeated() == true
-        alt Player chooses DEBUG
-            [-> gameSession: handleSystemEvent("solveChallenge")
-            gameSession -> combatController: executeCombatMove(debugMove, isBossFight=true)
+    alt serverBossHp <= 0 (boss hacked to death)
+        gamePanel -> gamePanel: serverBossHp = 0
+        gamePanel -> objM: furnitureList.remove(final_boss sprite)
+        gamePanel -> gamePanel: defeatedZombies.add("final_boss")
+        gamePanel -> karmaTracker: add(30, "Hacked the AI to death â€” pure intellect")
+        gamePanel -> gameUI: startDialogue("SYSTEM FAILURE: Corrupted AI destroyed via terminal exploit.")
+        gamePanel -> gamePanel: phaseTwoState = GAME_ENDING
+        gamePanel -> gamePanel: resolveEnding()
+    else serverBossHp > 0
+        gamePanel -> gameUI: startDialogue("Terminal bypassed. Corrupted AI -50 HP. Remaining: " + serverBossHp)
+    end
+    deactivate gamePanel
+
+else PATH B â€” Touch the FinalBoss â†’ combat
+    [-> gamePanel: checkZombieTouchEncounters() â†’ startFinalBoss()
+    activate gamePanel
+    gamePanel -> boss **: new FinalBoss()
+    gamePanel -> boss: takeDamage(maxHp - serverBossHp)\n(carries over hacking damage)
+    gamePanel -> combatController: initiateCombat(boss)
+    gamePanel -> gameUI: startPreFightDialogue("final_boss", boss.getHp())
+    gamePanel -> gamePanel: phaseTwoState = IN_COMBAT, gameState = dialogueState
+    deactivate gamePanel
+    
+    loop while !boss.isDefeated()
+        alt Player picks DEBUG
+            [-> gamePanel: handleCombatChoice(DEBUG)
+            activate gamePanel
+            gamePanel -> combatChallenge: forBossPhase(phase)\n(phase 1 if hp>200, 2 if >100, else 3)
+            gamePanel -> gamePanel: phaseTwoState = IN_QUIZ
+            deactivate gamePanel
             
+            [-> gamePanel: handleQuizAnswer(index)
+            activate gamePanel
+            gamePanel -> combatChallenge: evaluate(index)
+            combatChallenge --> gamePanel: passed
+            gamePanel -> combatController: executeCombatMove(DEBUG, passed, isBoss=true)
+            activate combatController
             combatController -> combatStrategyFactory: createStrategy("Debug", true)
-            activate combatStrategyFactory
-            combatStrategyFactory -> debugStrategy **: create()
-            combatStrategyFactory --> combatController: debugStrategyRef
-            deactivate combatStrategyFactory
-            
-            combatController -> combatController: setStrategy(debugStrategyRef)
-            combatController -> debugStrategy: execute(player, finalBoss)
-            activate debugStrategy
-            
-            debugStrategy -> combatChallenge: present()
-            activate combatChallenge
-            deactivate combatChallenge
-            
-            alt Challenge CORRECT
-                debugStrategy -> combatChallenge: evaluate(answer)
-                activate combatChallenge
-                combatChallenge --> debugStrategy: isCorrect = true
-                deactivate combatChallenge
-                
-                debugStrategy -> debugStrategy: getKarmaEffect()
-                debugStrategy -> combatResult **: create(victory=true, usedDebug=true, karmaChange=+15, hpChange=0)
-                debugStrategy --> combatController: combatResult
-                deactivate debugStrategy
-                
-                combatController -> combatController: applyResult(combatResult)
-                combatController -> finalBoss: takeDamage(enemy.maxHp)
-                activate finalBoss
-                finalBoss -> finalBoss: isDefeated()
-                deactivate finalBoss
-                
-                combatController -> karmaTracker: add(15, "Boss challenge cleared - Debug")
-                destroy combatResult
-                destroy debugStrategy
-                
-            else Challenge FAILED
-                debugStrategy -> combatChallenge: evaluate(answer)
-                activate combatChallenge
-                combatChallenge --> debugStrategy: isCorrect = false
-                deactivate combatChallenge
-                
-                debugStrategy -> combatResult **: create(victory=false, usedDebug=true, karmaChange=0, hpChange=-10)
-                debugStrategy --> combatController: combatResult
-                
-                combatController -> combatController: applyResult(combatResult)
-                combatController -> playerEntity: takeDamage(10)
-                activate playerEntity
-                deactivate playerEntity
-                destroy combatResult
-                destroy debugStrategy
+            combatStrategyFactory -> debugStrategy **: new DebugStrategy(new CombatChallenge())
+            combatController -> debugStrategy: setPassed(passed)
+            combatController -> debugStrategy: execute(player, boss)
+            alt passed
+                debugStrategy -> boss: takeDamage(boss.getHp()) (instakill)
+                debugStrategy -> combatResult **: new CombatResult(true, true, +15, 0)
+            else
+                debugStrategy -> combatResult **: new CombatResult(false, true, 0, -10)
+                gamePanel -> playerEntity: takeDamage(...) (via dodge phase)
             end
-            
-        else Player chooses TERMINATE
-            [-> gameSession: handleSystemEvent("makeChoiceTerminate")
-            gameSession -> combatController: executeCombatMove(terminateMove, isBossFight=true)
-            
+            combatController --> gamePanel: combatResult
+            deactivate combatController
+        else Player picks TERMINATE
+            [-> gamePanel: handleCombatChoice(TERMINATE)\nphaseTwoState = IN_TERMINATE_MINIGAME
+            [-> gamePanel: handleTerminateMinigame(passed)
+            activate gamePanel
+            gamePanel -> combatController: executeCombatMove(TERMINATE, passed, isBoss=true)
+            activate combatController
             combatController -> combatStrategyFactory: createStrategy("Terminate", true)
-            activate combatStrategyFactory
-            combatStrategyFactory -> terminateStrategy **: create()
-            combatStrategyFactory --> combatController: terminateStrategyRef
-            deactivate combatStrategyFactory
-            
-            combatController -> combatController: setStrategy(terminateStrategyRef)
-            combatController -> terminateStrategy: execute(player, finalBoss)
-            activate terminateStrategy
-            
-            terminateStrategy -> combatResult **: create(victory=true, usedDebug=false, karmaChange=-15, hpChange=0)
-            terminateStrategy --> combatController: combatResult
-            deactivate terminateStrategy
-            
-            combatController -> combatController: applyResult(combatResult)
-            combatController -> finalBoss: takeDamage(30)
-            activate finalBoss
-            finalBoss -> finalBoss: isDefeated()
-            deactivate finalBoss
-            
-            combatController -> karmaTracker: deduct(15, "Boss attacked - Terminate brute force")
-            destroy combatResult
-            destroy terminateStrategy
+            combatStrategyFactory -> terminateStrategy **: new TerminateStrategy(-15)
+            combatController -> terminateStrategy: setPassed(passed)
+            combatController -> terminateStrategy: execute(player, boss)
+            alt passed
+                terminateStrategy -> boss: takeDamage(30)
+            end
+            terminateStrategy -> boss: isDefeated()
+            alt defeated
+                terminateStrategy -> combatResult **: new CombatResult(true, false, -15, 0)
+            else
+                terminateStrategy -> combatResult **: new CombatResult(false, false, -15, +/-)
+            end
+            combatController --> gamePanel: combatResult
+            deactivate combatController
         end
-    end
-    
-    [-> gameSession: handleSystemEvent("confirmPatch")
-    gameSession -> endingResolver **: create()
-    gameSession -> endingResolver: resolve(karmaTracker)
-    activate endingResolver
-    
-    endingResolver -> karmaTracker: getTotal()
-    activate karmaTracker
-    karmaTracker --> endingResolver: totalKarma
-    deactivate karmaTracker
-    
-    alt totalKarma >= 70 (PACIFIST)
-        endingResolver -> endingResolver: buildEpilogueText(PACIFIST)
         
-    else totalKarma <= 30 (EVIL)
-        endingResolver -> endingResolver: buildEpilogueText(EVIL)
+        ' Karma + HP applied in GamePanel.executeCombatStrategy
+        gamePanel -> playerStats: updateKarma(result.getKarmaChange())
+        alt karma > 0
+            gamePanel -> karmaTracker: add(+15, "Debug - Pacifist")
+        else
+            gamePanel -> karmaTracker: deduct(15, "Terminate - Brute Force")
+        end
+        gamePanel -> gamePanel: serverBossHp = max(0, boss.getHp())
         
-    else 30 < totalKarma < 70 (NEUTRAL)
-        endingResolver -> endingResolver: buildEpilogueText(NEUTRAL)
+        alt boss.isDefeated()
+            gamePanel -> gamePanel: resolveEnding()
+        else still alive
+            gamePanel -> gameUI: startDialogue("AI staggers but holds. HP: " + serverBossHp)
+            gamePanel -> gamePanel: phaseTwoState = BOSS_FIGHT, gameState=dialogueState
+        end
+        destroy combatResult
+        deactivate gamePanel
     end
-    
-    deactivate endingResolver
-    
-    gameSession -> zombieMode: deactivate()
-    gameSession -> gameSession: endSession()
 end
 
-deactivate combatController
-deactivate zombieMode
-deactivate gameSession
+' --- Common ending resolution path ---
+[-> gamePanel: resolveEnding()
+activate gamePanel
+gamePanel -> karmaTracker: getTotal()
+karmaTracker --> gamePanel: totalKarma
+
+alt totalKarma >= 70 (PACIFIST)
+    gamePanel -> gamePanel: build PACIFIST queue
+else 30 <= totalKarma < 70 (MIXED / NEUTRAL)
+    gamePanel -> gamePanel: build MIXED queue
+else totalKarma < 30 (BAD / EVIL)
+    gamePanel -> soundManager: setBadEndingMode(true)
+    gamePanel -> soundManager: playZoneMusic(currentZone)
+    gamePanel -> gamePanel: build BAD queue
+end
+
+gamePanel -> gameUI: setLectureQueue(queue, false)
+gamePanel -> gameUI: startDialogue(queue[0])
+gamePanel -> gameUI: showEndingScreen(type, epilogue, karma)
+gamePanel -> gamePanel: phaseTwoState = GAME_ENDING, gameState=dialogueState
+deactivate gamePanel
+
+[-> gameUI: dialogue finishes â†’ calls gp.finalizeEnding()
+activate gamePanel
+gamePanel -> endingResolver **: new EndingResolver()
+gamePanel -> endingResolver: resolve(karmaTracker)
+endingResolver -> karmaTracker: getTotal()
+karmaTracker --> endingResolver: totalKarma
+alt totalKarma >= 70
+    endingResolver --> gamePanel: PACIFIST
+else totalKarma <= 30
+    endingResolver --> gamePanel: EVIL
+else
+    endingResolver --> gamePanel: NEUTRAL
+end
+gamePanel -> endingResolver: buildEpilogueText(type)
+endingResolver --> gamePanel: epilogue
+gamePanel -> gameUI: showEndingScreen(type, epilogue, totalKarma)
+gamePanel -> gamePanel: gameState = endingState
+deactivate gamePanel
+
 @enduml

@@ -1,102 +1,149 @@
-@startuml
+﻿@startuml
 title UC9: Engage in Combat (SD) - CampusFlex Section D
 
-participant ":GameSession" as gameSession
-participant ":ZombieMode" as zombieMode
+' â”€â”€ Reflects actual code flow â”€â”€
+' GamePanel.checkZombieTouchEncounters detects player-zombie contact
+' (collision-style, not menu-based). startZombieCombat() configures the
+' enemy via ZombieEnemy(displayName, zoneId, hp), removes the zombie
+' furniture, plays fight music, and shows a pre-fight dialogue.
+'
+' Player chooses Debug/Terminate from the combat overlay (UI). Both
+' paths now include a mini-game (quiz for Debug, dodge mini-game for
+' Terminate); the boolean "passedMinigame" is forwarded to the strategy
+' through CombatController.executeCombatMove(move, passed, isBoss).
+
+participant ":GamePanel" as gamePanel
+participant ":ObjectManager" as objM
+participant ":Furniture" as zFurn
+participant ":ZombieEnemy" as zEnemy
 participant ":CombatController" as combatController
+participant ":SoundManager" as soundManager
+participant ":UI" as gameUI
 participant ":CombatStrategyFactory" as combatStrategyFactory
-participant ":ZombieEnemy" as zombieEnemy
-participant ":KarmaTracker" as karmaTracker
-participant ":Player" as playerEntity
 participant ":DebugStrategy" as debugStrategy
-participant ":CombatResult" as combatResult
 participant ":TerminateStrategy" as terminateStrategy
+participant ":CombatChallenge" as combatChallenge
+participant ":CombatResult" as combatResult
+participant ":Player" as playerEntity
+participant ":PlayerStats" as playerStats
+participant ":KarmaTracker" as karmaTracker
 
-[-> gameSession: handleSystemEvent("contactZombie")
-activate gameSession
-gameSession -> zombieMode: onInteract(session)
-activate zombieMode
-zombieMode -> combatController: initiateCombat(zombieEnemy)
-activate combatController
+[-> gamePanel: update()
+activate gamePanel
+gamePanel -> gamePanel: checkZombieTouchEncounters()
+gamePanel -> objM: getZombieTouchingPlayer(...)
+objM --> gamePanel: zFurn (or null)
 
-combatController -> playerEntity: isAlive()
-activate playerEntity
-playerEntity --> combatController: aliveStatus
-deactivate playerEntity
+opt zFurn != null
+    gamePanel -> gamePanel: startZombieCombat(zFurn)
+    gamePanel -> zEnemy **: new ZombieEnemy(displayName, zoneId, hp)
+    gamePanel -> combatController: initiateCombat(zEnemy)
+    gamePanel -> objM: furnitureList.remove(zFurn)
+    gamePanel -> soundManager: playFightMusic(zombieName)
+    gamePanel -> gameUI: startPreFightDialogue(name, hp)
+    gamePanel -> gamePanel: phaseTwoState = IN_COMBAT\ngameState = dialogueState
+end
+deactivate gamePanel
 
-combatController -> zombieEnemy: getCombatChallenge()
-activate zombieEnemy
-zombieEnemy --> combatController: combatChallengeRef
-deactivate zombieEnemy
+[-> gamePanel: handleCombatChoice(move) (after pre-fight dialogue)
+activate gamePanel
 
-alt Player chooses DEBUG (Pacifist)
-    [-> gameSession: handleSystemEvent("executeDebugMove")
-    gameSession -> combatController: executeCombatMove(debugMove)
+alt move == DEBUG (Pacifist)
+    gamePanel -> combatChallenge **: new CombatChallenge(difficulty)
+    gamePanel -> gamePanel: phaseTwoState = IN_QUIZ
+    deactivate gamePanel
     
-    combatController -> combatStrategyFactory: createStrategy("Debug")
-    activate combatStrategyFactory
-    combatStrategyFactory -> debugStrategy **: create()
-    combatStrategyFactory --> combatController: debugStrategyRef
-    deactivate combatStrategyFactory
+    [-> gameUI: render quiz; player picks index
+    [-> gamePanel: handleQuizAnswer(index)
+    activate gamePanel
+    gamePanel -> combatChallenge: evaluate(index)
+    combatChallenge --> gamePanel: passed (bool)
+    gamePanel -> gamePanel: executeCombatStrategy(DEBUG, passed)
+
+else move == TERMINATE (Brute Force)
+    gamePanel -> gamePanel: phaseTwoState = IN_TERMINATE_MINIGAME
+    gamePanel -> gameUI: initTerminateMinigame()
+    deactivate gamePanel
     
-    combatController -> combatController: setStrategy(debugStrategyRef)
-    combatController -> debugStrategy: execute(player, zombieEnemy)
-    activate debugStrategy
-    
-    debugStrategy -> combatResult **: create(victory=true, usedDebug=true, karmaChange=+15, hpChange=0)
-    debugStrategy --> combatController: combatResult
-    deactivate debugStrategy
-    
-    combatController -> combatController: applyResult(combatResult)
-    combatController -> zombieEnemy: takeDamage(enemy.maxHp)
-    activate zombieEnemy
-    zombieEnemy -> zombieEnemy: isDefeated()
-    deactivate zombieEnemy
-    
-    combatController -> karmaTracker: add(15, "Pacifist combat - Debug")
-    destroy combatResult
-    destroy debugStrategy
-    
-else Player chooses TERMINATE (Brute Force)
-    [-> gameSession: handleSystemEvent("executeTerminateMove")
-    gameSession -> combatController: executeCombatMove(terminateMove)
-    
-    combatController -> combatStrategyFactory: createStrategy("Terminate")
-    activate combatStrategyFactory
-    combatStrategyFactory -> terminateStrategy **: create()
-    combatStrategyFactory --> combatController: terminateStrategyRef
-    deactivate combatStrategyFactory
-    
-    combatController -> combatController: setStrategy(terminateStrategyRef)
-    combatController -> terminateStrategy: execute(player, zombieEnemy)
-    activate terminateStrategy
-    
-    terminateStrategy -> combatResult **: create(victory=true, usedDebug=false, karmaChange=-10, hpChange=0)
-    terminateStrategy --> combatController: combatResult
-    deactivate terminateStrategy
-    
-    combatController -> combatController: applyResult(combatResult)
-    combatController -> zombieEnemy: takeDamage(30)
-    activate zombieEnemy
-    zombieEnemy -> zombieEnemy: isDefeated()
-    deactivate zombieEnemy
-    
-    combatController -> karmaTracker: deduct(10, "Brute force - Terminate")
-    destroy combatResult
-    destroy terminateStrategy
-    
-else Player HP hits ZERO during fight
-    combatController -> playerEntity: takeDamage(amount)
-    activate playerEntity
-    playerEntity -> playerEntity: isAlive()
-    playerEntity --> combatController: isAlive = false
-    deactivate playerEntity
-    
-    combatController -> gameSession: handleSystemEvent("playerDied")
-    gameSession -> gameSession: showGameOver()
+    [-> gameUI: dodge mini-game runs to completion
+    [-> gamePanel: handleTerminateMinigame(passed)
+    activate gamePanel
+    gamePanel -> gamePanel: executeCombatStrategy(TERMINATE, passed)
 end
 
+' --- Strategy execution (shared) ---
+gamePanel -> combatController: initiateCombat(currentEnemy)
+gamePanel -> combatController: executeCombatMove(move, passed, isBoss=false)
+activate combatController
+combatController -> combatStrategyFactory: createStrategy(move.name(), false)
+activate combatStrategyFactory
+alt move == DEBUG
+    combatStrategyFactory -> debugStrategy **: new DebugStrategy(new CombatChallenge())
+    combatStrategyFactory --> combatController: debugStrategy
+else move == TERMINATE
+    combatStrategyFactory -> terminateStrategy **: new TerminateStrategy(-10)
+    combatStrategyFactory --> combatController: terminateStrategy
+end
+deactivate combatStrategyFactory
+
+combatController -> combatController: setStrategy(...)
+combatController -> combatController: strategy.setPassed(passed)
+
+alt strategy == DEBUG
+    combatController -> debugStrategy: execute(player, enemy)
+    activate debugStrategy
+    alt passed
+        debugStrategy -> zEnemy: takeDamage(enemy.getHp())  ' instakill
+        debugStrategy -> combatResult **: new CombatResult(true, true, +15, 0)
+    else !passed
+        debugStrategy -> combatResult **: new CombatResult(false, true, 0, -10)
+    end
+    debugStrategy --> combatController: combatResult
+    deactivate debugStrategy
+else strategy == TERMINATE
+    combatController -> terminateStrategy: execute(player, enemy)
+    activate terminateStrategy
+    alt passed
+        terminateStrategy -> zEnemy: takeDamage(30)
+    end
+    terminateStrategy -> zEnemy: isDefeated()
+    alt defeated
+        terminateStrategy -> combatResult **: new CombatResult(true, false, -10, 0)
+    else still alive
+        terminateStrategy -> combatResult **: new CombatResult(false, false, -10, passed?-10:-15)
+    end
+    terminateStrategy --> combatController: combatResult
+    deactivate terminateStrategy
+end
+combatController --> gamePanel: combatResult
 deactivate combatController
-deactivate zombieMode
-deactivate gameSession
+
+' --- Apply karma + outcome (in GamePanel, not CombatController) ---
+gamePanel -> playerStats: updateKarma(result.getKarmaChange())
+alt karma > 0
+    gamePanel -> karmaTracker: add(delta, "Debug - Pacifist")
+else karma < 0
+    gamePanel -> karmaTracker: deduct(|delta|, "Terminate - Brute Force")
+end
+
+alt result.isVictory()
+    gamePanel -> gamePanel: defeatedZombies.add(internalName)
+    gamePanel -> gamePanel: checkZombieDrops(internalName)\n(adds KeyItem(1)/(2) to inventory if applicable)
+    gamePanel -> gamePanel: phaseTwoState = EXPLORE
+    gamePanel -> gameUI: startDialogue(victoryMsg) or post-fight cutscene
+    gamePanel -> gamePanel: gameState = dialogueState
+else !victory
+    gamePanel -> gameUI: combatDodgePending = true (counter-attack dodge)
+    gamePanel -> gamePanel: phaseTwoState = IN_COMBAT
+end
+destroy combatResult
+
+' --- Player HP zero (game over) ---
+opt player.takeDamage drops hp to 0 anywhere in update flow
+    gamePanel -> playerEntity: isAlive()
+    playerEntity --> gamePanel: false
+    gamePanel -> gamePanel: gameState = gameOverState
+end
+deactivate gamePanel
+
 @enduml

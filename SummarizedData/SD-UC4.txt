@@ -1,70 +1,65 @@
-@startuml
+﻿@startuml
 title UC4: Visit Canteen (SD) - CampusFlex Section D
 
-participant ":GameSession" as gameSession
-participant ":NormalMode" as normalMode
-participant ":Zone" as zone
-participant ":Location" as location
+' â”€â”€ Reflects actual code flow â”€â”€
+' GamePanel.checkInteractions detects player at the cafe counter.
+' In NORMAL mode it routes to the cafe menu (UI.cafeMenuState), which
+' constructs activity.Canteen and calls onInteract â†’ buildFoodModifier.
+' In ZOMBIE mode the cafe counter heals directly (after Cafe Uncle is
+' defeated) without using the Canteen class.
+
+participant ":GamePanel" as gamePanel
+participant ":KeyHandler" as keyH
+participant ":ObjectManager" as objM
+participant ":Furniture" as counter
+participant ":UI" as gameUI
 participant ":Canteen" as canteen
+participant ":GameSession" as gameSession
 participant ":Player" as playerEntity
 participant ":PlayerStats" as playerStats
 participant ":StatModifierImpl" as statModifierImpl
 
-[-> gameSession: handleSystemEvent("enterCanteen")
-activate gameSession
-gameSession -> normalMode: onInteract(session)
-activate normalMode
-normalMode -> zone: getNearbyLocation(player.getPosition())
-activate zone
-zone --> normalMode: locationRef
-deactivate zone
-normalMode -> location: interact(player, session)
-activate location
-location -> canteen: onInteract(player, session)
-activate canteen
+[-> gamePanel: checkInteractions()
+activate gamePanel
+gamePanel -> objM: findNearbyNamedFurniture("cafe_counter", 3*tile)
+objM --> gamePanel: counterRef
 
-canteen -> playerEntity: getStats()
-activate playerEntity
-playerEntity --> canteen: statsRef
-deactivate playerEntity
-
-canteen -> playerEntity: getHp()
-activate playerEntity
-playerEntity --> canteen: currentHp
-deactivate playerEntity
-
-canteen -> canteen: canEat(statsRef)
-
-alt canEat = true
-    canteen -> canteen: showMenu()
+alt NORMAL mode â€” cafe menu
+    gamePanel -> gamePanel: gameState = cafeMenuState\n(gameUI.commandNum = 0)
+    deactivate gamePanel
     
-    alt Player selects food
-        [-> gameSession: handleSystemEvent("selectFood")
-        gameSession -> canteen: buildFoodModifier()
-        
-        canteen -> statModifierImpl **: create(gpaDelta=0, stressDelta=-10, karmaDelta=0)
-        statModifierImpl --> canteen: foodModifier
-        canteen --> gameSession: foodModifier
-        
-        gameSession -> playerEntity: heal(hpDelta)
-        activate playerEntity
-        playerEntity --> gameSession: healed
-        deactivate playerEntity
-        
-        gameSession -> playerStats: applyModifier(foodModifier)
-        activate playerStats
-        playerStats -> playerStats: updateStress(-10)
-        playerStats --> gameSession
-        deactivate playerStats
-        destroy statModifierImpl
-        
-    else Player leaves without ordering
-        [-> gameSession: handleSystemEvent("leaveCanteen")
-    end
+    [-> gameUI: drive cafeMenuState (player picks dish 1..N)
+    activate gameUI
+    gameUI -> playerEntity: ref via gp.session.getPlayer()
+    gameUI -> canteen **: new Canteen(1, 1)
+    gameUI -> canteen: onInteract(player, session)
+    activate canteen
+    canteen -> playerEntity: getStats()
+    canteen -> canteen: canEat(stats)
+    canteen -> canteen: showMenu()
+    canteen -> canteen: buildFoodModifier()
+    canteen -> statModifierImpl **: new StatModifierImpl(0, -10, 0)
+    canteen -> playerStats: applyModifier(foodModifier)
+    activate playerStats
+    playerStats -> playerStats: updateStress(-10)
+    deactivate playerStats
+    deactivate canteen
+    destroy statModifierImpl
+    
+    
+    gameUI -> gamePanel: gameState = dialogueState (ack)
+    deactivate gameUI
+
+else ZOMBIE mode at counter (Cafe Uncle defeated)
+    gamePanel -> playerEntity: heal(30)
+    gamePanel -> playerStats: updateStress(-5)
+    gamePanel -> gamePanel: startDialogue("(+30 HP)")
+    gamePanel -> gamePanel: gameState = dialogueState
+    deactivate gamePanel
+
+else ZOMBIE mode at counter (Cafe Uncle alive)
+    gamePanel -> gamePanel: startDialogue("Something's blocking the counter...")
+    gamePanel -> gamePanel: gameState = dialogueState
 end
 
-deactivate canteen
-deactivate location
-deactivate normalMode
-deactivate gameSession
 @enduml

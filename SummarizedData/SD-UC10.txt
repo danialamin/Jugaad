@@ -1,79 +1,90 @@
-@startuml
+﻿@startuml
 title UC10: Debug Enemy (SD) - CampusFlex Section D
 
-participant ":GameSession" as gameSession
+' â”€â”€ Reflects actual code flow â”€â”€
+' Triggered when handleCombatChoice(DEBUG) runs from the combat overlay.
+' GamePanel constructs the CombatChallenge directly (difficulty derived
+' from enemy HP), enters phaseTwoState=IN_QUIZ so UI renders the MCQ,
+' then on answer submission calls handleQuizAnswer(index) â†’
+' executeCombatStrategy(DEBUG, passed). The actual karma / damage
+' application happens in DebugStrategy.execute and is then mirrored
+' onto stats by GamePanel.
+
+participant ":GamePanel" as gamePanel
+participant ":CombatChallenge" as combatChallenge
+participant ":UI" as gameUI
 participant ":CombatController" as combatController
 participant ":CombatStrategyFactory" as combatStrategyFactory
-participant ":CombatChallenge" as combatChallenge
-participant ":ZombieEnemy" as zombieEnemy
-participant ":KarmaTracker" as karmaTracker
-participant ":Player" as playerEntity
 participant ":DebugStrategy" as debugStrategy
+participant ":Enemy" as enemy
 participant ":CombatResult" as combatResult
+participant ":Player" as playerEntity
+participant ":PlayerStats" as playerStats
+participant ":KarmaTracker" as karmaTracker
 
-[-> gameSession: handleSystemEvent("selectDebug")
-activate gameSession
+[-> gamePanel: handleCombatChoice(DEBUG)
+activate gamePanel
 
-gameSession -> combatController: executeCombatMove(debugMove)
+alt currentCombatEnemy is FinalBoss
+    gamePanel -> combatChallenge **: CombatChallenge.forBossPhase(phase)
+else regular zombie
+    gamePanel -> combatChallenge **: new CombatChallenge(difficultyByHp)
+end
+gamePanel -> combatChallenge: present()
+gamePanel -> gamePanel: phaseTwoState = IN_QUIZ
+deactivate gamePanel
+
+[-> gameUI: render question + 4 options
+[-> gamePanel: handleQuizAnswer(index)
+activate gamePanel
+gamePanel -> combatChallenge: evaluate(index)
+combatChallenge --> gamePanel: passed (bool)
+
+gamePanel -> gamePanel: executeCombatStrategy(DEBUG, passed)
+gamePanel -> combatController: initiateCombat(currentEnemy)
+gamePanel -> combatController: executeCombatMove(DEBUG, passed, isBoss)
 activate combatController
-
-combatController -> combatStrategyFactory: createStrategy("Debug")
-activate combatStrategyFactory
-combatStrategyFactory -> debugStrategy **: create()
-combatStrategyFactory --> combatController: debugStrategyRef
-deactivate combatStrategyFactory
-
-combatController -> combatController: setStrategy(debugStrategyRef)
-combatController -> debugStrategy: execute(player, zombieEnemy)
+combatController -> combatStrategyFactory: createStrategy("Debug", isBoss)
+combatStrategyFactory -> debugStrategy **: new DebugStrategy(new CombatChallenge())
+combatStrategyFactory --> combatController: debugStrategy
+combatController -> debugStrategy: setPassed(passed)
+combatController -> debugStrategy: execute(player, enemy)
 activate debugStrategy
 
-debugStrategy -> combatChallenge: present()
-activate combatChallenge
-deactivate combatChallenge
+alt passed (correct answer)
+    debugStrategy -> enemy: takeDamage(enemy.getHp()) (instakill)
+    debugStrategy -> debugStrategy: getKarmaEffect() (returns +15)
+    debugStrategy -> combatResult **: new CombatResult(true, true, +15, 0)
+else !passed (wrong answer / timeout)
+    debugStrategy -> combatResult **: new CombatResult(false, true, 0, -10)
+end
+debugStrategy --> combatController: combatResult
+deactivate debugStrategy
+combatController --> gamePanel: combatResult
+deactivate combatController
 
-[-> gameSession: handleSystemEvent("submitSolution")
-gameSession -> combatController: executeCombatMove(debugMove)
-combatController -> debugStrategy: execute(player, zombieEnemy)
-
-debugStrategy -> combatChallenge: evaluate(answer)
-activate combatChallenge
-
-alt Answer CORRECT
-    combatChallenge --> debugStrategy: isCorrect = true
-    debugStrategy -> debugStrategy: getKarmaEffect()
-    
-    debugStrategy -> combatResult **: create(victory=true, usedDebug=true, karmaChange=+15, hpChange=0)
-    debugStrategy --> combatController: combatResult
-    
-    combatController -> combatController: applyResult(combatResult)
-    combatController -> zombieEnemy: takeDamage(enemy.maxHp)
-    activate zombieEnemy
-    zombieEnemy -> zombieEnemy: isDefeated()
-    deactivate zombieEnemy
-    
-    combatController -> karmaTracker: add(15, "Debug - Pacifist victory")
-    destroy combatResult
-    
-else Answer WRONG OR Time limit EXCEEDED
-    combatChallenge --> debugStrategy: isCorrect = false
-    deactivate combatChallenge
-    debugStrategy -> debugStrategy: getKarmaEffect()
-    
-    debugStrategy -> combatResult **: create(victory=false, usedDebug=true, karmaChange=0, hpChange=-10)
-    debugStrategy --> combatController: combatResult
-    
-    combatController -> combatController: applyResult(combatResult)
-    combatController -> zombieEnemy: attack(player)
-    activate zombieEnemy
-    deactivate zombieEnemy
-    
-    combatController -> playerEntity: takeDamage(10)
-    activate playerEntity
-    deactivate playerEntity
-    destroy combatResult
+' Karma + HP applied in GamePanel.executeCombatStrategy
+alt result.getKarmaChange() != 0
+    gamePanel -> playerStats: updateKarma(result.getKarmaChange())
+    alt result.getKarmaChange() > 0
+        gamePanel -> karmaTracker: add(15, "Debug - Pacifist")
+    else
+        gamePanel -> karmaTracker: deduct(abs(delta), "Debug - Pacifist")
+    end
 end
 
+alt result.isVictory()
+    gamePanel -> gamePanel: defeatedZombies.add(internalName)
+    gamePanel -> gamePanel: checkZombieDrops(internalName)
+    gamePanel -> gamePanel: phaseTwoState = EXPLORE
+    gamePanel -> gameUI: startDialogue("solved the challengeâ€¦")
+else
+    gamePanel -> gameUI: combatDodgePending = true
+    gamePanel -> playerEntity: takeDamage(...)\n(applied during dodge phase)
+    gamePanel -> gamePanel: phaseTwoState = IN_COMBAT
+end
+destroy combatResult
 destroy debugStrategy
-deactivate combatController
-deactivate gameSession
+deactivate gamePanel
+
 @enduml

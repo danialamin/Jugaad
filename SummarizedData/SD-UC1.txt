@@ -1,7 +1,13 @@
-@startuml
+﻿@startuml
 title UC1: Start Game (SD) - CampusFlex Section D
 
-participant ":Game" as game
+' â”€â”€ Reflects actual code flow â”€â”€
+' Entry: engine.GameEngine.main â†’ new GamePanel() â†’ constructor wires
+' GameSession + startNewGame; New/Load is selected on the title screen,
+' not by a separate Game class. (controller.Game exists but is unused.)
+
+participant ":GameEngine" as engine
+participant ":GamePanel" as gamePanel
 participant ":GameSession" as gameSession
 participant ":Player" as playerEntity
 participant ":PlayerStats" as playerStats
@@ -9,93 +15,111 @@ participant ":KarmaTracker" as karmaTracker
 participant ":CampusMap" as campusMap
 participant ":Block" as block
 participant ":Zone" as zone
+participant ":Location" as location
+participant ":CombatController" as combatController
 participant ":GameModeFactory" as gameModeFactory
 participant ":NormalMode" as normalMode
+participant ":SoundManager" as soundManager
+participant ":TileManager" as tileM
+participant ":ObjectManager" as objM
 participant ":PersistenceFactory" as persistenceFactory
-participant ":PersistenceHandler" as persistenceHandler
+participant ":SQLServerHandler" as sqlHandler
+participant ":HibernateUtil" as hibernateUtil
+participant ":XMLPersistenceHandler" as xmlHandler
 
-alt Player selects New Game
-    [-> game: start()
-    activate game
-    game -> gameSession **: create()
-    
-    game -> gameSession: startNewGame()
-    activate gameSession
-    
-    gameSession -> playerEntity **: create(name, spawnZoneId=1)
-    activate playerEntity
-    playerEntity -> playerStats **: create()
-    playerStats --> playerEntity: statsRef
-    playerEntity --> gameSession: playerRef
-    deactivate playerEntity
-    
-    gameSession -> karmaTracker **: create()
-    karmaTracker --> gameSession: karmaTrackerRef
-    
-    gameSession -> campusMap **: create()
-    activate campusMap
-    campusMap -> block **: createBlock(1, "C-Block")
-    activate block
-    block -> zone **: createZone(ZoneType.CAFETERIA, "Cafeteria")
-    zone --> block: zoneRef
-    block --> campusMap: blockRef
-    deactivate block
-    
-    campusMap -> block **: createBlock(2, "D-Block")
-    activate block
-    block -> zone **: createZone(ZoneType.CLASSROOM, "Classroom")
-    zone --> block: zoneRef
-    block --> campusMap: blockRef
-    deactivate block
-    
-    campusMap --> gameSession: campusMapRef
-    deactivate campusMap
-    
-    gameSession -> gameModeFactory: createNormalMode()
-    activate gameModeFactory
-    gameModeFactory -> normalMode **: create()
-    normalMode --> gameModeFactory: normalModeRef
-    gameModeFactory --> gameSession: normalModeRef
-    deactivate gameModeFactory
-    
-    gameSession -> normalMode: activate()
-    gameSession -> playerEntity: setCurrentZoneId(1)
-    deactivate gameSession
-    deactivate game
-    
-else Player selects Load Game
-    [-> game: loadGame(saveId)
-    activate game
-    game -> gameSession **: create()
-    game -> gameSession: loadFromSave(saveId)
-    activate gameSession
-    
-    gameSession -> persistenceFactory: getPersistenceHandler(type)
-    activate persistenceFactory
-    persistenceFactory --> gameSession: persistenceHandlerRef
-    deactivate persistenceFactory
-    
-    gameSession -> persistenceHandler: load(saveId)
-    activate persistenceHandler
-    persistenceHandler --> gameSession: gameStateRef
-    deactivate persistenceHandler
-    
-    gameSession --> game: gameStateRef
-    deactivate gameSession
-    deactivate game
-    
-    game -> gamePanel: restoreFromState(gameStateRef)
+[-> engine: main(args)
+activate engine
+engine -> gamePanel **: new GamePanel()
+activate gamePanel
+gamePanel -> gameSession **: new GameSession()
+activate gameSession
+gameSession -> playerEntity **: new Player("Player 1", 1)
+activate playerEntity
+playerEntity -> playerStats **: new PlayerStats()
+playerEntity -> playerEntity: setDefaultValues()\n(xLocation=384, yLocation=350,\nspeed=4, maxHp=50, hp=maxHp)
+deactivate playerEntity
+gameSession -> karmaTracker **: new KarmaTracker()
+gameSession -> campusMap **: new CampusMap()
+activate campusMap
+campusMap -> campusMap: initializeMap()
+campusMap -> block **: new Block(1, "C-Block (Ground)")
+campusMap -> zone **: new Zone(GROUND/CAFETERIA/PRAYER_AREA)
+campusMap -> block **: new Block(2, "C-Block (First Floor)")
+campusMap -> zone **: new Zone(CORRIDOR/CLASSROOM/AI_LAB)
+campusMap -> block **: new Block(3, "D-Block")
+campusMap -> zone **: new Zone(LIBRARY/SERVER_ROOM)
+campusMap -> block **: new Block(4, "Shared Area")
+campusMap -> zone **: new Zone(WALKWAY)
+campusMap -> location **: new Location(name, pos, targetZone, ...)
+deactivate campusMap
+gameSession -> combatController **: new CombatController(player)
+gameSession -> gameModeFactory **: new GameModeFactory()
+gameSession -> gameModeFactory: createNormalMode()
+gameModeFactory -> normalMode **: new NormalMode()
+gameModeFactory --> gameSession: normalModeRef
+gameSession -> gameSession: startNewGame()\n(rebuilds same fields, then activates)
+gameSession -> normalMode: activate()
+deactivate gameSession
+
+gamePanel -> combatController: setPlayer(session.getPlayer())
+gamePanel -> playerEntity: setEngineComponents(this, keyH)
+gamePanel -> objM: loadLibraryObjects()
+gamePanel -> soundManager: playZoneMusic(LIBRARY)
+gamePanel -> gamePanel: gameState = titleState
+deactivate gamePanel
+
+engine -> gamePanel: startGameThread()
+deactivate engine
+
+alt Player selects "New Game" on title screen
+    [-> gamePanel: keyH.enterPressed (commandNum = 0)
     activate gamePanel
-    gamePanel -> gamePanel: currentZone = gameState.currentZoneName
-    gamePanel -> gamePanel: zombieMode = gameState.zombieMode
-    gamePanel -> gamePanel: phaseOneState = gameState.phaseOneState
-    gamePanel -> gamePanel: phaseTwoState = gameState.phaseTwoState
-    gamePanel -> gamePanel: defeatedZombies = gameState.defeatedZombies
-    gamePanel -> gamePanel: player.position = (gameState.posX, gameState.posY)
-    gamePanel -> gamePanel: player.stats = (hp, gpa, energy, stress, karma)
+    gamePanel -> gamePanel: gameState = playState
+    deactivate gamePanel
+
+else Player selects "Load Game" on title screen
+    [-> gamePanel: keyH.enterPressed (commandNum = 1)
+    activate gamePanel
+    gamePanel -> gameSession: loadFromSave(saveId = 1)
+    activate gameSession
+    gameSession -> gameSession: showOptionDialog("SQL Server / XML")
+    
+    alt User picks SQL Server
+        gameSession -> persistenceFactory: getPersistenceHandler(SQL_SERVER)
+        persistenceFactory -> sqlHandler **: new SQLServerHandler()
+        sqlHandler -> sqlHandler: ensureDatabaseExists()\n(JDBC create campusFlexDb if missing)
+        persistenceFactory --> gameSession: sqlHandlerRef
+        gameSession -> sqlHandler: load(saveId)
+        sqlHandler -> hibernateUtil: getSessionFactory()
+        activate hibernateUtil
+        hibernateUtil --> sqlHandler: SessionFactory
+        deactivate hibernateUtil
+        sqlHandler -> sqlHandler: session.get(GameState.class, saveId)
+        sqlHandler --> gameSession: GameState
+    else User picks XML
+        gameSession -> persistenceFactory: getPersistenceHandler(XML)
+        persistenceFactory -> xmlHandler **: new XMLPersistenceHandler()
+        gameSession -> xmlHandler: load(saveId)
+        xmlHandler -> xmlHandler: XMLDecoder.readObject() from savegame.xml
+        xmlHandler --> gameSession: GameState
+    end
+
+    gameSession -> playerEntity: moveTo(state.posX, state.posY)
+    gameSession -> playerEntity: setHp / setMaxHp
+    gameSession -> playerStats: setGPA / setEnergy / setStress / setKarma
+    gameSession -> gameModeFactory: createNormalMode() OR createZombieMode()\n(based on state.modeSnapshot)
+    gameSession --> gamePanel: GameState
+    deactivate gameSession
+
+    gamePanel -> gamePanel: restoreFromState(gameState)
+    gamePanel -> gamePanel: currentZone = ZoneType.valueOf(state.currentZoneName)
+    gamePanel -> gamePanel: zombieMode/phaseOneState/phaseTwoState/\nphase2IntroPart/defeatedZombies/\nserverBossHp/prayedThisPhase â† state
     gamePanel -> tileM: loadMap()
-    gamePanel -> objM: loadZoneObjects(currentZone, zombieMode)
-    gamePanel -> soundM: playZoneMusic(currentZone)
+    gamePanel -> objM: clearObjects() + load<Zone>Objects()\n(zombie variant if zombieMode)
+    gamePanel -> objM: filterDefeatedZombies(defeatedZombies)
+    gamePanel -> soundManager: setZombieMode(zombieMode)
+    gamePanel -> soundManager: playZoneMusic(currentZone)
+    gamePanel -> gamePanel: gameState = playState
     deactivate gamePanel
 end
 

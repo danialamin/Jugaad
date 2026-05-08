@@ -6,11 +6,11 @@ skinparam classAttributeIconSize 0
 skinparam classFontSize 10
 skinparam classFontName Arial
 skinparam packageFontSize 11
-skinparam nodesep 65
-skinparam ranksep 85
-skinparam padding 5
-skinparam linetype ortho
+skinparam nodesep 110
+skinparam ranksep 140
+skinparam padding 8
 skinparam roundcorner 6
+skinparam linetype polyline
 hide circle
 
 ' ╔══════════════════════════════════════════════════════╗
@@ -257,33 +257,30 @@ together {
             + incrementInteraction() : void
         }
 
-        together {
-            abstract class Enemy {
-                # enemyId : int
-                # name : String
-                # hp : int
-                # maxHp : int
-                # rewardKarma : int
-                + takeDamage(amount : int) : void
-                + resetHp() : void
-                + isDefeated() : boolean
-                + getHp() : int
-                + getMaxHp() : int
-                + getName() : String
-                + attack(player : Player) : void
-                + getCombatChallenge() : CombatChallenge
-            }
-
-            class ZombieEnemy {
-                - type : String
-                - patrolZoneId : int
-                + getType() : String
-                + getPatrolZoneId() : int
-            }
-
-            class FinalBoss {
-            }
+        abstract class Enemy {
+            # enemyId : int
+            # name : String
+            # hp : int
+            # maxHp : int
+            # rewardKarma : int
+            + takeDamage(amount : int) : void
+            + resetHp() : void
+            + isDefeated() : boolean
+            + getHp() : int
+            + getMaxHp() : int
+            + getName() : String
+            + attack(player : Player) : void
+            + getCombatChallenge() : CombatChallenge
         }
+
+        class ZombieEnemy {
+            - type : String
+            - patrolZoneId : int
+            + getType() : String
+            + getPatrolZoneId() : int
+        }
+
+        class FinalBoss
     }
 
     package "map [GRASP: Info Expert, Creator]" #FFF3E0 {
